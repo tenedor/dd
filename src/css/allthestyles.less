@@ -1,0 +1,38 @@
+// all blame for the monolithic stylesheet goes to my laziness to learn webpack
+
+body {
+  margin: 0;
+}
+
+#root {
+  font-family: sans-serif;
+  line-height: 18px;
+  padding: 100px;
+}
+
+.table-view {
+  border: 1px solid #cccccc;
+  display: grid;
+  grid-template-columns: 100px 100px;
+  position: relative;
+  width: 200px;
+
+  .selection {
+    border: 3px solid greenyellow;
+    box-sizing: border-box;
+    height: 100%;
+    position: absolute;
+    width: 100%;
+  }
+}
+
+.cell-view {
+  border: 1px solid #cccccc;
+  padding: 4px 0;
+
+  .value {
+    overflow: hidden;
+    // let overflow text extend into horizontal padding but not vertical padding
+    padding: 0 6px;
+  }
+}
