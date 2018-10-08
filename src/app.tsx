@@ -11,6 +11,8 @@ export class App {
   }
 
   public renderApplication() {
-    return <TableView rowsData={this.grid.getRowsData()} />;
+    const columnsData = this.grid.getColumns();
+    const rowsData = this.grid.getRows();
+    return <TableView columnsData={columnsData} rowsData={rowsData} />;
   }
 }

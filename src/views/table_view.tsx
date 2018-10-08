@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {RowData, RowsData} from '../models/grid';
+import {ColumnsData, RowData, RowsData} from '../models/grid';
 import {CellView} from './cell_view';
 
 interface TableIndex {
@@ -13,17 +13,21 @@ interface TableRange {
 }
 
 interface Props {
+  columnsData: ColumnsData,
   rowsData: RowsData,
 }
 
 export class TableView extends React.Component<Props, object> {
   public render() {
-    const {rowsData} = this.props;
-    const rows = rowsData.map(this.renderRow);
+    const {columnsData, rowsData} = this.props;
+    const columnIds = columnsData.map(c => c.id);
+    const columnHeaders = this.renderColumnHeaders(columnsData);
+    const rows = rowsData.map((r, i) => this.renderRow(r, columnIds, i));
     const selectedRanges = this.getSelectedRanges();
-    const selections = selectedRanges.map(this.renderSelection);
+    const selections = selectedRanges.map((s, i) => this.renderSelection(s, i));
     return (
       <div className="table-view">
+        {columnHeaders}
         {rows}
         {selections}
       </div>
@@ -37,17 +41,30 @@ export class TableView extends React.Component<Props, object> {
     ];
   }
 
-  private renderRow(data: RowData, rowIndex: number) {
-    return data.map((cell, columnIndex) => {
-      const key = `cell-${rowIndex}-${columnIndex}`;
-      return <CellView key={key} value={cell.value} />;
+  private renderColumnHeaders(columnsData: ColumnsData) {
+    return columnsData.map(columnData => {
+      const {id, name} = columnData;
+      const key = `column-header-${id}`;
+      return <CellView key={key} value={name} isHeader={true} />;
     });
   }
 
-  private renderSelection({start, end}: TableRange, index: number) {
-    // grid-area uses 1-indexing and is exclusive on the end indices
-    const gridArea =
-        `${start.row + 1}/${start.column + 1}/${end.row + 2}/${end.column + 2}`;
+  private renderRow(rowData: RowData, columnIds: string[], rowIndex: number) {
+    return columnIds.map(columnId => {
+      const key = `cell-${rowIndex}-${columnId}`;
+      return <CellView key={key} value={rowData[columnId].value} />;
+    });
+  }
+
+  private getGridArea({start, end}: TableRange): string {
+    // increment all indices by 1 since grid-area uses 1-indexing
+    // increment row indices by 1 to account for headers
+    // increment end indices by 1 since grid-area is exclusive on end indices
+    return `${start.row + 2}/${start.column + 1}/${end.row + 3}/${end.column + 2}`;
+  }
+
+  private renderSelection(selection: TableRange, index: number) {
+    const gridArea = this.getGridArea(selection);
     const selectionStyles = {gridArea};
     const key = `selection-${index}`;
     return <div key={key} className="selection" style={selectionStyles} />
