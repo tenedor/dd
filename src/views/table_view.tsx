@@ -1,5 +1,13 @@
+import * as _ from 'lodash';
 import * as React from 'react';
-import {ColumnsData, RowData, RowsData} from '../models/grid';
+import {
+  ColumnData,
+  ColumnsData,
+  Formula,
+  GridData,
+  RowData,
+} from '../models/grid';
+import {assert} from '../utils/utils';
 import {CellView} from './cell_view';
 
 interface TableIndex {
@@ -13,20 +21,26 @@ interface TableRange {
 }
 
 interface Props {
-  columnsData: ColumnsData,
-  rowsData: RowsData,
+  gridData: GridData,
 }
 
 export class TableView extends React.Component<Props, object> {
   public render() {
-    const {columnsData, rowsData} = this.props;
-    const columnIds = columnsData.map(c => c.id);
+    const {columns: columnsData, rows: rowsData} = this.props.gridData;
+
+    const columnWidths = columnsData.map(c => c.width);
+    const tableStyles = {
+      gridTemplateColumns: columnWidths.map(w => w + "px").join(" "),
+      width: columnWidths.reduce((sum, w) => sum + w, 0),
+    };
+
     const columnHeaders = this.renderColumnHeaders(columnsData);
-    const rows = rowsData.map((r, i) => this.renderRow(r, columnIds, i));
+    const rows = rowsData.map((r, i) => this.renderRow(r, columnsData, i));
     const selectedRanges = this.getSelectedRanges();
     const selections = selectedRanges.map((s, i) => this.renderSelection(s, i));
+
     return (
-      <div className="table-view">
+      <div className="table-view" style={tableStyles}>
         {columnHeaders}
         {rows}
         {selections}
@@ -49,10 +63,24 @@ export class TableView extends React.Component<Props, object> {
     });
   }
 
-  private renderRow(rowData: RowData, columnIds: string[], rowIndex: number) {
-    return columnIds.map(columnId => {
+  private getColumnById(columnId: string, columnsData: ColumnsData): ColumnData {
+    const column = _.find(columnsData, c => c.id === columnId);
+    assert(column, 'invalid column id');
+    return column!;
+  }
+
+  private getFormulaAsString(formula: Formula, columnsData: ColumnsData): string {
+    const args = formula.args.map(arg => this.getColumnById(arg, columnsData).name);
+    return `${formula.name}(${args.join(", ")})`
+  }
+
+  private renderRow(rowData: RowData, columnsData: ColumnsData, rowIndex: number) {
+    return columnsData.map(({id: columnId, formula}) => {
       const key = `cell-${rowIndex}-${columnId}`;
-      return <CellView key={key} value={rowData[columnId].value} />;
+      const value = formula ?
+        `=${this.getFormulaAsString(formula, columnsData)}` :
+        rowData[columnId].value;
+      return <CellView key={key} value={value} />;
     });
   }
 
