@@ -1,14 +1,15 @@
 import * as _ from 'lodash';
+import {Resolver} from './resolver';
 
-export interface CellData {
+export interface Cell {
   value: string;
 }
 
-export interface RowData {
-  [columnId: string]: CellData;
+export interface Row {
+  [columnId: string]: Cell;
 }
 
-export type RowsData = RowData[]
+export type Rows = Row[]
 
 export enum DataType {
   DRAWING = 'DRAWING',
@@ -21,6 +22,10 @@ export interface Value {
   value: string,
 }
 
+export interface TypedValue<T> extends Value {
+  typedValue: T,
+}
+
 // limit to first-order formulas of column values
 export interface Formula {
   name: string,
@@ -31,7 +36,7 @@ export interface MaterializedFormula extends Formula {
   materializedArgs: Value[],
 }
 
-export interface ColumnData {
+export interface Column {
   formula?: Formula;
   id: string;
   name: string;
@@ -39,24 +44,53 @@ export interface ColumnData {
   width: number;
 }
 
-export type ColumnsData = ColumnData[];
-
-export interface GridData {
-  columns: ColumnsData,
-  rows: RowsData,
-}
+export type Columns = Column[];
 
 export class Grid {
-  public getColumns(): ColumnsData {
-    return this.generateColumnsData();
+  private columnsMap: {[id: string]: Column};
+  private _id: string;
+  private parent?: Grid;
+  private resolver: Resolver;
+  private _rows: Rows;
+  private _columns: Columns;
+
+  constructor(resolver: Resolver, parentGrid?: Grid) {
+    this.resolver = resolver;
+    this._id = resolver.generateUID('g');
+    this.parent = parentGrid;
+    this._columns = this.generateColumns();
+    this.columnsMap = {};
+    this._columns.forEach(c => {this.columnsMap[c.id] = c})
+    this._rows = this.generateRows();
+    resolver.addGrid(this);
   }
 
-  public getRows(): RowsData {
-    return this.generateRowsData();
+  public delete() {
+    this.resolver.removeGrid(this.id);
+  }
+
+  public get id() {
+    return this._id;
+  }
+
+  public getColumnById(columnId: string): Column | undefined {
+    let column: Column | undefined = this.columnsMap[columnId];
+    if (!column && this.parent) {
+      column = this.parent.getColumnById(columnId);
+    }
+    return column;
+  }
+
+  public get columns(): Columns {
+    return this._columns;
+  }
+
+  public get rows(): Rows {
+    return this._rows;
   }
 
   // example rows and columns
-  private generateColumnsData(): ColumnsData {
+  private generateColumns(): Columns {
     return [
       {id: 'c-1', name: 'X', width: 100, type: DataType.NUMBER},
       {id: 'c-2', name: 'Y', width: 100, type: DataType.NUMBER},
@@ -67,7 +101,7 @@ export class Grid {
     ];
   }
 
-  private generateRowsData(): RowsData {
+  private generateRows(): Rows {
     const rowCount = 6;
     const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
     return _.range(rowCount).map(i => ({

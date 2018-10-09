@@ -3,7 +3,8 @@
   "rules": {
     "interface-name": false,
     "no-console": false,
-    "object-literal-sort-keys": false
+    "object-literal-sort-keys": false,
+    "variable-name": [true, "check-format", "allow-leading-underscore", "allow-pascal-case", "ban-keywords"]
   },
   "linterOptions": {
     "exclude": [
