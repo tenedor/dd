@@ -14,7 +14,7 @@ export class App {
     this.grid = new Grid(this.resolver);
   }
 
-  public renderApplication() {
+  public renderApplication = () => {
     return (
       <div>
         <DrawingView grids={[this.grid]} />

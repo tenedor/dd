@@ -65,7 +65,7 @@ export class Grid {
     resolver.addGrid(this);
   }
 
-  public delete() {
+  public delete = (): void => {
     this.resolver.removeGrid(this.id);
   }
 
@@ -73,7 +73,7 @@ export class Grid {
     return this._id;
   }
 
-  public getColumnById(columnId: string): Column | undefined {
+  public getColumnById = (columnId: string): Column | undefined => {
     let column: Column | undefined = this.columnsMap[columnId];
     if (!column && this.parent) {
       column = this.parent.getColumnById(columnId);
@@ -90,7 +90,7 @@ export class Grid {
   }
 
   // example rows and columns
-  private generateColumns(): Columns {
+  private generateColumns = (): Columns => {
     return [
       {id: 'c-1', name: 'X', width: 100, type: DataType.NUMBER},
       {id: 'c-2', name: 'Y', width: 100, type: DataType.NUMBER},
@@ -101,7 +101,7 @@ export class Grid {
     ];
   }
 
-  private generateRows(): Rows {
+  private generateRows = (): Rows => {
     const rowCount = 6;
     const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
     return _.range(rowCount).map(i => ({

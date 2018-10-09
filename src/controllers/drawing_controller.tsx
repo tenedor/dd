@@ -35,11 +35,11 @@ export class DrawingController {
     this.grids = grids;
   }
 
-  public getDrawings(): Drawing[] {
-    return _.flatten(this.grids.map(grid => this.getDrawingsForGrid(grid)));
+  public getDrawings = (): Drawing[] => {
+    return _.flatten(this.grids.map(this.getDrawingsForGrid));
   }
 
-  private materializeFormula(formula: Formula, row: Row, grid: Grid): MaterializedFormula {
+  private materializeFormula = (formula: Formula, row: Row, grid: Grid): MaterializedFormula => {
     const {name, args} = formula;
     return {
       name,
@@ -51,11 +51,11 @@ export class DrawingController {
     }
   }
 
-  private isDrawingFormula(formula: Formula): boolean {
+  private isDrawingFormula = (formula: Formula): boolean => {
     return formula.name === 'DrawCircle';
   }
 
-  private resolveDrawingFormula(formula: Formula, row: Row, grid: Grid): Drawing {
+  private resolveDrawingFormula = (formula: Formula, row: Row, grid: Grid): Drawing => {
     const materializedFormula = this.materializeFormula(formula, row, grid);
     assert(this.isDrawingFormula(materializedFormula), 'expected drawing formula');
     const args = materializedFormula.materializedArgs;
@@ -75,7 +75,7 @@ export class DrawingController {
     };
   }
 
-  private getDrawingsForGrid(grid: Grid): Drawing[] {
+  private getDrawingsForGrid = (grid: Grid): Drawing[] => {
     const {columns, rows} = grid;
 
     const drawingFormulas = columns

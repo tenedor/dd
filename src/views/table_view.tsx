@@ -26,7 +26,7 @@ interface Props {
 }
 
 export class TableView extends BaseComponent<Props, object> {
-  public render() {
+  public render = () => {
     const {columns, rows} = this.props.grid;
 
     const columnWidths = columns.map(c => c.width);
@@ -36,9 +36,9 @@ export class TableView extends BaseComponent<Props, object> {
     };
 
     const columnHeaders = this.renderColumnHeaders(columns);
-    const renderedRows = rows.map((r, i) => this.renderRow(r, columns, i));
+    const renderedRows = rows.map(this.renderRow);
     const selectedRanges = this.getSelectedRanges();
-    const selections = selectedRanges.map((s, i) => this.renderSelection(s, i));
+    const selections = selectedRanges.map(this.renderSelection);
 
     return (
       <div className="table-view" style={tableStyles}>
@@ -50,13 +50,13 @@ export class TableView extends BaseComponent<Props, object> {
   }
 
   // example selection
-  private getSelectedRanges(): TableRange[] {
+  private getSelectedRanges = (): TableRange[] => {
     return [
       {start: {row: 1, column: 0}, end: {row: 3, column: 0}},
     ];
   }
 
-  private renderColumnHeaders(columns: Columns) {
+  private renderColumnHeaders = (columns: Columns) => {
     return columns.map(column=> {
       const {id, name} = column;
       const key = `column-header-${id}`;
@@ -64,18 +64,19 @@ export class TableView extends BaseComponent<Props, object> {
     });
   }
 
-  private getColumnById(columnId: string, columns: Columns): Column {
+  private getColumnById = (columnId: string, columns: Columns): Column => {
     const column = _.find(columns, c => c.id === columnId);
     assert(column, 'invalid column id');
     return column!;
   }
 
-  private getFormulaAsString(formula: Formula, columns: Columns): string {
+  private getFormulaAsString = (formula: Formula, columns: Columns): string => {
     const args = formula.args.map(arg => this.getColumnById(arg, columns).name);
     return `${formula.name}(${args.join(", ")})`
   }
 
-  private renderRow(row: Row, columns: Columns, rowIndex: number) {
+  private renderRow = (row: Row, rowIndex: number) => {
+    const {columns} = this.props.grid;
     return columns.map(({id: columnId, formula}) => {
       const key = `cell-${rowIndex}-${columnId}`;
       const value = formula ?
@@ -85,14 +86,14 @@ export class TableView extends BaseComponent<Props, object> {
     });
   }
 
-  private getGridArea({start, end}: TableRange): string {
+  private getGridArea = ({start, end}: TableRange): string => {
     // increment all indices by 1 since grid-area uses 1-indexing
     // increment row indices by 1 to account for headers
     // increment end indices by 1 since grid-area is exclusive on end indices
     return `${start.row + 2}/${start.column + 1}/${end.row + 3}/${end.column + 2}`;
   }
 
-  private renderSelection(selection: TableRange, index: number) {
+  private renderSelection = (selection: TableRange, index: number) => {
     const gridArea = this.getGridArea(selection);
     const selectionStyles = {gridArea};
     const key = `selection-${index}`;

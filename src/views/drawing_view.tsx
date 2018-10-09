@@ -16,10 +16,11 @@ export class DrawingView extends BaseComponent<Props, object> {
     this.controller = new DrawingController(props.grids);
   }
 
-  public render() {
+  public render = () => {
     const drawings = this.controller.getDrawings();
-    const renderedDrawings = drawings.map((d, i) => {
-      return <circle key={`d-${i}`} cx={d.x} cy={d.y} r={d.radius} fill={d.fill} />;
+    const renderedDrawings = drawings.map((drawing, i) => {
+      const {x, y, radius, fill} = drawing;
+      return <circle key={`d-${i}`} cx={x} cy={y} r={radius} fill={fill} />;
     })
 
     return (
