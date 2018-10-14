@@ -7,6 +7,7 @@ import {
   Grid,
   Row,
 } from '../core/grid';
+import {KeyCode} from '../utils/keycode';
 import {assert} from '../utils/utils';
 import {BaseComponent} from './base_component';
 import {CellView} from './cell_view';
@@ -25,7 +26,17 @@ interface Props {
   grid: Grid,
 }
 
-export class TableView extends BaseComponent<Props, object> {
+interface State {
+  selectedCell: TableIndex,
+}
+
+export class TableView extends BaseComponent<Props, State> {
+  constructor(props: Props) {
+    super(props);
+
+    this.state = {selectedCell: {row: 0, column: 0}};
+  }
+
   public render = () => {
     const {columns, rows} = this.props.grid;
 
@@ -41,7 +52,7 @@ export class TableView extends BaseComponent<Props, object> {
     const selections = selectedRanges.map(this.renderSelection);
 
     return (
-      <div className="table-view" style={tableStyles}>
+      <div className="table-view" style={tableStyles} tabIndex={0} onKeyDown={this.onKeyDown}>
         {columnHeaders}
         {renderedRows}
         {selections}
@@ -49,10 +60,39 @@ export class TableView extends BaseComponent<Props, object> {
     );
   }
 
+  private moveSelection = ({right, down}: {right: number, down: number}) => {
+    const {rows, columns} = this.props.grid;
+    const {row, column} = this.state.selectedCell;
+    const newRow = Math.max(0, Math.min(rows.length - 1, row + down));
+    const newColumn = Math.max(0, Math.min(columns.length - 1, column + right));
+    this.setState({selectedCell: {row: newRow, column: newColumn}});
+  }
+
+  private onKeyDown = (e: React.KeyboardEvent) => {
+    switch(e.keyCode) {
+      case KeyCode.ARROW_DOWN:
+        this.moveSelection({right: 0, down: 1});
+        break;
+      case KeyCode.ARROW_UP:
+        this.moveSelection({right: 0, down: -1});
+        break;
+      case KeyCode.ARROW_RIGHT:
+        this.moveSelection({right: 1, down: 0});
+        break;
+      case KeyCode.ARROW_LEFT:
+        this.moveSelection({right: -1, down: 0});
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+  }
+
   // example selection
   private getSelectedRanges = (): TableRange[] => {
+    const {row, column} = this.state.selectedCell;
     return [
-      {start: {row: 1, column: 0}, end: {row: 3, column: 0}},
+      {start: {row, column}, end: {row, column}},
     ];
   }
 
