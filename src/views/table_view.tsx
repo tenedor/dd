@@ -6,10 +6,12 @@ import {
   Formula,
   Grid,
   Row,
+  Value,
 } from '../core/grid';
 import {KeyCode} from '../utils/keycode';
 import {assert} from '../utils/utils';
 import {BaseComponent} from './base_component';
+import {CellEditorView} from './cell_editor_view';
 import {CellView} from './cell_view';
 
 interface TableIndex {
@@ -39,6 +41,7 @@ export class TableView extends BaseComponent<Props, State> {
 
   public render = () => {
     const {columns, rows} = this.props.grid;
+    const {selectedCell} = this.state;
 
     const columnWidths = columns.map(c => c.width);
     const tableStyles = {
@@ -48,14 +51,13 @@ export class TableView extends BaseComponent<Props, State> {
 
     const columnHeaders = this.renderColumnHeaders(columns);
     const renderedRows = rows.map(this.renderRow);
-    const selectedRanges = this.getSelectedRanges();
-    const selections = selectedRanges.map(this.renderSelection);
+    const cellEditor = this.renderCellEditor(selectedCell);
 
     return (
       <div className="table-view" style={tableStyles} tabIndex={0} onKeyDown={this.onKeyDown}>
         {columnHeaders}
         {renderedRows}
-        {selections}
+        {cellEditor}
       </div>
     );
   }
@@ -82,18 +84,16 @@ export class TableView extends BaseComponent<Props, State> {
       case KeyCode.ARROW_LEFT:
         this.moveSelection({right: -1, down: 0});
         break;
+      case KeyCode.ENTER:
+        this.moveSelection({right: 0, down: e.shiftKey ? -1 : 1});
+        break;
+      case KeyCode.TAB:
+        this.moveSelection({right: e.shiftKey ? -1 : 1, down: 0});
+        break;
       default:
         return;
     }
     e.preventDefault();
-  }
-
-  // example selection
-  private getSelectedRanges = (): TableRange[] => {
-    const {row, column} = this.state.selectedCell;
-    return [
-      {start: {row, column}, end: {row, column}},
-    ];
   }
 
   private renderColumnHeaders = (columns: Columns) => {
@@ -126,6 +126,13 @@ export class TableView extends BaseComponent<Props, State> {
     });
   }
 
+  private getValue = (cellIndex: TableIndex): Value => {
+    const {columns, rows} = this.props.grid;
+    const {id: columnId, type} = columns[cellIndex.column];
+    const {value} = rows[cellIndex.row][columnId];
+    return {type, value};
+  }
+
   private getGridArea = ({start, end}: TableRange): string => {
     // increment all indices by 1 since grid-area uses 1-indexing
     // increment row indices by 1 to account for headers
@@ -133,10 +140,18 @@ export class TableView extends BaseComponent<Props, State> {
     return `${start.row + 2}/${start.column + 1}/${end.row + 3}/${end.column + 2}`;
   }
 
-  private renderSelection = (selection: TableRange, index: number) => {
-    const gridArea = this.getGridArea(selection);
-    const selectionStyles = {gridArea};
-    const key = `selection-${index}`;
-    return <div key={key} className="selection" style={selectionStyles} />
+  private onCellValueChange = (value: string) => {
+    console.log(value);
+  }
+
+  private renderCellEditor = (cellIndex: TableIndex) => {
+    const {columns} = this.props.grid;
+    const {formula} = columns[cellIndex.column];
+    const key = `c-${cellIndex.column}:r-${cellIndex.row}`;
+    const value = this.getValue(cellIndex);
+    const gridArea = this.getGridArea({start: cellIndex, end: cellIndex});
+    return <div key="cell-editor" className="cell-editor" style={{gridArea}}>
+      <CellEditorView key={key} value={value} editable={!formula} onChangeValue={this.onCellValueChange} />
+    </div>
   }
 }

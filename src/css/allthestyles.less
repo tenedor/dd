@@ -4,9 +4,14 @@ body {
   margin: 0;
 }
 
-#root {
+.text() {
   font-family: sans-serif;
+  font-size: 16px;
   line-height: 18px;
+}
+
+#root {
+  .text();
   padding: 100px;
 }
 
@@ -14,13 +19,19 @@ body {
   outline: none;
 }
 
+input, textarea, select, button {
+  .text();
+  box-sizing: border-box;
+  margin: 0;
+  resize: none;
+}
+
 .table-view {
   border: 1px solid #cccccc;
   display: grid;
   position: relative;
 
-  .selection {
-    border: 3px solid greenyellow;
+  .cell-editor {
     box-sizing: border-box;
     height: 100%;
     position: absolute;
@@ -42,5 +53,27 @@ body {
     overflow: hidden;
     // let overflow text extend into horizontal padding but not vertical padding
     padding: 0 6px;
+  }
+}
+
+.cell-editor-view {
+  border: 2px solid deepskyblue;
+  bottom: -1px;
+  caret-color: transparent;
+  left: -1px;
+  padding: 4px 0;
+  position: absolute;
+  right: -1px;
+  top: -1px;
+
+  &.editing {
+    caret-color: auto;
+  }
+
+  textarea {
+    border: none;
+    // let overflow text extend into horizontal padding but not vertical padding
+    padding: 0 6px;
+    width: 100%;
   }
 }

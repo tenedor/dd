@@ -18,6 +18,8 @@ export interface BaseDrawing {
   y: number,
   rotation: number,
   fill: string,
+  // stroke: number
+  // stroke-color: string
   children: Drawing[],
 }
 

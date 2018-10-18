@@ -16,7 +16,7 @@ export class DrawingView extends BaseComponent<Props, object> {
     this.controller = new DrawingController(props.grids);
   }
 
-  public render = () => {
+  public render() {
     const drawings = this.controller.getDrawings();
     const renderedDrawings = drawings.map((drawing, i) => {
       const {x, y, radius, fill} = drawing;
