@@ -2,10 +2,12 @@ import * as _ from 'lodash';
 import * as React from 'react';
 import {Value} from '../core/grid';
 import {KeyCode} from '../utils/keycode';
+import {classNames} from '../utils/utils';
 import {BaseComponent} from './base_component';
 
 interface Props {
   editable: boolean,
+  isHeader: boolean,
   value: Value,
   onChangeValue: (newValue: string) => void,
 }
@@ -15,7 +17,7 @@ interface State {
 }
 
 export class CellEditorView extends BaseComponent<Props, State> {
-  private textAreaRef: any;
+  private textAreaRef?: HTMLTextAreaElement;
 
   constructor(props: Props) {
     super(props);
@@ -26,18 +28,30 @@ export class CellEditorView extends BaseComponent<Props, State> {
   }
 
   public render = () => {
+    const {isHeader} = this.props;
     const {value} = this.props.value;
     const {isEditing} = this.state;
-    const className = "cell-editor-view" + (isEditing ? " editing" : "");
+    const className = classNames("cell-editor-view", {
+      editing: isEditing,
+      header: isHeader,
+    });
     return (
-      <div className={className} tabIndex={0} onKeyDown={this.onKeyDown} >
-        <textarea autoFocus={true} ref={r => this.textAreaRef = r} defaultValue={value} />
+      <div className={className} tabIndex={0} onKeyDown={this.onKeyDown} onMouseDown={this.onMouseDown} >
+        <textarea autoFocus={true} ref={r => this.textAreaRef = r || undefined} defaultValue={value} />
       </div>
     );
   }
 
   private submitValue = () => {
-    this.props.onChangeValue(this.textAreaRef.value);
+    this.props.onChangeValue(this.textAreaRef!.value);
+  }
+
+  private onMouseDown = (e: React.MouseEvent) => {
+    if (!this.state.isEditing) {
+      this.setState({isEditing: true});
+      e.preventDefault();
+    }
+    e.stopPropagation();
   }
 
   private onKeyDown = (e: React.KeyboardEvent) => {
@@ -62,7 +76,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
       case KeyCode.ESCAPE:
         if (isEditing) {
           this.setState({isEditing: false});
-          this.textAreaRef.value = value;
+          this.textAreaRef!.value = value;
           e.stopPropagation();
         }
         e.preventDefault();
@@ -80,7 +94,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
       case KeyCode.DELETE:
         if (!isEditing) {
           e.preventDefault();
-          this.textAreaRef.value = "";
+          this.textAreaRef!.value = "";
           this.submitValue();
         }
         e.stopPropagation();
@@ -115,7 +129,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
           (KeyCode.SEMICOLON <= keyCode && keyCode <= KeyCode.QUOTE)
         ) {
           if (!isEditing) {
-            this.textAreaRef.value = "";
+            this.textAreaRef!.value = "";
             this.setState({isEditing: true});
           }
           e.stopPropagation();

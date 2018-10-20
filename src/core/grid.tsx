@@ -92,12 +92,12 @@ export class Grid {
   // example rows and columns
   private generateColumns = (): Columns => {
     return [
-      {id: 'c-1', name: 'X', width: 100, type: DataType.NUMBER},
-      {id: 'c-2', name: 'Y', width: 100, type: DataType.NUMBER},
-      {id: 'c-3', name: 'Radius', width: 100, type: DataType.NUMBER},
-      {id: 'c-4', name: 'Fill', width: 100, type: DataType.STRING},
-      {id: 'c-5', name: 'Draw Circle', width: 150, type: DataType.DRAWING,
-          formula: {name: "DrawCircle", args: ["c-3", "c-1", "c-2", "c-4"]}},
+      {id: 'c_1', name: 'X', width: 100, type: DataType.NUMBER},
+      {id: 'c_2', name: 'Y', width: 100, type: DataType.NUMBER},
+      {id: 'c_3', name: 'Radius', width: 100, type: DataType.NUMBER},
+      {id: 'c_4', name: 'Fill', width: 100, type: DataType.STRING},
+      {id: 'c_5', name: 'Draw Circle', width: 150, type: DataType.DRAWING,
+          formula: {name: "DrawCircle", args: ["c_3", "c_1", "c_2", "c_4"]}},
     ];
   }
 
@@ -105,11 +105,11 @@ export class Grid {
     const rowCount = 6;
     const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
     return _.range(rowCount).map(i => ({
-      'c-1': {value: `${i * 20}`},
-      'c-2': {value: `${i * i * 10}`},
-      'c-3': {value: `${(i + 1) * (i + 1) * 2}`},
-      'c-4': {value: colors[i]},
-      'c-5': {value: ""},
+      'c_1': {value: `${i * 20}`},
+      'c_2': {value: `${i * i * 10}`},
+      'c_3': {value: `${(i + 1) * (i + 1) * 2}`},
+      'c_4': {value: colors[i]},
+      'c_5': {value: ""},
     }));
   }
 }

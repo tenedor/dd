@@ -14,6 +14,11 @@ import {BaseComponent} from './base_component';
 import {CellEditorView} from './cell_editor_view';
 import {CellView} from './cell_view';
 
+interface CellIndex {
+  columnId: string,
+  rowIndex: number,
+}
+
 interface TableIndex {
   row: number,
   column: number,
@@ -54,7 +59,7 @@ export class TableView extends BaseComponent<Props, State> {
     const cellEditor = this.renderCellEditor(selectedCell);
 
     return (
-      <div className="table-view" style={tableStyles} tabIndex={0} onKeyDown={this.onKeyDown}>
+      <div className="table-view" style={tableStyles} tabIndex={0} onKeyDown={this.onKeyDown} onMouseDown={this.onMouseDown}>
         {columnHeaders}
         {renderedRows}
         {cellEditor}
@@ -62,12 +67,38 @@ export class TableView extends BaseComponent<Props, State> {
     );
   }
 
+  private getColumnIndexFromId = (columnId: string): number => {
+    return _.findIndex(this.props.grid.columns, {id: columnId});
+  }
+
+  private setSelection = (selection: TableIndex) => {
+    this.setState({selectedCell: selection});
+  }
+
+  private setSelectionFromCellIndex = ({columnId, rowIndex}: CellIndex) => {
+    const columnIndex = this.getColumnIndexFromId(columnId);
+    this.setSelection({row: rowIndex, column: columnIndex});
+  }
+
   private moveSelection = ({right, down}: {right: number, down: number}) => {
     const {rows, columns} = this.props.grid;
     const {row, column} = this.state.selectedCell;
-    const newRow = Math.max(0, Math.min(rows.length - 1, row + down));
+    const newRow = Math.max(-1, Math.min(rows.length - 1, row + down));
     const newColumn = Math.max(0, Math.min(columns.length - 1, column + right));
-    this.setState({selectedCell: {row: newRow, column: newColumn}});
+    this.setSelection({row: newRow, column: newColumn});
+  }
+
+  private onMouseDown = (e: React.MouseEvent) => {
+    // React's typing on e.target is dumb
+    const cellNode = (e.target as Element).closest('[data-cell-id]');
+    if (cellNode) {
+      const cellIndexString = cellNode.getAttribute('data-cell-id');
+      const cellIndex = cellIndexString ? this.parseCellIndex(cellIndexString) : undefined;
+      if (cellIndex) {
+        this.setSelectionFromCellIndex(cellIndex);
+        e.preventDefault();
+      }
+    }
   }
 
   private onKeyDown = (e: React.KeyboardEvent) => {
@@ -96,11 +127,26 @@ export class TableView extends BaseComponent<Props, State> {
     e.preventDefault();
   }
 
+  private stringEncodeCellIndex({columnId, rowIndex}: CellIndex): string {
+    return `cell-${columnId}-${rowIndex >= 0 ? rowIndex : 'H'}`;
+  }
+
+  private parseCellIndex(cellIndexString: string): CellIndex | undefined {
+    const match = cellIndexString.match(/cell-(.*)-(\d+|H)/);
+    if (!match) {
+      return undefined;
+    }
+    const columnId = match[1];
+    const rowIndex = match[2] === 'H' ? -1 : parseInt(match[2], 10);
+    return {columnId, rowIndex};
+  }
+
   private renderColumnHeaders = (columns: Columns) => {
     return columns.map(column=> {
       const {id, name} = column;
       const key = `column-header-${id}`;
-      return <CellView key={key} value={name} isHeader={true} />;
+      const cellIndexString = this.stringEncodeCellIndex({columnId: id, rowIndex: -1});
+      return <CellView key={key} dataCellId={cellIndexString} value={name} isHeader={true} />;
     });
   }
 
@@ -118,18 +164,19 @@ export class TableView extends BaseComponent<Props, State> {
   private renderRow = (row: Row, rowIndex: number) => {
     const {columns} = this.props.grid;
     return columns.map(({id: columnId, formula}) => {
-      const key = `cell-${rowIndex}-${columnId}`;
+      const cellIndexString = this.stringEncodeCellIndex({columnId, rowIndex});
       const value = formula ?
         `=${this.getFormulaAsString(formula, columns)}` :
         row[columnId].value;
-      return <CellView key={key} value={value} />;
+      return <CellView key={cellIndexString} dataCellId={cellIndexString} value={value} />;
     });
   }
 
-  private getValue = (cellIndex: TableIndex): Value => {
+  private getValue = ({column: columnIndex, row: rowIndex}: TableIndex): Value => {
     const {columns, rows} = this.props.grid;
-    const {id: columnId, type} = columns[cellIndex.column];
-    const {value} = rows[cellIndex.row][columnId];
+    const {id: columnId, name, type} = columns[columnIndex];
+    const isHeaderCell = rowIndex < 0;
+    const {value} = isHeaderCell ? {value: name} : rows[rowIndex][columnId];
     return {type, value};
   }
 
@@ -144,14 +191,16 @@ export class TableView extends BaseComponent<Props, State> {
     console.log(value);
   }
 
-  private renderCellEditor = (cellIndex: TableIndex) => {
+  private renderCellEditor = (editorIndex: TableIndex) => {
     const {columns} = this.props.grid;
-    const {formula} = columns[cellIndex.column];
-    const key = `c-${cellIndex.column}:r-${cellIndex.row}`;
-    const value = this.getValue(cellIndex);
-    const gridArea = this.getGridArea({start: cellIndex, end: cellIndex});
+    const {formula} = columns[editorIndex.column];
+    const key = `editor-${editorIndex.column}:r-${editorIndex.row}`;
+    const value = this.getValue(editorIndex);
+    const isHeaderCell = editorIndex.row < 0;
+    const gridArea = this.getGridArea({start: editorIndex, end: editorIndex});
     return <div key="cell-editor" className="cell-editor" style={{gridArea}}>
-      <CellEditorView key={key} value={value} editable={!formula} onChangeValue={this.onCellValueChange} />
+      <CellEditorView key={key} value={value} isHeader={isHeaderCell} editable={isHeaderCell || !formula}
+        onChangeValue={this.onCellValueChange} />
     </div>
   }
 }

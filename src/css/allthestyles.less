@@ -44,9 +44,9 @@ input, textarea, select, button {
   padding: 4px 0;
 
   &.header {
-    font-weight: 700;
     border-bottom-color: #aaaaaa;
     border-bottom-width: 2px;
+    font-weight: 700;
   }
 
   .value {
@@ -61,6 +61,7 @@ input, textarea, select, button {
   bottom: -1px;
   caret-color: transparent;
   left: -1px;
+  overflow: hidden;
   padding: 4px 0;
   position: absolute;
   right: -1px;
@@ -70,10 +71,18 @@ input, textarea, select, button {
     caret-color: auto;
   }
 
+  &.header {
+    bottom: 0px;
+  }
+
   textarea {
     border: none;
     // let overflow text extend into horizontal padding but not vertical padding
     padding: 0 6px;
     width: 100%;
+  }
+
+  &.header textarea {
+    font-weight: 700;
   }
 }

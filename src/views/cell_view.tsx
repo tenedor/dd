@@ -1,14 +1,16 @@
 import * as React from 'react';
+import {classNames} from '../utils/utils';
 
 interface Props {
+  dataCellId: string;
   value: string;
   isHeader?: boolean;
 }
 
-export function CellView({value, isHeader}: Props) {
-  const className = "cell-view" + (isHeader ? " header" : "");
+export function CellView({dataCellId, value, isHeader}: Props) {
+  const className = classNames("cell-view", {header: !!isHeader});
   return (
-    <div className={className}>
+    <div className={className} data-cell-id={dataCellId}>
       <div className="value">
         {value}
       </div>
