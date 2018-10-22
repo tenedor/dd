@@ -49,3 +49,13 @@ export function classNames(...args: Array<string | ClassNameMap>): string {
   const classes = stringClasses.concat(mapClasses);
   return classes.join(" ");
 }
+
+export function setArrayValueFunctionally<V>(array: V[], index: number, value: V): V[] {
+  const newArray = array.slice();
+  newArray[index] = value;
+  return newArray;
+}
+
+export function setObjectValueFunctionally<T, K extends keyof T>(object: T, key: K, value: T[K]): T {
+  return Object.assign({}, object, {[key]: value});
+}

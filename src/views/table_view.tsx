@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 import {
+  CellIndex,
   Column,
   Columns,
   Formula,
@@ -13,11 +14,6 @@ import {assert} from '../utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
 import {CellEditorView} from './cell_editor_view';
 import {CellView} from './cell_view';
-
-interface CellIndex {
-  columnId: string,
-  rowIndex: number,
-}
 
 interface TableIndex {
   row: number,
@@ -69,6 +65,14 @@ export class TableView extends BaseComponent<Props, State> {
 
   private getColumnIndexFromId = (columnId: string): number => {
     return _.findIndex(this.props.grid.columns, {id: columnId});
+  }
+
+  private getCellIndexFromTableIndex = (tableIndex: TableIndex): CellIndex => {
+    const {columns} = this.props.grid;
+    return {
+      columnId: columns[tableIndex.column].id,
+      rowIndex: tableIndex.row,
+    };
   }
 
   private setSelection = (selection: TableIndex) => {
@@ -188,7 +192,10 @@ export class TableView extends BaseComponent<Props, State> {
   }
 
   private onCellValueChange = (value: string) => {
-    console.log(value);
+    const {grid} = this.props;
+    const {selectedCell} = this.state;
+    const cellIndex = this.getCellIndexFromTableIndex(selectedCell);
+    grid.modifyCell(cellIndex, {value});
   }
 
   private renderCellEditor = (editorIndex: TableIndex) => {

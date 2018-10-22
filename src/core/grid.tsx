@@ -1,4 +1,5 @@
 import * as _ from 'lodash';
+import {setArrayValueFunctionally, setObjectValueFunctionally} from '../utils/utils';
 import {BaseModel} from './base_model';
 import {EpochManager} from './epoch_manager';
 
@@ -47,6 +48,11 @@ export interface Column {
 
 export type Columns = Column[];
 
+export interface CellIndex {
+  columnId: string,
+  rowIndex: number,
+}
+
 export class Grid extends BaseModel {
   public readonly id: string;
   private readonly parent?: Grid;
@@ -78,6 +84,13 @@ export class Grid extends BaseModel {
 
   public get rows(): Rows {
     return this._rows;
+  }
+
+  public modifyCell = ({columnId, rowIndex}: CellIndex, cell: Cell): void => {
+    const oldRow = this._rows[rowIndex];
+    const newRow = setObjectValueFunctionally(oldRow, columnId, cell);
+    this._rows = setArrayValueFunctionally(this._rows, rowIndex, newRow);
+    this.onSelfMutated();
   }
 
   // example rows and columns

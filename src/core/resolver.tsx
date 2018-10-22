@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import {Grid} from './grid';
 
 export class Resolver {
@@ -23,6 +24,8 @@ export class Resolver {
   }
 
   public removeGrid = (gridId: string): void => {
+    const grid = this.grids[gridId];
+    this.gridsFunctionalArray = _.without(this.gridsFunctionalArray, grid);
     delete this.grids[gridId];
   }
 
