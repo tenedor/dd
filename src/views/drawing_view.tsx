@@ -2,13 +2,13 @@ import * as _ from 'lodash';
 import * as React from 'react';
 import {DrawingController} from '../controllers/drawing_controller';
 import {Grid} from '../core/grid';
-import {BaseComponent} from './base_component';
+import {BaseComponent, BaseProps} from './base_component';
 
-interface Props {
+interface Props extends BaseProps {
   grids: Grid[],
 }
 
-export class DrawingView extends BaseComponent<Props, object> {
+export class DrawingView extends BaseComponent<Props> {
   private controller: DrawingController;
 
   constructor(props: Props) {
@@ -16,7 +16,7 @@ export class DrawingView extends BaseComponent<Props, object> {
     this.controller = new DrawingController(props.grids);
   }
 
-  public render() {
+  public render = () => {
     const drawings = this.controller.getDrawings();
     const renderedDrawings = drawings.map((drawing, i) => {
       const {x, y, radius, fill} = drawing;

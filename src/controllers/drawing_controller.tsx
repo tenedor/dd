@@ -82,9 +82,7 @@ export class DrawingController {
 
     const drawingFormulas = columns
       .map(c => {
-          return (c.formula && this.isDrawingFormula(c.formula)) ?
-              c.formula :
-              undefined;
+          return (c.formula && this.isDrawingFormula(c.formula)) ? c.formula : undefined;
       })
       .filter(f => !!f) as Formula[];
 

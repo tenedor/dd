@@ -3,9 +3,9 @@ import * as React from 'react';
 import {Value} from '../core/grid';
 import {KeyCode} from '../utils/keycode';
 import {classNames} from '../utils/utils';
-import {BaseComponent} from './base_component';
+import {BaseComponent, BaseProps} from './base_component';
 
-interface Props {
+interface Props extends BaseProps {
   editable: boolean,
   isHeader: boolean,
   value: Value,

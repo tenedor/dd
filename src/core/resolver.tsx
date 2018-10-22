@@ -2,9 +2,11 @@ import {Grid} from './grid';
 
 export class Resolver {
   private grids: {[gridId: string]: Grid};
+  private gridsFunctionalArray: Grid[]; // must be pointer-different whenever contents-different
 
   constructor() {
     this.grids = {};
+    this.gridsFunctionalArray = [];
   }
 
   public generateUID = (prefix?: string): string => {
@@ -15,13 +17,24 @@ export class Resolver {
 
   public addGrid = (grid: Grid): void => {
     this.grids[grid.id] = grid;
+    this.gridsFunctionalArray = this.gridsFunctionalArray.slice();
+    this.gridsFunctionalArray.push(grid);
+    grid.listenForEpochUpdate(this.onGridEpochUpdated);
   }
 
   public removeGrid = (gridId: string): void => {
     delete this.grids[gridId];
   }
 
+  private onGridEpochUpdated = (epoch: number): void => {
+    this.gridsFunctionalArray = this.gridsFunctionalArray.slice();
+  }
+
   public getGrid = (gridId: string): Grid | undefined => {
     return this.grids[gridId];
+  }
+
+  public getAllGridsFunctionally = (): Grid[] => {
+    return this.gridsFunctionalArray;
   }
 }

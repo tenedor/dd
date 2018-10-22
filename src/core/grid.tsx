@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
-import {Resolver} from './resolver';
+import {BaseModel} from './base_model';
+import {EpochManager} from './epoch_manager';
 
 export interface Cell {
   value: string;
@@ -46,31 +47,21 @@ export interface Column {
 
 export type Columns = Column[];
 
-export class Grid {
-  private columnsMap: {[id: string]: Column};
-  private _id: string;
-  private parent?: Grid;
-  private resolver: Resolver;
+export class Grid extends BaseModel {
+  public readonly id: string;
+  private readonly parent?: Grid;
   private _rows: Rows;
   private _columns: Columns;
+  private columnsMap: {[id: string]: Column};
 
-  constructor(resolver: Resolver, parentGrid?: Grid) {
-    this.resolver = resolver;
-    this._id = resolver.generateUID('g');
+  constructor(epochManager: EpochManager, id: string, parentGrid?: Grid) {
+    super(epochManager);
+    this.id = id;
     this.parent = parentGrid;
     this._columns = this.generateColumns();
     this.columnsMap = {};
     this._columns.forEach(c => {this.columnsMap[c.id] = c})
     this._rows = this.generateRows();
-    resolver.addGrid(this);
-  }
-
-  public delete = (): void => {
-    this.resolver.removeGrid(this.id);
-  }
-
-  public get id() {
-    return this._id;
   }
 
   public getColumnById = (columnId: string): Column | undefined => {

@@ -10,7 +10,7 @@ import {
 } from '../core/grid';
 import {KeyCode} from '../utils/keycode';
 import {assert} from '../utils/utils';
-import {BaseComponent} from './base_component';
+import {BaseComponent, BaseProps} from './base_component';
 import {CellEditorView} from './cell_editor_view';
 import {CellView} from './cell_view';
 
@@ -29,7 +29,7 @@ interface TableRange {
   end: TableIndex,
 }
 
-interface Props {
+interface Props extends BaseProps {
   grid: Grid,
 }
 
@@ -127,11 +127,11 @@ export class TableView extends BaseComponent<Props, State> {
     e.preventDefault();
   }
 
-  private stringEncodeCellIndex({columnId, rowIndex}: CellIndex): string {
+  private stringEncodeCellIndex = ({columnId, rowIndex}: CellIndex): string => {
     return `cell-${columnId}-${rowIndex >= 0 ? rowIndex : 'H'}`;
   }
 
-  private parseCellIndex(cellIndexString: string): CellIndex | undefined {
+  private parseCellIndex = (cellIndexString: string): CellIndex | undefined => {
     const match = cellIndexString.match(/cell-(.*)-(\d+|H)/);
     if (!match) {
       return undefined;
@@ -192,14 +192,14 @@ export class TableView extends BaseComponent<Props, State> {
   }
 
   private renderCellEditor = (editorIndex: TableIndex) => {
-    const {columns} = this.props.grid;
-    const {formula} = columns[editorIndex.column];
+    const {epoch, grid} = this.props;
+    const {formula} = grid.columns[editorIndex.column];
     const key = `editor-${editorIndex.column}:r-${editorIndex.row}`;
     const value = this.getValue(editorIndex);
     const isHeaderCell = editorIndex.row < 0;
     const gridArea = this.getGridArea({start: editorIndex, end: editorIndex});
     return <div key="cell-editor" className="cell-editor" style={{gridArea}}>
-      <CellEditorView key={key} value={value} isHeader={isHeaderCell} editable={isHeaderCell || !formula}
+      <CellEditorView epoch={epoch} key={key} value={value} isHeader={isHeaderCell} editable={isHeaderCell || !formula}
         onChangeValue={this.onCellValueChange} />
     </div>
   }
