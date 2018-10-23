@@ -2,14 +2,14 @@ import * as _ from 'lodash';
 import * as React from 'react';
 import {
   CellIndex,
-  Column,
-  Columns,
+  ColumnRO,
   Formula,
   Grid,
-  Row,
+  RowRO,
   Value,
 } from '../core/grid';
 import {KeyCode} from '../utils/keycode';
+import {ROArray} from '../utils/types';
 import {assert} from '../utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
 import {CellEditorView} from './cell_editor_view';
@@ -145,7 +145,7 @@ export class TableView extends BaseComponent<Props, State> {
     return {columnId, rowIndex};
   }
 
-  private renderColumnHeaders = (columns: Columns) => {
+  private renderColumnHeaders = (columns: ROArray<ColumnRO>) => {
     return columns.map(column=> {
       const {id, name} = column;
       const key = `column-header-${id}`;
@@ -154,18 +154,18 @@ export class TableView extends BaseComponent<Props, State> {
     });
   }
 
-  private getColumnById = (columnId: string, columns: Columns): Column => {
+  private getColumnById = (columnId: string, columns: ROArray<ColumnRO>): ColumnRO => {
     const column = _.find(columns, c => c.id === columnId);
     assert(column, 'invalid column id');
     return column!;
   }
 
-  private getFormulaAsString = (formula: Formula, columns: Columns): string => {
+  private getFormulaAsString = (formula: Formula, columns: ROArray<ColumnRO>): string => {
     const args = formula.args.map(arg => this.getColumnById(arg, columns).name);
     return `${formula.name}(${args.join(", ")})`
   }
 
-  private renderRow = (row: Row, rowIndex: number) => {
+  private renderRow = (row: RowRO, rowIndex: number) => {
     const {columns} = this.props.grid;
     return columns.map(({id: columnId, formula}) => {
       const cellIndexString = this.stringEncodeCellIndex({columnId, rowIndex});

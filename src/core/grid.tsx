@@ -1,4 +1,5 @@
 import * as _ from 'lodash';
+import {ROArray} from '../utils/types';
 import {setArrayValueFunctionally, setObjectValueFunctionally} from '../utils/utils';
 import {BaseModel} from './base_model';
 import {EpochManager} from './epoch_manager';
@@ -7,11 +8,15 @@ export interface Cell {
   value: string;
 }
 
-export interface Row {
+export type CellRO = Readonly<Cell>;
+
+interface Row {
   [columnId: string]: Cell;
 }
 
-export type Rows = Row[]
+export interface RowRO {
+  readonly [columnId: string]: CellRO;
+}
 
 export enum DataType {
   DRAWING = 'DRAWING',
@@ -38,7 +43,7 @@ export interface MaterializedFormula extends Formula {
   materializedArgs: Value[],
 }
 
-export interface Column {
+interface Column {
   formula?: Formula;
   id: string;
   name: string;
@@ -46,7 +51,7 @@ export interface Column {
   width: number;
 }
 
-export type Columns = Column[];
+export type ColumnRO = Readonly<Column>;
 
 export interface CellIndex {
   columnId: string,
@@ -56,8 +61,8 @@ export interface CellIndex {
 export class Grid extends BaseModel {
   public readonly id: string;
   private readonly parent?: Grid;
-  private _rows: Rows;
-  private _columns: Columns;
+  private _rows: Row[];
+  private _columns: Column[];
   private columnsMap: {[id: string]: Column};
 
   constructor(epochManager: EpochManager, id: string, parentGrid?: Grid) {
@@ -78,11 +83,11 @@ export class Grid extends BaseModel {
     return column;
   }
 
-  public get columns(): Columns {
+  public get columns(): ROArray<ColumnRO> {
     return this._columns;
   }
 
-  public get rows(): Rows {
+  public get rows(): ROArray<RowRO> {
     return this._rows;
   }
 
@@ -94,7 +99,7 @@ export class Grid extends BaseModel {
   }
 
   // example rows and columns
-  private generateColumns = (): Columns => {
+  private generateColumns = (): Column[] => {
     return [
       {id: 'c_1', name: 'X', width: 100, type: DataType.NUMBER},
       {id: 'c_2', name: 'Y', width: 100, type: DataType.NUMBER},
@@ -105,7 +110,7 @@ export class Grid extends BaseModel {
     ];
   }
 
-  private generateRows = (): Rows => {
+  private generateRows = (): Row[] => {
     const rowCount = 6;
     const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
     return _.range(rowCount).map(i => ({

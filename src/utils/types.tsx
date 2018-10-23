@@ -1,0 +1,1 @@
+export type ROArray<T> = ReadonlyArray<T>;

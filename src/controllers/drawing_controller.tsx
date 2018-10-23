@@ -4,7 +4,7 @@ import {
   Formula,
   Grid,
   MaterializedFormula,
-  Row,
+  RowRO,
 } from '../core/grid';
 import {assert} from '../utils/utils';
 
@@ -41,7 +41,7 @@ export class DrawingController {
     return _.flatten(this.grids.map(this.getDrawingsForGrid));
   }
 
-  private materializeFormula = (formula: Formula, row: Row, grid: Grid): MaterializedFormula => {
+  private materializeFormula = (formula: Formula, row: RowRO, grid: Grid): MaterializedFormula => {
     const {name, args} = formula;
     return {
       name,
@@ -57,7 +57,7 @@ export class DrawingController {
     return formula.name === 'DrawCircle';
   }
 
-  private resolveDrawingFormula = (formula: Formula, row: Row, grid: Grid): Drawing => {
+  private resolveDrawingFormula = (formula: Formula, row: RowRO, grid: Grid): Drawing => {
     const materializedFormula = this.materializeFormula(formula, row, grid);
     assert(this.isDrawingFormula(materializedFormula), 'expected drawing formula');
     const args = materializedFormula.materializedArgs;
