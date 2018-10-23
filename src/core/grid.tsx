@@ -1,8 +1,10 @@
 import * as _ from 'lodash';
 import {ROArray} from '../utils/types';
-import {setArrayValueFunctionally, setObjectValueFunctionally} from '../utils/utils';
+import {setObjectValueFunctionally} from '../utils/utils';
 import {BaseModel} from './base_model';
 import {EpochManager} from './epoch_manager';
+import {FunctionalArray} from './functional_array';
+import {IndexedFunctionalArray} from './indexed_functional_array';
 
 export interface Cell {
   value: string;
@@ -61,22 +63,21 @@ export interface CellIndex {
 export class Grid extends BaseModel {
   public readonly id: string;
   private readonly parent?: Grid;
-  private _rows: Row[];
-  private _columns: Column[];
-  private columnsMap: {[id: string]: Column};
+  private _rows: FunctionalArray<Row>;
+  private _columns: IndexedFunctionalArray<Column>;
 
   constructor(epochManager: EpochManager, id: string, parentGrid?: Grid) {
     super(epochManager);
     this.id = id;
     this.parent = parentGrid;
-    this._columns = this.generateColumns();
-    this.columnsMap = {};
-    this._columns.forEach(c => {this.columnsMap[c.id] = c})
-    this._rows = this.generateRows();
+    this._columns = new IndexedFunctionalArray(epochManager, this.generateColumns());
+    this._columns.listenForEpochUpdate(this.onChildEpochUpdated);
+    this._rows = new FunctionalArray(epochManager, this.generateRows());
+    this._rows.listenForEpochUpdate(this.onChildEpochUpdated);
   }
 
   public getColumnById = (columnId: string): Column | undefined => {
-    let column: Column | undefined = this.columnsMap[columnId];
+    let column = this._columns.getById(columnId);
     if (!column && this.parent) {
       column = this.parent.getColumnById(columnId);
     }
@@ -84,18 +85,23 @@ export class Grid extends BaseModel {
   }
 
   public get columns(): ROArray<ColumnRO> {
-    return this._columns;
+    return this._columns.a;
   }
 
   public get rows(): ROArray<RowRO> {
-    return this._rows;
+    return this._rows.a;
   }
 
   public modifyCell = ({columnId, rowIndex}: CellIndex, cell: Cell): void => {
-    const oldRow = this._rows[rowIndex];
+    const oldRow = this._rows.a[rowIndex];
     const newRow = setObjectValueFunctionally(oldRow, columnId, cell);
-    this._rows = setArrayValueFunctionally(this._rows, rowIndex, newRow);
-    this.onSelfMutated();
+    this._rows.set(rowIndex, newRow);
+  }
+
+  public setColumnName = (columnId: string, name: string): void => {
+    const oldColumn = this.getColumnById(columnId)!;
+    const newColumn = setObjectValueFunctionally(oldColumn, "name", name);
+    this._columns.updateValue(oldColumn, newColumn);
   }
 
   // example rows and columns

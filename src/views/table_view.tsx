@@ -195,7 +195,11 @@ export class TableView extends BaseComponent<Props, State> {
     const {grid} = this.props;
     const {selectedCell} = this.state;
     const cellIndex = this.getCellIndexFromTableIndex(selectedCell);
-    grid.modifyCell(cellIndex, {value});
+    if (cellIndex.rowIndex === -1) {
+      grid.setColumnName(cellIndex.columnId, value);
+    } else {
+      grid.modifyCell(cellIndex, {value});
+    }
   }
 
   private renderCellEditor = (editorIndex: TableIndex) => {
