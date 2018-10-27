@@ -1,13 +1,17 @@
+import * as _ from 'lodash';
 import {ROArray} from '../utils/types';
 import {assert} from '../utils/utils';
+import {BaseModel, UpdateDescriptor} from './base_model';
 import {EpochManager} from './epoch_manager';
-import {FunctionalArray} from './functional_array';
+import {FunctionalArrayM} from './functional_array';
 
 interface Indexable {
-  id: string;
+  // TS does not enforce the readonly on the source but an indexable's id is expected to be immutable
+  readonly id: string;
 }
 
-export class IndexedFunctionalArray<T extends Indexable> extends FunctionalArray<T> {
+export class IndexedFunctionalArray<T extends BaseModel<TD> & Indexable, TD extends UpdateDescriptor>
+    extends FunctionalArrayM<T, TD> {
   private index: {[id: string]: T};
 
   constructor(epochManager: EpochManager, array: ROArray<T> = []) {
@@ -27,25 +31,19 @@ export class IndexedFunctionalArray<T extends Indexable> extends FunctionalArray
     return this.index[id];
   }
 
-  public set = (index: number, value: T): void => {
-    const oldValue = this.array[index];
-    delete this.index[oldValue.id];
-    this.assertUniqueId(value.id);
-    this.index[value.id] = value;
-    return super.set(index, value);
+  public getIndexById = (id: string): number => {
+    // not sure why this cast is needed...
+    return _.findIndex(this.array as Indexable[], {id});
   }
 
-  public push = (value: T): void => {
+  // may be overridden in subclass so can't use arrow method
+  protected onValueAdded(value: T) {
     this.assertUniqueId(value.id);
     this.index[value.id] = value;
-    super.push(value);
   }
 
-  public pop = (): T | undefined => {
-    const value = super.pop();
-    if (value) {
-      delete this.index[value.id];
-    }
-    return value;
+  // may be overridden in subclass so can't use arrow method
+  protected onValueRemoved(value: T) {
+    delete this.index[value.id];
   }
 }

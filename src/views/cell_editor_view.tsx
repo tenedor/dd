@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 import * as React from 'react';
-import {Value} from '../core/grid';
+import {Value} from '../controllers/drawing_controller';
 import {KeyCode} from '../utils/keycode';
 import {classNames} from '../utils/utils';
 import {BaseComponent, BaseProps} from './base_component';

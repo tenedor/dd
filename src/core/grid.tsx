@@ -1,107 +1,76 @@
 import * as _ from 'lodash';
-import {ROArray} from '../utils/types';
-import {setObjectValueFunctionally} from '../utils/utils';
-import {BaseModel} from './base_model';
+import {BaseModel, UpdateDescriptor} from './base_model';
+import {Column, ColumnUpdateDescriptor, DataType} from './column';
 import {EpochManager} from './epoch_manager';
-import {FunctionalArray} from './functional_array';
+import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {IndexedFunctionalArray} from './indexed_functional_array';
+import {CellRO, Row, RowUpdateDescriptor} from './row';
+import {GridUpdateType} from './update_types';
 
-export interface Cell {
-  value: string;
-}
-
-export type CellRO = Readonly<Cell>;
-
-interface Row {
-  [columnId: string]: Cell;
-}
-
-export interface RowRO {
-  readonly [columnId: string]: CellRO;
-}
-
-export enum DataType {
-  DRAWING = 'DRAWING',
-  NUMBER = 'NUMBER',
-  STRING = 'STRING',
-}
-
-export interface Value {
-  type: DataType,
-  value: string,
-}
-
-export interface TypedValue<T> extends Value {
-  typedValue: T,
-}
-
-// limit to first-order formulas of column values
-export interface Formula {
-  name: string,
-  args: string[],
-}
-
-export interface MaterializedFormula extends Formula {
-  materializedArgs: Value[],
-}
-
-interface Column {
-  formula?: Formula;
-  id: string;
-  name: string;
-  type: DataType;
-  width: number;
-}
-
-export type ColumnRO = Readonly<Column>;
+export type Columns = IndexedFunctionalArray<Column, ColumnUpdateDescriptor>;
+export type Rows = FunctionalArrayM<Row, RowUpdateDescriptor>;
 
 export interface CellIndex {
   columnId: string,
   rowIndex: number,
 }
 
-export class Grid extends BaseModel {
+export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {}
+
+export class Grid extends BaseModel<GridUpdateDescriptor> {
   public readonly id: string;
+  // invariant - this grid's persisted data only changes from ancestors if its
+  // parent's persisted data changes
   private readonly parent?: Grid;
-  private _rows: FunctionalArray<Row>;
-  private _columns: IndexedFunctionalArray<Column>;
+  public readonly columns: Columns;
+  public readonly rows: Rows;
+  // private _visibleColumns: FunctionalArray<string>;
 
   constructor(epochManager: EpochManager, id: string, parentGrid?: Grid) {
     super(epochManager);
     this.id = id;
-    this.parent = parentGrid;
-    this._columns = new IndexedFunctionalArray(epochManager, this.generateColumns());
-    this._columns.listenForEpochUpdate(this.onChildEpochUpdated);
-    this._rows = new FunctionalArray(epochManager, this.generateRows());
-    this._rows.listenForEpochUpdate(this.onChildEpochUpdated);
-  }
-
-  public getColumnById = (columnId: string): Column | undefined => {
-    let column = this._columns.getById(columnId);
-    if (!column && this.parent) {
-      column = this.parent.getColumnById(columnId);
+    let columns: Column[] = [];
+    let rows: Row[] = [];
+    if (parentGrid) {
+      this.parent = parentGrid;
+      this.parent.listenForEpochUpdate(this.onParentGridEpochUpdated);
+      rows = this.generateRows(true);
+    } else {
+      columns = this.generateColumns();
+      rows = this.generateRows(false);
     }
-    return column;
+    this.columns = new IndexedFunctionalArray(epochManager, columns);
+    this.columns.listenForEpochUpdate(this.onColumnsEpochUpdated);
+    this.rows = new FunctionalArrayM(epochManager, rows);
+    this.rows.listenForEpochUpdate(this.onRowsEpochUpdated);
   }
 
-  public get columns(): ROArray<ColumnRO> {
-    return this._columns.a;
+  private onColumnsEpochUpdated = (epoch: number, updates?: Array<ArrayUD<ColumnUpdateDescriptor>>) => {
+    const descriptor = {type: GridUpdateType.COLUMN_UPDATED};
+    this.onDependencyEpochUpdated(epoch, [descriptor]);
   }
 
-  public get rows(): ROArray<RowRO> {
-    return this._rows.a;
+  private onRowsEpochUpdated = (epoch: number, updates: Array<ArrayUD<RowUpdateDescriptor>>) => {
+    const descriptors: GridUpdateDescriptor[] = [{type: GridUpdateType.ROW_UPDATED}];
+    const firstRowUpdated = updates.some(u => u.index === 0);
+    if (firstRowUpdated) {
+      descriptors.push({type: GridUpdateType.FIRST_ROW_UPDATED});
+    }
+    this.onDependencyEpochUpdated(epoch, descriptors);
   }
 
-  public modifyCell = ({columnId, rowIndex}: CellIndex, cell: Cell): void => {
-    const oldRow = this._rows.a[rowIndex];
-    const newRow = setObjectValueFunctionally(oldRow, columnId, cell);
-    this._rows.set(rowIndex, newRow);
+  private onParentGridEpochUpdated = (epoch: number, updates?: GridUpdateDescriptor[]) => {
+    // for now do nothing
+  }
+
+  public modifyCell = ({columnId, rowIndex}: CellIndex, cell: CellRO): void => {
+    const row = this.rows.a[rowIndex];
+    row.setCell(columnId, cell);
   }
 
   public setColumnName = (columnId: string, name: string): void => {
-    const oldColumn = this.getColumnById(columnId)!;
-    const newColumn = setObjectValueFunctionally(oldColumn, "name", name);
-    this._columns.updateValue(oldColumn, newColumn);
+    const column = this.columns.getById(columnId)!;
+    column.setName(name);
   }
 
   // example rows and columns
@@ -113,13 +82,16 @@ export class Grid extends BaseModel {
       {id: 'c_4', name: 'Fill', width: 100, type: DataType.STRING},
       {id: 'c_5', name: 'Draw Circle', width: 150, type: DataType.DRAWING,
           formula: {name: "DrawCircle", args: ["c_3", "c_1", "c_2", "c_4"]}},
-    ];
+    ].map(columnData => new Column(this.epochManager, columnData));
   }
 
-  private generateRows = (): Row[] => {
+  private generateRows = (hasParent: boolean): Row[] => {
+    if (hasParent) {
+      return [0, 1, 2].map(i => new Row(this.epochManager, {}));
+    }
     const rowCount = 6;
     const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
-    return _.range(rowCount).map(i => ({
+    return _.range(rowCount).map(i => new Row(this.epochManager, {
       'c_1': {value: `${i * 20}`},
       'c_2': {value: `${i * i * 10}`},
       'c_3': {value: `${(i + 1) * (i + 1) * 2}`},

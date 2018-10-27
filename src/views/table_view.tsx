@@ -1,16 +1,10 @@
 import * as _ from 'lodash';
 import * as React from 'react';
-import {
-  CellIndex,
-  ColumnRO,
-  Formula,
-  Grid,
-  RowRO,
-  Value,
-} from '../core/grid';
+import {Value} from '../controllers/drawing_controller';
+import {Formula} from '../core/column';
+import {CellIndex, Columns, Grid} from '../core/grid';
+import {Row} from '../core/row';
 import {KeyCode} from '../utils/keycode';
-import {ROArray} from '../utils/types';
-import {assert} from '../utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
 import {CellEditorView} from './cell_editor_view';
 import {CellView} from './cell_view';
@@ -44,14 +38,14 @@ export class TableView extends BaseComponent<Props, State> {
     const {columns, rows} = this.props.grid;
     const {selectedCell} = this.state;
 
-    const columnWidths = columns.map(c => c.width);
+    const columnWidths = columns.a.map(c => c.width);
     const tableStyles = {
       gridTemplateColumns: columnWidths.map(w => w + "px").join(" "),
       width: columnWidths.reduce((sum, w) => sum + w, 0),
     };
 
-    const columnHeaders = this.renderColumnHeaders(columns);
-    const renderedRows = rows.map(this.renderRow);
+    const columnHeaders = this.renderColumnHeaders();
+    const renderedRows = rows.a.map(this.renderRow);
     const cellEditor = this.renderCellEditor(selectedCell);
 
     return (
@@ -63,14 +57,10 @@ export class TableView extends BaseComponent<Props, State> {
     );
   }
 
-  private getColumnIndexFromId = (columnId: string): number => {
-    return _.findIndex(this.props.grid.columns, {id: columnId});
-  }
-
   private getCellIndexFromTableIndex = (tableIndex: TableIndex): CellIndex => {
     const {columns} = this.props.grid;
     return {
-      columnId: columns[tableIndex.column].id,
+      columnId: columns.a[tableIndex.column].id,
       rowIndex: tableIndex.row,
     };
   }
@@ -80,7 +70,8 @@ export class TableView extends BaseComponent<Props, State> {
   }
 
   private setSelectionFromCellIndex = ({columnId, rowIndex}: CellIndex) => {
-    const columnIndex = this.getColumnIndexFromId(columnId);
+    const {columns} = this.props.grid;
+    const columnIndex = columns.getIndexById(columnId);
     this.setSelection({row: rowIndex, column: columnIndex});
   }
 
@@ -145,8 +136,9 @@ export class TableView extends BaseComponent<Props, State> {
     return {columnId, rowIndex};
   }
 
-  private renderColumnHeaders = (columns: ROArray<ColumnRO>) => {
-    return columns.map(column=> {
+  private renderColumnHeaders = () => {
+    const {columns} = this.props.grid;
+    return columns.a.map(column=> {
       const {id, name} = column;
       const key = `column-header-${id}`;
       const cellIndexString = this.stringEncodeCellIndex({columnId: id, rowIndex: -1});
@@ -154,33 +146,28 @@ export class TableView extends BaseComponent<Props, State> {
     });
   }
 
-  private getColumnById = (columnId: string, columns: ROArray<ColumnRO>): ColumnRO => {
-    const column = _.find(columns, c => c.id === columnId);
-    assert(column, 'invalid column id');
-    return column!;
-  }
-
-  private getFormulaAsString = (formula: Formula, columns: ROArray<ColumnRO>): string => {
-    const args = formula.args.map(arg => this.getColumnById(arg, columns).name);
+  private getFormulaAsString = (formula: Formula, columns: Columns): string => {
+    const args = formula.args.map(arg => columns.getById(arg)!.name);
     return `${formula.name}(${args.join(", ")})`
   }
 
-  private renderRow = (row: RowRO, rowIndex: number) => {
+  private renderRow = (row: Row, rowIndex: number) => {
     const {columns} = this.props.grid;
-    return columns.map(({id: columnId, formula}) => {
+    const {cells} = row;
+    return columns.a.map(({id: columnId, formula}) => {
       const cellIndexString = this.stringEncodeCellIndex({columnId, rowIndex});
       const value = formula ?
         `=${this.getFormulaAsString(formula, columns)}` :
-        row[columnId].value;
+        cells[columnId].value;
       return <CellView key={cellIndexString} dataCellId={cellIndexString} value={value} />;
     });
   }
 
   private getValue = ({column: columnIndex, row: rowIndex}: TableIndex): Value => {
     const {columns, rows} = this.props.grid;
-    const {id: columnId, name, type} = columns[columnIndex];
+    const {id: columnId, name, type} = columns.a[columnIndex];
     const isHeaderCell = rowIndex < 0;
-    const {value} = isHeaderCell ? {value: name} : rows[rowIndex][columnId];
+    const {value} = isHeaderCell ? {value: name} : rows.a[rowIndex].cells[columnId];
     return {type, value};
   }
 
@@ -204,7 +191,7 @@ export class TableView extends BaseComponent<Props, State> {
 
   private renderCellEditor = (editorIndex: TableIndex) => {
     const {epoch, grid} = this.props;
-    const {formula} = grid.columns[editorIndex.column];
+    const {formula} = grid.columns.a[editorIndex.column];
     const key = `editor-${editorIndex.column}:r-${editorIndex.row}`;
     const value = this.getValue(editorIndex);
     const isHeaderCell = editorIndex.row < 0;

@@ -1,9 +1,12 @@
-import {BaseModel} from './base_model';
+import {BaseModel, UpdateDescriptor} from './base_model';
 import {EpochManager} from './epoch_manager';
-import {Grid} from './grid';
+import {Grid, GridUpdateDescriptor} from './grid';
 import {Resolver} from './resolver';
+import {DocumentUpdateType} from './update_types';
 
-export class Document extends BaseModel {
+export interface DocumentUpdateDescriptor extends UpdateDescriptor<DocumentUpdateType> {}
+
+export class Document extends BaseModel<DocumentUpdateDescriptor> {
   private readonly resolver: Resolver;
 
   constructor() {
@@ -17,14 +20,20 @@ export class Document extends BaseModel {
   public createGrid = (): Grid => {
     const gridId = this.resolver.generateUID('g');
     const grid = new Grid(this.epochManager, gridId);
-    grid.listenForEpochUpdate(this.onChildEpochUpdated);
+    grid.listenForEpochUpdate(this.onGridEpochUpdated);
     this.resolver.addGrid(grid);
-    this.onSelfMutated();
 
+    const descriptor = {type: DocumentUpdateType.GRID_UPDATED};
+    this.onSelfMutated([descriptor]);
     return grid;
   }
 
   public getAllGridsFunctionally = (): Grid[] => {
     return this.resolver.getAllGridsFunctionally();
+  }
+
+  private onGridEpochUpdated = (epoch: number, updates: GridUpdateDescriptor[]) => {
+    const descriptor = {type: DocumentUpdateType.GRID_UPDATED};
+    this.onDependencyEpochUpdated(epoch, [descriptor]);
   }
 }

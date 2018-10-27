@@ -59,3 +59,9 @@ export function setArrayValueFunctionally<V>(array: V[], index: number, value: V
 export function setObjectValueFunctionally<T, K extends keyof T>(object: T, key: K, value: T[K]): T {
   return Object.assign({}, object, {[key]: value});
 }
+
+export function deleteObjectKeyFunctionally<T, K extends keyof T>(object: T, key: K): T {
+  const newObject = Object.assign({}, object);
+  delete newObject[key];
+  return newObject;
+}

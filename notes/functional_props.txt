@@ -152,7 +152,7 @@ Proposal:
       this.epochUpdateListeners.push(onEpochUpdate);
     }
 
-    protected onChildEpochUpdated(epoch: number) {
+    protected onDependencyEpochUpdated(epoch: number) {
       if (this.epoch < epoch) {
         this.epoch = epoch;
         this.epochUpdateListeners.forEach(listener => listener(this.epoch));
@@ -174,7 +174,7 @@ Proposal:
 
       this.prim = prim;
       this.obj = new OtherModel(this.epochManager);
-      this.obj.listenForEpochUpdate(this.onChildEpochUpdated);
+      this.obj.listenForEpochUpdate(this.onDependencyEpochUpdated);
     }
 
     public get prim(): number {

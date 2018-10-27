@@ -1,12 +1,21 @@
 import * as _ from 'lodash';
-import {
-  DataType,
-  Formula,
-  Grid,
-  MaterializedFormula,
-  RowRO,
-} from '../core/grid';
+import {DataType, Formula} from '../core/column';
+import {Grid} from '../core/grid';
+import {Row} from '../core/row';
 import {assert} from '../utils/utils';
+
+export interface Value {
+  type: DataType,
+  value: string,
+}
+
+export interface TypedValue<T> extends Value {
+  typedValue: T,
+}
+
+export interface MaterializedFormula extends Formula {
+  materializedArgs: Value[],
+}
 
 export enum DrawingPrimitive {
   CIRCLE = "CIRCLE",
@@ -41,14 +50,14 @@ export class DrawingController {
     return _.flatten(this.grids.map(this.getDrawingsForGrid));
   }
 
-  private materializeFormula = (formula: Formula, row: RowRO, grid: Grid): MaterializedFormula => {
+  private materializeFormula = (formula: Formula, row: Row, grid: Grid): MaterializedFormula => {
     const {name, args} = formula;
     return {
       name,
       args,
       materializedArgs: args.map(c => ({
-        value: row[c].value,
-        type: grid.getColumnById(c)!.type,
+        value: row.cells[c].value,
+        type: grid.columns.getById(c)!.type,
       })),
     }
   }
@@ -57,7 +66,7 @@ export class DrawingController {
     return formula.name === 'DrawCircle';
   }
 
-  private resolveDrawingFormula = (formula: Formula, row: RowRO, grid: Grid): Drawing => {
+  private resolveDrawingFormula = (formula: Formula, row: Row, grid: Grid): Drawing => {
     const materializedFormula = this.materializeFormula(formula, row, grid);
     assert(this.isDrawingFormula(materializedFormula), 'expected drawing formula');
     const args = materializedFormula.materializedArgs;
@@ -80,14 +89,14 @@ export class DrawingController {
   private getDrawingsForGrid = (grid: Grid): Drawing[] => {
     const {columns, rows} = grid;
 
-    const drawingFormulas = columns
+    const drawingFormulas = columns.a
       .map(c => {
           return (c.formula && this.isDrawingFormula(c.formula)) ? c.formula : undefined;
       })
       .filter(f => !!f) as Formula[];
 
     const rowDrawings =
-      rows.map(row =>
+      rows.a.map(row =>
         drawingFormulas.map(formula =>
           this.resolveDrawingFormula(formula, row, grid)));
     return _.flatten(rowDrawings);

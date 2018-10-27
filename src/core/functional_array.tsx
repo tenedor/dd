@@ -1,12 +1,21 @@
 import * as _ from 'lodash';
-import {ROArray} from '../utils/types';
+import {JSPrimitive, ROArray} from '../utils/types';
 import {assert} from '../utils/utils';
-import {BaseModel} from './base_model';
+import {BaseModel, UndefinedUpdateDescriptor, UpdateDescriptor} from './base_model';
 import {EpochManager} from './epoch_manager';
+import {ArrayUpdateType} from './update_types';
 
-export class FunctionalArray<T> extends BaseModel {
+export interface ArrayUpdateDescriptor<ED extends UpdateDescriptor> extends UpdateDescriptor<ArrayUpdateType> {
+  index: number;
+  elementDescriptors: ED[];
+}
+
+class BaseFunctionalArray<
+    T extends JSPrimitive | BaseModel<TD>,
+    TD extends UpdateDescriptor,
+    > extends BaseModel<ArrayUpdateDescriptor<TD>> {
   protected array: T[];
-  
+
   constructor(epochManager: EpochManager, array: ROArray<T> = []) {
     super(epochManager);
     this.array = array.slice();
@@ -21,35 +30,98 @@ export class FunctionalArray<T> extends BaseModel {
   }
 
   // may be overridden in subclass so can't use arrow method
-  public set(index: number, value: T): void {
-    assert(index >= 0, "Index out of bounds.");
-    this.array = this.array.slice();
-    this.array[index] = value;
-    this.onSelfMutated();
+  protected onValueAdded(value: T) {
+    // for overriding
   }
 
   // may be overridden in subclass so can't use arrow method
-  public updateValue(oldValue: T, newValue: T): void {
+  protected onValueRemoved(value: T) {
+    // for overriding
+  }
+
+  public set = (index: number, value: T): void => {
+    assert(index >= 0, "Index out of bounds.");
+    const oldValue = this.array[index];
+    if (oldValue === value) {
+      return;
+    }
+    const isInsert = index >= this.length;
+    this.array = this.array.slice();
+    this.array[index] = value;
+    if (!isInsert) {
+      this.onValueRemoved(oldValue);
+    }
+    this.onValueAdded(value);
+    const descriptor = {
+      index,
+      type: isInsert ? ArrayUpdateType.ELEMENT_INSERTED : ArrayUpdateType.ELEMENT_UPDATED,
+      elementDescriptors: [],
+    };
+    this.onSelfMutated([descriptor]);
+  }
+
+  public updateValue = (oldValue: T, newValue: T): void => {
     const index = this.array.indexOf(oldValue);
     this.set(index, newValue);
   }
 
-  // may be overridden in subclass so can't use arrow method
-  public push(value: T): void {
-    this.array = this.array.slice();
-    this.array.push(value);
-    this.onSelfMutated();
+  public push = (value: T): void => {
+    this.set(this.length, value);
   }
 
-  // may be overridden in subclass so can't use arrow method
-  public pop(): T | undefined {
+  public pop = (): T | undefined => {
+    if (this.length === 0) {
+      return undefined;
+    }
     this.array = this.array.slice();
-    const value = this.array.pop();
-    this.onSelfMutated();
+    const value = this.array.pop() as T;
+    this.onValueRemoved(value);
+    const descriptor = {
+      index: this.length,
+      type: ArrayUpdateType.ELEMENT_DELETED,
+      elementDescriptors: [],
+    };
+    this.onSelfMutated([descriptor]);
     return value;
   }
 
   public get length(): number {
     return this.array.length;
+  }
+}
+
+// For arrays of primitives
+export class FunctionalArrayP extends BaseFunctionalArray<JSPrimitive, UndefinedUpdateDescriptor> {}
+
+// For arrays of functional models
+export class FunctionalArrayM<
+    T extends BaseModel<TD>,
+    TD extends UpdateDescriptor,
+    > extends BaseFunctionalArray<T, TD> {
+  constructor(epochManager: EpochManager, array: ROArray<T> = []) {
+    super(epochManager, array);
+    this.array.forEach(t => t.listenForEpochUpdate(this.onElementEpochUpdated));
+  }
+
+  // may be overridden in subclass so can't use arrow method
+  protected onValueAdded(value: T) {
+    value.listenForEpochUpdate(this.onElementEpochUpdated);
+  }
+
+  // may be overridden in subclass so can't use arrow method
+  protected onValueRemoved(value: T) {
+    value.removeEpochUpdateListener(this.onElementEpochUpdated);
+  }
+
+  protected onElementEpochUpdated = (epoch: number, elementDescriptors: TD[], element: T) => {
+    const index = this.array.indexOf(element);
+    assert(index >= 0, "Bad onElementEpochUpdated listener.");
+    this.array = this.array.slice();
+    const descriptor = {
+      index,
+      type: ArrayUpdateType.ELEMENT_UPDATED,
+      elementDescriptors,
+    };
+    this.onDependencyEpochUpdated(epoch, [descriptor]);
   }
 }
