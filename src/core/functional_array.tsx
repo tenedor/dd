@@ -3,6 +3,7 @@ import {JSPrimitive, ROArray} from '../utils/types';
 import {assert} from '../utils/utils';
 import {BaseModel, UndefinedUpdateDescriptor, UpdateDescriptor} from './base_model';
 import {EpochManager} from './epoch_manager';
+import {Namespace} from './resolver';
 import {ArrayUpdateType} from './update_types';
 
 export interface ArrayUpdateDescriptor<ED extends UpdateDescriptor> extends UpdateDescriptor<ArrayUpdateType> {
@@ -14,6 +15,7 @@ class BaseFunctionalArray<
     T extends JSPrimitive | BaseModel<TD>,
     TD extends UpdateDescriptor,
     > extends BaseModel<ArrayUpdateDescriptor<TD>> {
+  protected readonly namespace = Namespace.ARRAY;
   protected array: T[];
 
   constructor(epochManager: EpochManager, array: ROArray<T> = []) {
@@ -100,12 +102,12 @@ export class FunctionalArrayM<
     > extends BaseFunctionalArray<T, TD> {
   constructor(epochManager: EpochManager, array: ROArray<T> = []) {
     super(epochManager, array);
-    this.array.forEach(t => t.listenForEpochUpdate(this.onElementEpochUpdated));
+    this.array.forEach(t => t.listenForEpochUpdate(this, this.onElementEpochUpdated));
   }
 
   // may be overridden in subclass so can't use arrow method
   protected onValueAdded(value: T) {
-    value.listenForEpochUpdate(this.onElementEpochUpdated);
+    value.listenForEpochUpdate(this, this.onElementEpochUpdated);
   }
 
   // may be overridden in subclass so can't use arrow method

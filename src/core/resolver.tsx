@@ -1,26 +1,39 @@
 import * as _ from 'lodash';
 import {Grid} from './grid';
 
+export enum Namespace {
+  APP = 'app',
+  ARRAY = 'a',
+  COLUMN = 'c',
+  DOCUMENT = 'd',
+  GRID = 'g',
+  MODEL = 'm',
+  RESOLVER = 'res',
+  ROW = 'r',
+}
+
 export class Resolver {
+  public readonly id: string;
   private grids: {[gridId: string]: Grid};
   private gridsFunctionalArray: Grid[]; // must be pointer-different whenever contents-different
 
   constructor() {
+    this.id = Resolver.generateUID(Namespace.RESOLVER);
     this.grids = {};
     this.gridsFunctionalArray = [];
   }
 
-  public generateUID = (prefix?: string): string => {
+  public static generateUID = (namespace?: Namespace): string => {
     // c/o https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
     const uid = (Math.random().toString(36)+'00000000000000000').slice(2, 12);
-    return prefix ? `${prefix}-${uid}` : uid;
+    return namespace ? `${namespace}-${uid}` : uid;
   }
 
   public addGrid = (grid: Grid): void => {
     this.grids[grid.id] = grid;
     this.gridsFunctionalArray = this.gridsFunctionalArray.slice();
     this.gridsFunctionalArray.push(grid);
-    grid.listenForEpochUpdate(this.onGridEpochUpdated);
+    grid.listenForEpochUpdate(this.id, this.onGridEpochUpdated);
   }
 
   public removeGrid = (gridId: string): void => {
