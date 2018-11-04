@@ -1,4 +1,4 @@
-export class EpochManager {
+export class UpdateManager {
   private _epoch: number = 0;
 
   public get epoch(): number {

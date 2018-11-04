@@ -2,8 +2,8 @@ import * as _ from 'lodash';
 import {JSPrimitive, ROArray} from '../utils/types';
 import {assert} from '../utils/utils';
 import {BaseModel, UndefinedUpdateDescriptor, UpdateDescriptor} from './base_model';
-import {EpochManager} from './epoch_manager';
 import {Namespace} from './resolver';
+import {UpdateManager} from './update_manager';
 import {ArrayUpdateType} from './update_types';
 
 export interface ArrayUpdateDescriptor<ED extends UpdateDescriptor> extends UpdateDescriptor<ArrayUpdateType> {
@@ -18,8 +18,8 @@ class BaseFunctionalArray<
   protected readonly namespace = Namespace.ARRAY;
   protected array: T[];
 
-  constructor(epochManager: EpochManager, array: ROArray<T> = []) {
-    super(epochManager);
+  constructor(updateManager: UpdateManager, array: ROArray<T> = []) {
+    super(updateManager);
     this.array = array.slice();
   }
 
@@ -100,30 +100,30 @@ export class FunctionalArrayM<
     T extends BaseModel<TD>,
     TD extends UpdateDescriptor,
     > extends BaseFunctionalArray<T, TD> {
-  constructor(epochManager: EpochManager, array: ROArray<T> = []) {
-    super(epochManager, array);
-    this.array.forEach(t => t.listenForEpochUpdate(this, this.onElementEpochUpdated));
+  constructor(updateManager: UpdateManager, array: ROArray<T> = []) {
+    super(updateManager, array);
+    this.array.forEach(t => t.listenForUpdate(this, this.onElementUpdated));
   }
 
   // may be overridden in subclass so can't use arrow method
   protected onValueAdded(value: T) {
-    value.listenForEpochUpdate(this, this.onElementEpochUpdated);
+    value.listenForUpdate(this, this.onElementUpdated);
   }
 
   // may be overridden in subclass so can't use arrow method
   protected onValueRemoved(value: T) {
-    value.removeEpochUpdateListener(this.onElementEpochUpdated);
+    value.removeUpdateListener(this.onElementUpdated);
   }
 
-  protected onElementEpochUpdated = (epoch: number, elementDescriptors: TD[], element: T) => {
+  protected onElementUpdated = (epoch: number, elementDescriptors: TD[], element: T) => {
     const index = this.array.indexOf(element);
-    assert(index >= 0, "Bad onElementEpochUpdated listener.");
+    assert(index >= 0, "Bad onElementUpdated listener.");
     this.array = this.array.slice();
     const descriptor = {
       index,
       type: ArrayUpdateType.ELEMENT_UPDATED,
       elementDescriptors,
     };
-    this.onDependencyEpochUpdated(epoch, [descriptor]);
+    this.onDependencyUpdated(epoch, [descriptor]);
   }
 }

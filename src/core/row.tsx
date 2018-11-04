@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 import {deleteObjectKeyFunctionally, setObjectValueFunctionally} from '../utils/utils';
 import {BaseModel, UpdateDescriptor} from './base_model';
-import {EpochManager} from './epoch_manager';
 import {Namespace} from './resolver';
+import {UpdateManager} from './update_manager';
 import {RowUpdateType} from './update_types';
 
 interface Cell {
@@ -23,8 +23,8 @@ export class Row extends BaseModel<RowUpdateDescriptor> {
   protected readonly namespace = Namespace.ROW;
   private _cells: RowData;
 
-  constructor(epochManager: EpochManager, rowData: RowData) {
-    super(epochManager);
+  constructor(updateManager: UpdateManager, rowData: RowData) {
+    super(updateManager);
     this._cells = Object.assign({}, rowData);
   }
 

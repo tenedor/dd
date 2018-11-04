@@ -2,8 +2,8 @@ import * as _ from 'lodash';
 import {ROArray} from '../utils/types';
 import {assert} from '../utils/utils';
 import {BaseModel, UpdateDescriptor} from './base_model';
-import {EpochManager} from './epoch_manager';
 import {FunctionalArrayM} from './functional_array';
+import {UpdateManager} from './update_manager';
 
 interface Indexable {
   // TS does not enforce the readonly on the source but an indexable's id is expected to be immutable
@@ -14,8 +14,8 @@ export class IndexedFunctionalArray<T extends BaseModel<TD> & Indexable, TD exte
     extends FunctionalArrayM<T, TD> {
   private index: {[id: string]: T};
 
-  constructor(epochManager: EpochManager, array: ROArray<T> = []) {
-    super(epochManager, array);
+  constructor(updateManager: UpdateManager, array: ROArray<T> = []) {
+    super(updateManager, array);
     this.index = {};
     this.array.forEach(value => {
       this.assertUniqueId(value.id);

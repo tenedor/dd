@@ -1,11 +1,11 @@
 import * as _ from 'lodash';
 import {BaseModel, UpdateDescriptor} from './base_model';
 import {Column, ColumnUpdateDescriptor, DataType} from './column';
-import {EpochManager} from './epoch_manager';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {IndexedFunctionalArray} from './indexed_functional_array';
 import {Namespace} from './resolver';
 import {CellRO, Row, RowUpdateDescriptor} from './row';
+import {UpdateManager} from './update_manager';
 import {GridUpdateType} from './update_types';
 
 export type Columns = IndexedFunctionalArray<Column, ColumnUpdateDescriptor>;
@@ -27,39 +27,39 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
   public readonly rows: Rows;
   // private _visibleColumns: FunctionalArray<string>;
 
-  constructor(epochManager: EpochManager, parentGrid?: Grid) {
-    super(epochManager);
+  constructor(updateManager: UpdateManager, parentGrid?: Grid) {
+    super(updateManager);
     let columns: Column[] = [];
     let rows: Row[] = [];
     if (parentGrid) {
       this.parent = parentGrid;
-      this.parent.listenForEpochUpdate(this, this.onParentGridEpochUpdated);
+      this.parent.listenForUpdate(this, this.onParentGridUpdated);
       rows = this.generateRows([], true);
     } else {
       columns = this.generateColumns();
       rows = this.generateRows(columns.map(c => c.id), false);
     }
-    this.columns = new IndexedFunctionalArray(epochManager, columns);
-    this.columns.listenForEpochUpdate(this, this.onColumnsEpochUpdated);
-    this.rows = new FunctionalArrayM(epochManager, rows);
-    this.rows.listenForEpochUpdate(this, this.onRowsEpochUpdated);
+    this.columns = new IndexedFunctionalArray(updateManager, columns);
+    this.columns.listenForUpdate(this, this.onColumnsUpdated);
+    this.rows = new FunctionalArrayM(updateManager, rows);
+    this.rows.listenForUpdate(this, this.onRowsUpdated);
   }
 
-  private onColumnsEpochUpdated = (epoch: number, updates?: Array<ArrayUD<ColumnUpdateDescriptor>>) => {
+  private onColumnsUpdated = (epoch: number, updates?: Array<ArrayUD<ColumnUpdateDescriptor>>) => {
     const descriptor = {type: GridUpdateType.COLUMN_UPDATED};
-    this.onDependencyEpochUpdated(epoch, [descriptor]);
+    this.onDependencyUpdated(epoch, [descriptor]);
   }
 
-  private onRowsEpochUpdated = (epoch: number, updates: Array<ArrayUD<RowUpdateDescriptor>>) => {
+  private onRowsUpdated = (epoch: number, updates: Array<ArrayUD<RowUpdateDescriptor>>) => {
     const descriptors: GridUpdateDescriptor[] = [{type: GridUpdateType.ROW_UPDATED}];
     const firstRowUpdated = updates.some(u => u.index === 0);
     if (firstRowUpdated) {
       descriptors.push({type: GridUpdateType.FIRST_ROW_UPDATED});
     }
-    this.onDependencyEpochUpdated(epoch, descriptors);
+    this.onDependencyUpdated(epoch, descriptors);
   }
 
-  private onParentGridEpochUpdated = (epoch: number, updates?: GridUpdateDescriptor[]) => {
+  private onParentGridUpdated = (epoch: number, updates?: GridUpdateDescriptor[]) => {
     // for now do nothing
   }
 
@@ -80,10 +80,10 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
       {name: 'Y', width: 100, type: DataType.NUMBER},
       {name: 'Radius', width: 100, type: DataType.NUMBER},
       {name: 'Fill', width: 100, type: DataType.STRING},
-    ].map(columnData => new Column(this.epochManager, columnData));
+    ].map(columnData => new Column(this.updateManager, columnData));
     const cIds = columns.map(c => c.id);
 
-    columns.push(new Column(this.epochManager, {
+    columns.push(new Column(this.updateManager, {
       name: 'Draw Circle',
       width: 150,
       type: DataType.DRAWING,
@@ -94,11 +94,11 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
 
   private generateRows = (columnIds: string[], hasParent: boolean): Row[] => {
     if (hasParent) {
-      return [0, 1, 2].map(i => new Row(this.epochManager, {}));
+      return [0, 1, 2].map(i => new Row(this.updateManager, {}));
     }
     const rowCount = 6;
     const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
-    return _.range(rowCount).map(i => new Row(this.epochManager, {
+    return _.range(rowCount).map(i => new Row(this.updateManager, {
       [columnIds[0]]: {value: `${i * 20}`},
       [columnIds[1]]: {value: `${i * i * 10}`},
       [columnIds[2]]: {value: `${(i + 1) * (i + 1) * 2}`},

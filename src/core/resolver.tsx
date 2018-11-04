@@ -33,7 +33,7 @@ export class Resolver {
     this.grids[grid.id] = grid;
     this.gridsFunctionalArray = this.gridsFunctionalArray.slice();
     this.gridsFunctionalArray.push(grid);
-    grid.listenForEpochUpdate(this.id, this.onGridEpochUpdated);
+    grid.listenForUpdate(this.id, this.onGridUpdated);
   }
 
   public removeGrid = (gridId: string): void => {
@@ -42,7 +42,7 @@ export class Resolver {
     delete this.grids[gridId];
   }
 
-  private onGridEpochUpdated = (epoch: number): void => {
+  private onGridUpdated = (epoch: number): void => {
     this.gridsFunctionalArray = this.gridsFunctionalArray.slice();
   }
 

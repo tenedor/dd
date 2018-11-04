@@ -1,7 +1,7 @@
 import {BaseModel, UpdateDescriptor} from './base_model';
-import {EpochManager} from './epoch_manager';
 import {Grid, GridUpdateDescriptor} from './grid';
 import {Namespace, Resolver} from './resolver';
+import {UpdateManager} from './update_manager';
 import {DocumentUpdateType} from './update_types';
 
 export interface DocumentUpdateDescriptor extends UpdateDescriptor<DocumentUpdateType> {}
@@ -11,16 +11,16 @@ export class Document extends BaseModel<DocumentUpdateDescriptor> {
   private readonly resolver: Resolver;
 
   constructor() {
-    // Unlike other models, Document creates its own EpochManager. There is one
-    // epoch manager per document and all other models receive this singleton.
-    super(new EpochManager());
+    // Unlike other models, Document creates its own UpdateManager. There is one
+    // update manager per document and all other models receive this singleton.
+    super(new UpdateManager());
 
     this.resolver = new Resolver();
   }
 
   public createGrid = (): Grid => {
-    const grid = new Grid(this.epochManager);
-    grid.listenForEpochUpdate(this, this.onGridEpochUpdated);
+    const grid = new Grid(this.updateManager);
+    grid.listenForUpdate(this, this.onGridUpdated);
     this.resolver.addGrid(grid);
 
     const descriptor = {type: DocumentUpdateType.GRID_UPDATED};
@@ -32,8 +32,8 @@ export class Document extends BaseModel<DocumentUpdateDescriptor> {
     return this.resolver.getAllGridsFunctionally();
   }
 
-  private onGridEpochUpdated = (epoch: number, updates: GridUpdateDescriptor[]) => {
+  private onGridUpdated = (epoch: number, updates: GridUpdateDescriptor[]) => {
     const descriptor = {type: DocumentUpdateType.GRID_UPDATED};
-    this.onDependencyEpochUpdated(epoch, [descriptor]);
+    this.onDependencyUpdated(epoch, [descriptor]);
   }
 }

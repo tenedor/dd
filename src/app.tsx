@@ -13,7 +13,8 @@ export class App {
   constructor() {
     this.id = Resolver.generateUID(Namespace.APP);
     this.document = new Document();
-    this.document.listenForEpochUpdate(this.id, this.onEpochUpdated);
+    this.epoch = this.document.epoch;
+    this.document.listenForUpdate(this.id, this.onEpochUpdated);
     this.document.createGrid();
   }
 

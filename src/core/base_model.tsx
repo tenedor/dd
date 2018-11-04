@@ -1,5 +1,5 @@
-import {EpochManager} from './epoch_manager';
 import {Namespace, Resolver} from './resolver';
+import {UpdateManager} from './update_manager';
 import {UndefinedUpdateType, UpdateType} from './update_types';
 
 export interface UpdateDescriptor<T = UpdateType> {
@@ -8,7 +8,7 @@ export interface UpdateDescriptor<T = UpdateType> {
 
 export interface UndefinedUpdateDescriptor extends UpdateDescriptor<UndefinedUpdateType> {}
 
-export type EpochUpdateListener<T extends BaseModel<TD>, TD extends UpdateDescriptor> =
+export type UpdateListener<T extends BaseModel<TD>, TD extends UpdateDescriptor> =
     (epoch: number, updateDescriptors: TD[], object: T) => void;
 
 export type BaseModelOrId = BaseModel<UpdateDescriptor> | string;
@@ -17,35 +17,35 @@ export class BaseModel<D extends UpdateDescriptor> {
   public readonly id: string;
   protected readonly namespace: Namespace = Namespace.MODEL;
   public epoch: number;
-  protected readonly epochManager: EpochManager;
-  private epochUpdateListeners: Array<EpochUpdateListener<this, D>> = [];
+  protected readonly updateManager: UpdateManager;
+  private updateListeners: Array<UpdateListener<this, D>> = [];
 
-  constructor(epochManager: EpochManager) {
+  constructor(updateManager: UpdateManager) {
     this.id = Resolver.generateUID(this.namespace);
-    this.epochManager = epochManager;
-    this.epoch = epochManager.epoch;
+    this.updateManager = updateManager;
+    this.epoch = updateManager.epoch;
   }
 
-  public listenForEpochUpdate = (updateGraphNode: BaseModelOrId, onEpochUpdate: EpochUpdateListener<this, D>) => {
+  public listenForUpdate = (updateGraphNode: BaseModelOrId, onUpdate: UpdateListener<this, D>) => {
     // ensure unique
-    const index = this.epochUpdateListeners.indexOf(onEpochUpdate);
+    const index = this.updateListeners.indexOf(onUpdate);
     if (index < 0) {
-      this.epochUpdateListeners.push(onEpochUpdate);
+      this.updateListeners.push(onUpdate);
     }
   }
 
-  public removeEpochUpdateListener = (onEpochUpdate: EpochUpdateListener<this, D>) => {
-    const index = this.epochUpdateListeners.indexOf(onEpochUpdate);
+  public removeUpdateListener = (onUpdate: UpdateListener<this, D>) => {
+    const index = this.updateListeners.indexOf(onUpdate);
     if (index >= 0) {
-      this.epochUpdateListeners.splice(index, 1);
+      this.updateListeners.splice(index, 1);
     }
   }
 
   private announceUpdate = (descriptors: D[]) => {
-    this.epochUpdateListeners.forEach(listener => listener(this.epoch, descriptors, this));
+    this.updateListeners.forEach(listener => listener(this.epoch, descriptors, this));
   }
 
-  protected onDependencyEpochUpdated = (epoch: number, descriptors: D[]) => {
+  protected onDependencyUpdated = (epoch: number, descriptors: D[]) => {
     if (this.epoch < epoch) {
       this.epoch = epoch;
       this.announceUpdate(descriptors);
@@ -53,7 +53,7 @@ export class BaseModel<D extends UpdateDescriptor> {
   }
 
   protected onSelfMutated = (descriptors: D[]) => {
-    this.epoch = this.epochManager.nextEpoch();
+    this.epoch = this.updateManager.nextEpoch();
       this.announceUpdate(descriptors);
   }
 }

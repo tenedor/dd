@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import {BaseModel, UpdateDescriptor} from './base_model';
-import {EpochManager} from './epoch_manager';
 import {Namespace} from './resolver';
+import {UpdateManager} from './update_manager';
 import {ColumnUpdateType} from './update_types';
 
 export enum DataType {
@@ -32,8 +32,8 @@ export class Column extends BaseModel<ColumnUpdateDescriptor> {
   private _type: DataType;
   private _width: number;
 
-  constructor(epochManager: EpochManager, {formula, name, type, width}: ColumnData) {
-    super(epochManager);
+  constructor(updateManager: UpdateManager, {formula, name, type, width}: ColumnData) {
+    super(updateManager);
     this._formula = formula;
     this._name = name;
     this._type = type;
