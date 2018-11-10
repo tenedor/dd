@@ -112,7 +112,9 @@ export class FunctionalArrayM<
 
   // may be overridden in subclass so can't use arrow method
   protected onValueRemoved(value: T) {
-    value.removeUpdateListener(this.onElementUpdated);
+    if (this.array.indexOf(value) < 0) {
+      value.removeUpdateListener(this.onElementUpdated);
+    }
   }
 
   protected onElementUpdated = (epoch: number, elementDescriptors: TD[], element: T) => {

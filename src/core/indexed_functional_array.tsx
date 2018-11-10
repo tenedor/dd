@@ -38,12 +38,14 @@ export class IndexedFunctionalArray<T extends BaseModel<TD> & Indexable, TD exte
 
   // may be overridden in subclass so can't use arrow method
   protected onValueAdded(value: T) {
+    super.onValueAdded(value);
     this.assertUniqueId(value.id);
     this.index[value.id] = value;
   }
 
   // may be overridden in subclass so can't use arrow method
   protected onValueRemoved(value: T) {
+    super.onValueRemoved(value);
     delete this.index[value.id];
   }
 }
