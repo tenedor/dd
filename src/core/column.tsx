@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
-import {BaseModel, UpdateDescriptor} from './base_model';
+import {BaseModel} from './base_model';
 import {Namespace} from './resolver';
-import {UpdateManager} from './update_manager';
+import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {ColumnUpdateType} from './update_types';
 
 export enum DataType {

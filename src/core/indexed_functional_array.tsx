@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
 import {ROArray} from '../utils/types';
 import {assert} from '../utils/utils';
-import {BaseModel, UpdateDescriptor} from './base_model';
+import {BaseModel} from './base_model';
 import {FunctionalArrayM} from './functional_array';
-import {UpdateManager} from './update_manager';
+import {UpdateDescriptor, UpdateManager} from './update_manager';
 
 interface Indexable {
   // TS does not enforce the readonly on the source but an indexable's id is expected to be immutable

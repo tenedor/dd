@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
 import {JSPrimitive, ROArray} from '../utils/types';
 import {assert} from '../utils/utils';
-import {BaseModel, UndefinedUpdateDescriptor, UpdateDescriptor} from './base_model';
+import {BaseModel} from './base_model';
 import {Namespace} from './resolver';
-import {UpdateManager} from './update_manager';
+import {UndefinedUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
 import {ArrayUpdateType} from './update_types';
 
 export interface ArrayUpdateDescriptor<ED extends UpdateDescriptor> extends UpdateDescriptor<ArrayUpdateType> {
@@ -113,19 +113,25 @@ export class FunctionalArrayM<
   // may be overridden in subclass so can't use arrow method
   protected onValueRemoved(value: T) {
     if (this.array.indexOf(value) < 0) {
-      value.removeUpdateListener(this.onElementUpdated);
+      value.removeUpdateListener(this);
     }
   }
 
-  protected onElementUpdated = (epoch: number, elementDescriptors: TD[], element: T) => {
+  protected onElementUpdated = (
+    epoch: number,
+    elementDescriptors: TD[],
+    element: T,
+  ): Array<ArrayUpdateDescriptor<TD>> => {
     const index = this.array.indexOf(element);
     assert(index >= 0, "Bad onElementUpdated listener.");
     this.array = this.array.slice();
+
+    this.onDependencyUpdated(epoch);
     const descriptor = {
       index,
       type: ArrayUpdateType.ELEMENT_UPDATED,
       elementDescriptors,
     };
-    this.onDependencyUpdated(epoch, [descriptor]);
+    return [descriptor];
   }
 }

@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 import {deleteObjectKeyFunctionally, setObjectValueFunctionally} from '../utils/utils';
-import {BaseModel, UpdateDescriptor} from './base_model';
+import {BaseModel} from './base_model';
 import {Namespace} from './resolver';
-import {UpdateManager} from './update_manager';
+import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {RowUpdateType} from './update_types';
 
 interface Cell {

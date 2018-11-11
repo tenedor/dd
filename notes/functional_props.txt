@@ -247,3 +247,37 @@ Proposal:
       this.lastRenderedEpoch = this.props.epoch;
     }
 
+
+- One danger of an invalidation graph is an infinite cycle. Invalidations must
+  terminate, requiring that the graph is either acyclic or has a cycle-halting
+  mechanism. In general there is no stable point at which to halt a cycle, though
+  there exist safe constructions. As a simplifying choice, this implementation
+  will stick to DAGs. To prevent cycles, check for them on any change to the
+  invalidation graph structure.
+- A second danger is to performance. The naive algorithm for repairing
+  invalidations is to recursively repair an invalid node and then invalidate nodes
+  that depend on it. If the invalidation graph is a tree (or forest) then
+  invalidating a single node causes exactly the number of invalidations required -
+  one for every node depending on the invalidated node. But in general,
+  invalidating a node in a DAG or invalidating multiple nodes at once can cause
+  nodes to wastefully invalidate many times. This costs O(V^2). In a DAG all nodes
+  are partially ordered, and invalidating nodes in this order costs O(V+E). I
+  believe (but do not know) there is no way to maintain constant-time lookup to
+  judge the relative order of two nodes without a linear-time cost to add a node
+  dependency, but I may be wrong. Either way, the ordering can be determined at
+  invalidation-time in O(V+E) so this is sufficient. When a node invalidates, mark
+  each node that should be invalidated. Then repair the root node and add its
+  children who have no invalid parents to the repair queue; recurse on the queue.
+  This repairs all nodes exactly once unless there is a cycle, in which case some
+  nodes are never repaired. Thus a simple way to detect cycles is to count the
+  number of nodes invalidated and confirm that this number have been repaired upon
+  termination. If not throw an error - a cycle has been introduced.
+- An inefficiency to this approach to performance management is that it it will
+  cost V+E for the size of the dependency subgraph whether or not all the nodes
+  change. If a node is unchanged by repair then it need not invalidate its
+  downstream nodes, but here we trace all dependencies before repairing nodes.
+  A partial defense on this is that whenever there are known partial orderings on
+  subgraphs, upstream subgraphs can do a two-pass invalidation repair before
+  initiating downstream subraphs' passes. This may allow aborting some or all of
+  the downstream subgraphs' invalidations. But beware premature optimization -
+  this is worth noticing but likely not worth doing.

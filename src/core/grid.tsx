@@ -1,11 +1,11 @@
 import * as _ from 'lodash';
-import {BaseModel, UpdateDescriptor} from './base_model';
+import {BaseModel} from './base_model';
 import {Column, ColumnUpdateDescriptor, DataType} from './column';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {IndexedFunctionalArray} from './indexed_functional_array';
 import {Namespace} from './resolver';
 import {CellRO, Row, RowUpdateDescriptor} from './row';
-import {UpdateManager} from './update_manager';
+import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {GridUpdateType} from './update_types';
 
 export type Columns = IndexedFunctionalArray<Column, ColumnUpdateDescriptor>;
@@ -45,18 +45,23 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
     this.rows.listenForUpdate(this, this.onRowsUpdated);
   }
 
-  private onColumnsUpdated = (epoch: number, updates?: Array<ArrayUD<ColumnUpdateDescriptor>>) => {
+  private onColumnsUpdated = (
+    epoch: number,
+    updates?: Array<ArrayUD<ColumnUpdateDescriptor>>,
+  ): GridUpdateDescriptor[] => {
+    this.onDependencyUpdated(epoch);
     const descriptor = {type: GridUpdateType.COLUMN_UPDATED};
-    this.onDependencyUpdated(epoch, [descriptor]);
+    return [descriptor];
   }
 
-  private onRowsUpdated = (epoch: number, updates: Array<ArrayUD<RowUpdateDescriptor>>) => {
+  private onRowsUpdated = (epoch: number, updates: Array<ArrayUD<RowUpdateDescriptor>>): GridUpdateDescriptor[] => {
     const descriptors: GridUpdateDescriptor[] = [{type: GridUpdateType.ROW_UPDATED}];
     const firstRowUpdated = updates.some(u => u.index === 0);
     if (firstRowUpdated) {
       descriptors.push({type: GridUpdateType.FIRST_ROW_UPDATED});
     }
-    this.onDependencyUpdated(epoch, descriptors);
+    this.onDependencyUpdated(epoch);
+    return descriptors;
   }
 
   private onParentGridUpdated = (epoch: number, updates?: GridUpdateDescriptor[]) => {

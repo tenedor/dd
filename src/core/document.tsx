@@ -1,7 +1,7 @@
-import {BaseModel, UpdateDescriptor} from './base_model';
+import {BaseModel} from './base_model';
 import {Grid, GridUpdateDescriptor} from './grid';
 import {Namespace, Resolver} from './resolver';
-import {UpdateManager} from './update_manager';
+import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {DocumentUpdateType} from './update_types';
 
 export interface DocumentUpdateDescriptor extends UpdateDescriptor<DocumentUpdateType> {}
@@ -32,8 +32,9 @@ export class Document extends BaseModel<DocumentUpdateDescriptor> {
     return this.resolver.getAllGridsFunctionally();
   }
 
-  private onGridUpdated = (epoch: number, updates: GridUpdateDescriptor[]) => {
+  private onGridUpdated = (epoch: number, updates: GridUpdateDescriptor[]): DocumentUpdateDescriptor[] => {
+    this.onDependencyUpdated(epoch);
     const descriptor = {type: DocumentUpdateType.GRID_UPDATED};
-    this.onDependencyUpdated(epoch, [descriptor]);
+    return [descriptor];
   }
 }
