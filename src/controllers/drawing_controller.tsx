@@ -57,7 +57,7 @@ export class DrawingController {
       args,
       materializedArgs: args.map(c => ({
         value: row.cells[c].value,
-        type: grid.columns.getById(c)!.type,
+        type: grid.columns.getByKey(c)!.type,
       })),
     }
   }

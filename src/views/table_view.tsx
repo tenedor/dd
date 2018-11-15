@@ -71,7 +71,7 @@ export class TableView extends BaseComponent<Props, State> {
 
   private setSelectionFromCellIndex = ({columnId, rowIndex}: CellIndex) => {
     const {columns} = this.props.grid;
-    const columnIndex = columns.getIndexById(columnId);
+    const columnIndex = columns.getIndexByKey(columnId);
     this.setSelection({row: rowIndex, column: columnIndex});
   }
 
@@ -147,7 +147,7 @@ export class TableView extends BaseComponent<Props, State> {
   }
 
   private getFormulaAsString = (formula: Formula, columns: Columns): string => {
-    const args = formula.args.map(arg => columns.getById(arg)!.name);
+    const args = formula.args.map(arg => columns.getByKey(arg)!.name);
     return `${formula.name}(${args.join(", ")})`
   }
 

@@ -39,7 +39,7 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
       columns = this.generateColumns();
       rows = this.generateRows(columns.map(c => c.id), false);
     }
-    this.columns = new IndexedFunctionalArray(updateManager, columns);
+    this.columns = new IndexedFunctionalArray(updateManager, columns, 'id');
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
     this.rows = new FunctionalArrayM(updateManager, rows);
     this.rows.listenForUpdate(this, this.onRowsUpdated);
@@ -74,7 +74,7 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
   }
 
   public setColumnName = (columnId: string, name: string): void => {
-    const column = this.columns.getById(columnId)!;
+    const column = this.columns.getByKey(columnId)!;
     column.setName(name);
   }
 

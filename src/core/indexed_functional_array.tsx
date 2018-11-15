@@ -5,47 +5,46 @@ import {BaseModel} from './base_model';
 import {FunctionalArrayM} from './functional_array';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 
-interface Indexable {
-  // TS does not enforce the readonly on the source but an indexable's id is expected to be immutable
-  readonly id: string;
-}
+export class IndexedFunctionalArray<
+  T extends BaseModel<TD> & {[KK in K]: string},
+  TD extends UpdateDescriptor,
+  K extends string = 'id'
+> extends FunctionalArrayM<T, TD> {
+  private index: {[k: string]: T};
+  private readonly key: K;
 
-export class IndexedFunctionalArray<T extends BaseModel<TD> & Indexable, TD extends UpdateDescriptor>
-    extends FunctionalArrayM<T, TD> {
-  private index: {[id: string]: T};
-
-  constructor(updateManager: UpdateManager, array: ROArray<T> = []) {
+  constructor(updateManager: UpdateManager, array: ROArray<T>, key: K) {
     super(updateManager, array);
+    this.key = key;
     this.index = {};
     this.array.forEach(value => {
-      this.assertUniqueId(value.id);
-      this.index[value.id] = value;
+      this.assertUnusedKey(value[this.key]);
+      this.index[value[this.key]] = value;
     });
   }
 
-  private assertUniqueId = (id: string): void => {
-    assert(!(id in this.index), "Values in IndexedFunctionalArray must be unique by id.");
+  private assertUnusedKey = (key: string): void => {
+    assert(!(key in this.index), `Values in IndexedFunctionalArray must be unique by key '${this.key}'.`);
   }
 
-  public getById = (id: string): T | undefined => {
-    return this.index[id];
+  public getByKey = (key: string): T | undefined => {
+    return this.index[key];
   }
 
-  public getIndexById = (id: string): number => {
-    // not sure why this cast is needed...
-    return _.findIndex(this.array as Indexable[], {id});
+  public getIndexByKey = (key: string): number => {
+    return _.findIndex(this.array, {[this.key]: key} as any);
   }
 
   // may be overridden in subclass so can't use arrow method
   protected onValueAdded(value: T) {
     super.onValueAdded(value);
-    this.assertUniqueId(value.id);
-    this.index[value.id] = value;
+    this.assertUnusedKey(value[this.key]);
+    this.index[value[this.key]] = value;
   }
 
   // may be overridden in subclass so can't use arrow method
   protected onValueRemoved(value: T) {
     super.onValueRemoved(value);
-    delete this.index[value.id];
+    delete this.index[value[this.key]];
   }
 }
