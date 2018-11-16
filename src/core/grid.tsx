@@ -29,12 +29,13 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
 
   constructor(updateManager: UpdateManager, parentGrid?: Grid) {
     super(updateManager);
-    let columns: GridColumn[] = [];
-    let rows: Row[] = [];
+    let columns: GridColumn[];
+    let rows: Row[];
     if (parentGrid) {
       this.parent = parentGrid;
       this.parent.listenForUpdate(this, this.onParentGridUpdated);
-      rows = this.generateRows([], true);
+      columns = this.parent.columns.a.map(c => GridColumn.fromParent(updateManager, c));
+      rows = this.generateRows(columns.map(c => c.columnId), true);
     } else {
       columns = this.generateColumns();
       rows = this.generateRows(columns.map(c => c.columnId), false);
@@ -101,16 +102,13 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
   }
 
   private generateRows = (columnIds: string[], hasParent: boolean): Row[] => {
-    if (hasParent) {
-      return [0, 1, 2].map(i => new Row(this.updateManager, {}));
-    }
-    const rowCount = 6;
+    const rowCount = hasParent ? 3 : 6;
     const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
     return _.range(rowCount).map(i => new Row(this.updateManager, {
-      [columnIds[0]]: {value: `${i * 20}`},
+      [columnIds[0]]: {value: `${hasParent ? 300 - i * 60 : i * 20}`},
       [columnIds[1]]: {value: `${i * i * 10}`},
       [columnIds[2]]: {value: `${(i + 1) * (i + 1) * 2}`},
-      [columnIds[3]]: {value: colors[i]},
+      [columnIds[3]]: {value: colors[i + (hasParent ? 2 : 0)]},
       [columnIds[4]]: {value: ""},
     }));
   }

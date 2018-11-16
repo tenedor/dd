@@ -18,14 +18,17 @@ export class Document extends BaseModel<DocumentUpdateDescriptor> {
     this.resolver = new Resolver();
   }
 
-  public createGrid = (): Grid => {
-    const grid = new Grid(this.updateManager);
-    grid.listenForUpdate(this, this.onGridUpdated);
-    this.resolver.addGrid(grid);
+  public createGrids = () => {
+    const grid1 = new Grid(this.updateManager);
+    grid1.listenForUpdate(this, this.onGridUpdated);
+    this.resolver.addGrid(grid1);
+
+    const grid2 = new Grid(this.updateManager, grid1);
+    grid2.listenForUpdate(this, this.onGridUpdated);
+    this.resolver.addGrid(grid2);
 
     const descriptor = {type: DocumentUpdateType.GRID_UPDATED};
     this.onSelfMutated([descriptor]);
-    return grid;
   }
 
   public getAllGridsFunctionally = (): Grid[] => {

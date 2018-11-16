@@ -15,7 +15,7 @@ export class App {
     this.document = new Document();
     this.epoch = this.document.epoch;
     this.document.listenForUpdate(this.id, this.onEpochUpdated);
-    this.document.createGrid();
+    this.document.createGrids();
   }
 
   private onEpochUpdated = (epoch: number) => {

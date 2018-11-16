@@ -40,6 +40,11 @@ export class GridColumn extends BaseModel<GridColumnUpdateDescriptor> {
     }
   }
 
+  public static fromParent(updateManager: UpdateManager, parentColumn: GridColumn): GridColumn {
+    const {column, width} = parentColumn;
+    return new GridColumn(updateManager, {column, parentGridColumn: parentColumn, width});
+  }
+
   public get columnId(): string {
     return this.column.id;
   }
