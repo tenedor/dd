@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 import {Value} from '../controllers/drawing_controller';
-import {Formula} from '../core/column';
 import {CellIndex, Columns, Grid} from '../core/grid';
+import {Formula} from '../core/grid_column';
 import {Row} from '../core/row';
 import {KeyCode} from '../utils/keycode';
 import {BaseComponent, BaseProps} from './base_component';
@@ -60,7 +60,7 @@ export class TableView extends BaseComponent<Props, State> {
   private getCellIndexFromTableIndex = (tableIndex: TableIndex): CellIndex => {
     const {columns} = this.props.grid;
     return {
-      columnId: columns.a[tableIndex.column].id,
+      columnId: columns.a[tableIndex.column].columnId,
       rowIndex: tableIndex.row,
     };
   }
@@ -138,10 +138,10 @@ export class TableView extends BaseComponent<Props, State> {
 
   private renderColumnHeaders = () => {
     const {columns} = this.props.grid;
-    return columns.a.map(column=> {
-      const {id, name} = column;
-      const key = `column-header-${id}`;
-      const cellIndexString = this.stringEncodeCellIndex({columnId: id, rowIndex: -1});
+    return columns.a.map(column => {
+      const {columnId, name} = column;
+      const key = `column-header-${columnId}`;
+      const cellIndexString = this.stringEncodeCellIndex({columnId, rowIndex: -1});
       return <CellView key={key} dataCellId={cellIndexString} value={name} isHeader={true} />;
     });
   }
@@ -154,7 +154,7 @@ export class TableView extends BaseComponent<Props, State> {
   private renderRow = (row: Row, rowIndex: number) => {
     const {columns} = this.props.grid;
     const {cells} = row;
-    return columns.a.map(({id: columnId, formula}) => {
+    return columns.a.map(({columnId, formula}) => {
       const cellIndexString = this.stringEncodeCellIndex({columnId, rowIndex});
       const value = formula ?
         `=${this.getFormulaAsString(formula, columns)}` :
@@ -165,7 +165,7 @@ export class TableView extends BaseComponent<Props, State> {
 
   private getValue = ({column: columnIndex, row: rowIndex}: TableIndex): Value => {
     const {columns, rows} = this.props.grid;
-    const {id: columnId, name, type} = columns.a[columnIndex];
+    const {columnId, name, type} = columns.a[columnIndex];
     const isHeaderCell = rowIndex < 0;
     const {value} = isHeaderCell ? {value: name} : rows.a[rowIndex].cells[columnId];
     return {type, value};

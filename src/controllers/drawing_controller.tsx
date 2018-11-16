@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
-import {DataType, Formula} from '../core/column';
+import {DataType} from '../core/column';
 import {Grid} from '../core/grid';
+import {Formula} from '../core/grid_column';
 import {Row} from '../core/row';
 import {assert} from '../utils/utils';
 

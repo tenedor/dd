@@ -14,11 +14,16 @@ export const ArrayUpdateType = {
 export type ArrayUpdateType = (typeof ArrayUpdateType)[keyof typeof ArrayUpdateType];
 
 export const ColumnUpdateType = {
+  NAME_UPDATED: "NAME_UPDATED" as "NAME_UPDATED",
+};
+export type ColumnUpdateType = (typeof ColumnUpdateType)[keyof typeof ColumnUpdateType];
+
+export const GridColumnUpdateType = {
   FORMULA_UPDATED: "FORMULA_UPDATED" as "FORMULA_UPDATED",
   NAME_UPDATED: "NAME_UPDATED" as "NAME_UPDATED",
   WIDTH_UPDATED: "WIDTH_UPDATED" as "WIDTH_UPDATED",
 };
-export type ColumnUpdateType = (typeof ColumnUpdateType)[keyof typeof ColumnUpdateType];
+export type GridColumnUpdateType = (typeof GridColumnUpdateType)[keyof typeof GridColumnUpdateType];
 
 export const RowUpdateType = {
   CELL_UPDATED: "CELL_UPDATED" as "CELL_UPDATED",
@@ -44,6 +49,7 @@ export type UpdateType =
   UndefinedUpdateType |
   ArrayUpdateType |
   ColumnUpdateType |
+  GridColumnUpdateType |
   RowUpdateType |
   GridUpdateType |
   DocumentUpdateType;

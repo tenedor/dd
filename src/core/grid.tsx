@@ -1,14 +1,15 @@
 import * as _ from 'lodash';
 import {BaseModel} from './base_model';
-import {Column, ColumnUpdateDescriptor, DataType} from './column';
+import {Column, DataType} from './column';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
+import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {IndexedFunctionalArray} from './indexed_functional_array';
 import {Namespace} from './resolver';
 import {CellRO, Row, RowUpdateDescriptor} from './row';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {GridUpdateType} from './update_types';
 
-export type Columns = IndexedFunctionalArray<Column, ColumnUpdateDescriptor>;
+export type Columns = IndexedFunctionalArray<GridColumn, GridColumnUpdateDescriptor, 'columnId'>;
 export type Rows = FunctionalArrayM<Row, RowUpdateDescriptor>;
 
 export interface CellIndex {
@@ -25,11 +26,10 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
   private readonly parent?: Grid;
   public readonly columns: Columns;
   public readonly rows: Rows;
-  // private _visibleColumns: FunctionalArray<string>;
 
   constructor(updateManager: UpdateManager, parentGrid?: Grid) {
     super(updateManager);
-    let columns: Column[] = [];
+    let columns: GridColumn[] = [];
     let rows: Row[] = [];
     if (parentGrid) {
       this.parent = parentGrid;
@@ -37,9 +37,9 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
       rows = this.generateRows([], true);
     } else {
       columns = this.generateColumns();
-      rows = this.generateRows(columns.map(c => c.id), false);
+      rows = this.generateRows(columns.map(c => c.columnId), false);
     }
-    this.columns = new IndexedFunctionalArray(updateManager, columns, 'id');
+    this.columns = new IndexedFunctionalArray(updateManager, columns, 'columnId');
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
     this.rows = new FunctionalArrayM(updateManager, rows);
     this.rows.listenForUpdate(this, this.onRowsUpdated);
@@ -47,7 +47,7 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
 
   private onColumnsUpdated = (
     epoch: number,
-    updates?: Array<ArrayUD<ColumnUpdateDescriptor>>,
+    updates?: Array<ArrayUD<GridColumnUpdateDescriptor>>,
   ): GridUpdateDescriptor[] => {
     this.onDependencyUpdated(epoch);
     const descriptor = {type: GridUpdateType.COLUMN_UPDATED};
@@ -79,22 +79,25 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
   }
 
   // example rows and columns
-  private generateColumns = (): Column[] => {
+  private generateColumns = (): GridColumn[] => {
     const columns = [
-      {name: 'X', width: 100, type: DataType.NUMBER},
-      {name: 'Y', width: 100, type: DataType.NUMBER},
-      {name: 'Radius', width: 100, type: DataType.NUMBER},
-      {name: 'Fill', width: 100, type: DataType.STRING},
+      {name: 'X', type: DataType.NUMBER},
+      {name: 'Y', type: DataType.NUMBER},
+      {name: 'Radius', type: DataType.NUMBER},
+      {name: 'Fill', type: DataType.STRING},
     ].map(columnData => new Column(this.updateManager, columnData));
-    const cIds = columns.map(c => c.id);
+    const gridColumns = columns.map(column => new GridColumn(this.updateManager, {column, width: 100}));
+    const cIds = gridColumns.map(c => c.columnId);
 
-    columns.push(new Column(this.updateManager, {
+    const circleColumn = new Column(this.updateManager, {
       name: 'Draw Circle',
-      width: 150,
       type: DataType.DRAWING,
-      formula: {name: "DrawCircle", args: [cIds[2], cIds[0], cIds[1], cIds[3]]},
-    }));
-    return columns;
+    });
+    const circleFormula = {name: "DrawCircle", args: [cIds[2], cIds[0], cIds[1], cIds[3]]};
+    columns.push(circleColumn);
+    gridColumns.push(new GridColumn(this.updateManager, {column: circleColumn, formula: circleFormula, width: 150}));
+
+    return gridColumns;
   }
 
   private generateRows = (columnIds: string[], hasParent: boolean): Row[] => {
