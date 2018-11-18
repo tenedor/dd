@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 import {Value} from '../controllers/drawing_controller';
+import {parseFormula} from '../controllers/formula_parser';
 import {CellIndex, Columns, Grid} from '../core/grid';
 import {Formula} from '../core/grid_column';
 import {Row} from '../core/row';
@@ -49,7 +50,8 @@ export class TableView extends BaseComponent<Props, State> {
     const cellEditor = this.renderCellEditor(selectedCell);
 
     return (
-      <div className="table-view" style={tableStyles} tabIndex={0} onKeyDown={this.onKeyDown} onMouseDown={this.onMouseDown}>
+      <div className="table-view" style={tableStyles} tabIndex={0} onKeyDown={this.onKeyDown}
+          onMouseDown={this.onMouseDown}>
         {columnHeaders}
         {renderedRows}
         {cellEditor}
@@ -181,24 +183,50 @@ export class TableView extends BaseComponent<Props, State> {
   private onCellValueChange = (value: string) => {
     const {grid} = this.props;
     const {selectedCell} = this.state;
-    const cellIndex = this.getCellIndexFromTableIndex(selectedCell);
-    if (cellIndex.rowIndex === -1) {
-      grid.setColumnName(cellIndex.columnId, value);
+    const {columnId, rowIndex} = this.getCellIndexFromTableIndex(selectedCell);
+    if (rowIndex === -1) {
+      const column = grid.columns.getByKey(columnId)!;
+      column.setName(value);
     } else {
-      grid.modifyCell(cellIndex, {value});
+      const row = grid.rows.a[rowIndex];
+      row.setCell(columnId, {value});
+    }
+  }
+
+  private onFormulaChange = (value: string) => {
+    const {grid} = this.props;
+    const {selectedCell} = this.state;
+    const {columnId} = this.getCellIndexFromTableIndex(selectedCell);
+    const column = grid.columns.getByKey(columnId)!;
+
+    if (value) {
+      // ignore a leading '='
+      const unparsedFormula = value[0] === '=' ? value.substr(1) : value;
+      const parseResult = parseFormula(unparsedFormula, {columns: grid.columns.a});
+      if (parseResult.parseSucceeded) {
+        column.setFormula(parseResult.formula);
+      } else {
+        // TODO: persist broken formulas
+      }
+    } else {
+      column.setFormula(undefined);
     }
   }
 
   private renderCellEditor = (editorIndex: TableIndex) => {
     const {epoch, grid} = this.props;
-    const {formula} = grid.columns.a[editorIndex.column];
+    const {formula, type} = grid.columns.a[editorIndex.column];
     const key = `editor-${editorIndex.column}:r-${editorIndex.row}`;
-    const value = this.getValue(editorIndex);
     const isHeaderCell = editorIndex.row < 0;
+    const editFormula = !!formula && !isHeaderCell;
+    const value = editFormula ?
+      {type, value:`=${this.getFormulaAsString(formula!, grid.columns)}`} :
+      this.getValue(editorIndex);
+
     const gridArea = this.getGridArea({start: editorIndex, end: editorIndex});
     return <div key="cell-editor" className="cell-editor" style={{gridArea}}>
-      <CellEditorView epoch={epoch} key={key} value={value} isHeader={isHeaderCell} editable={isHeaderCell || !formula}
-        onChangeValue={this.onCellValueChange} />
+      <CellEditorView epoch={epoch} key={key} value={value} isHeader={isHeaderCell}
+        onChangeValue={editFormula ? this.onFormulaChange : this.onCellValueChange} />
     </div>
   }
 }

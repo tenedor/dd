@@ -5,7 +5,7 @@ import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_a
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {IndexedFunctionalArray} from './indexed_functional_array';
 import {Namespace} from './resolver';
-import {CellRO, Row, RowUpdateDescriptor} from './row';
+import {Row, RowUpdateDescriptor} from './row';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {GridUpdateType} from './update_types';
 
@@ -67,16 +67,6 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
 
   private onParentGridUpdated = (epoch: number, updates?: GridUpdateDescriptor[]) => {
     // for now do nothing
-  }
-
-  public modifyCell = ({columnId, rowIndex}: CellIndex, cell: CellRO): void => {
-    const row = this.rows.a[rowIndex];
-    row.setCell(columnId, cell);
-  }
-
-  public setColumnName = (columnId: string, name: string): void => {
-    const column = this.columns.getByKey(columnId)!;
-    column.setName(name);
   }
 
   // example rows and columns

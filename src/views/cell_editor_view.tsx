@@ -6,7 +6,6 @@ import {classNames} from '../utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
 
 interface Props extends BaseProps {
-  editable: boolean,
   isHeader: boolean,
   value: Value,
   onChangeValue: (newValue: string) => void,
@@ -55,10 +54,6 @@ export class CellEditorView extends BaseComponent<Props, State> {
   }
 
   private onKeyDown = (e: React.KeyboardEvent) => {
-    if (!this.props.editable) {
-      return;
-    }
-
     const {value} = this.props.value;
     const {isEditing} = this.state;
     const {keyCode} = e;

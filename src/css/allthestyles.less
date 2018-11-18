@@ -12,7 +12,7 @@ body {
 
 #root {
   .text();
-  padding: 100px;
+  padding: 80px;
 }
 
 *:focus {
@@ -29,9 +29,11 @@ input, textarea, select, button {
 .table-view {
   border: 1px solid #cccccc;
   display: grid;
+  margin-top: 20px;
   position: relative;
 
   .cell-editor {
+    background: white;
     box-sizing: border-box;
     height: 100%;
     position: absolute;
@@ -53,6 +55,19 @@ input, textarea, select, button {
     overflow: hidden;
     // let overflow text extend into horizontal padding but not vertical padding
     padding: 0 6px;
+    /*
+     * Chrome has a bug where `white-space: normal` on a textarea is treated like
+     * `white-space: pre`, causing a space after a word that overflows to shows up
+     * at the start of the next line. This differs from a div. Not an issue in
+     * Firefox.
+     *
+     * Preferred behavior here is `white-space: normal` but given the Chrome bug,
+     * consistency between textarea and div is preferred higher. Thus, set
+     * `white-space: pre-wrap` on both the textarea and the div. :-(
+     *
+     * Alternatively, consider replacing every cell-view div with a textarea...
+     */
+    white-space: pre-wrap;
   }
 }
 
@@ -77,8 +92,23 @@ input, textarea, select, button {
 
   textarea {
     border: none;
+    height: 100%;
     // let overflow text extend into horizontal padding but not vertical padding
     padding: 0 6px;
+    overflow-wrap: normal;
+    /*
+     * Chrome has a bug where `white-space: normal` on a textarea is treated like
+     * `white-space: pre`, causing a space after a word that overflows to shows up
+     * at the start of the next line. This differs from a div. Not an issue in
+     * Firefox.
+     *
+     * Preferred behavior here is `white-space: normal` but given the Chrome bug,
+     * consistency between textarea and div is preferred higher. Thus, set
+     * `white-space: pre-wrap` on both the textarea and the div. :-(
+     *
+     * Alternatively, consider replacing every cell-view div with a textarea...
+     */
+    white-space: pre-wrap;
     width: 100%;
   }
 

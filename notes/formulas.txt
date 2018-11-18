@@ -1,0 +1,129 @@
+Observations Towards Implementing Formulas
+
+Note: This argument does not close on a conclusion. It establishes various facts,
+some of them useful, and leaves many things open. It may be worth revising or
+extending.
+
+
+* The Domain *
+- The domain includes domain entities. Documents, grids, columns, grid columns,
+  rows, cells, values, and formulas are all domain entities.
+- A document has grids which have grid columns and rows, and each grid column has
+  a column and each row has a cell for each grid column of its grid. Each cell has
+  a unique row and grid column, and each row and grid column has a unique grid. A
+  grid column may have a parent grid column and may be the parent of other grid
+  columns, thus there is a unique partitioning of grid columns into families. Each
+  column is unique to a single grid column family and is common to all grid
+  grid columns in that family.
+- Values and formulas are defined below. Each cell has a manual value or an
+  associated formula which resolves to a value. A grid column may be associated
+  with a formula, in which case the values of that grid column's cells are the
+  result of calculating that formula in the context of the cell. This is described
+  in detail below.
+
+* Values and Resolution *
+- A software object can be created, read, stored, and passed around in a program.
+- Values, value references, and formulas are all software objects.
+- A value is a value primitive or a composed value.
+- A composed value is a domain-specific object or a list of values, and is a value
+  that is composed of zero or more values. It is said to contain these values.
+- A domain-specific object corresponds to a domain entity. There is no guarantee
+  that all domain entities support domain-specific objects.
+- An error is a value. A value is erroring if it is an error or it contains a
+  value that is erroring.
+- A value always resolves to itself.
+- A value reference is something that resolves to a value given a context, which
+  is a mapping of value references to values.
+- A formula specifies a calculation that has no side effects and returns a value.
+  A formula may have argument values that its calculation depends on.
+- An argument value is something that can be resolved to a value given a context.
+- A formula's resolution in a given context is the value that results from
+  evaluating the formula's calculation with the resolution of its argument values
+  in that context. A formula resolver produces a formula resolution from a formula
+  and a context.
+- Anything that resolves to a value is valid if its resolution is a valid value
+  and is erroring if not. Validity may therefore depend on context.
+- A value that results from one or more resolutions is said to depend on the
+  elements that were used to resolve it and on any elements they depend on.
+
+* Syntax and Authoring *
+- There is a formula specification that defines what it means for a formula to be
+  syntactically valid.
+- Any formula that is not syntactically valid or that has an invalid argument is
+  erroring. A formula may error for other reasons as well.
+- A user formula is a formula authored by a user. There may be non-user formulas
+  as well.
+- To write a formula, a user will have a formula authoring interface. This
+  interface can produce syntactically valid formulas from user input.
+- Thus, the formula authoring interface and the formula resolver both depend on
+  the formula specification.
+
+* Calculating Cell Values *
+- A formula is bound to a grid column and is associated with this grid column. It
+  may also be associated with descendant grid columns. A grid column is associated
+  with either one or zero formulas.
+- Every cell has an associated row, grid column, grid, and document that supply
+  the cell's context.
+- A calculated cell is a cell whose grid column has a formula.
+- A cell that is not calculated has a manual value that is either a value or a
+  value reference. Every cell has a value that is the result of resolving its
+  formula if it has one, and otherwise its manual value, using its context.
+- A value is up-to-date if it would not be changed by re-resolving it with
+  up-to-date versions of all its dependencies.
+
+* Drawing Formulas *
+- A drawing formula is a formula that produces a drawing value when it is not
+  erroring. A drawing value may be used by another drawing formula to produce
+  another drawing value or by a drawing renderer to render a drawing.
+
+
+Things that are coupled:
+1. Authoring a valid formula and parsing an authored formula into an IR are
+  coupled through the definition of valid formula specification (syntax).
+2. Confirming that a formula's evaluation is correct is coupled to evaluating all
+  all of its dependencies. Decisions in (3) satisfy this coupling by providing
+  that all formulas will be recalculated in their dependency partial ordering and
+  that all invalidated formulas will be recalculated before their results are
+  used.
+3. There is some coupling between bulk formula recalculation and performance, but
+  aside from the invalidation graph design already assumed all performance
+  considerations may be deferred. Performance may depend on (a) reducing the
+  number of formulas that are recalculated, (b) deferring some recalculations to
+  favor more important ones, (c) the evaluation order of a set of recalculations
+  evaluated synchronously, (d) the performance of recalculating individual
+  formulas, and (e) the performance of the machinery orchestrating recalculations.
+  a. Reducing formula recalculations: Recalculations occur unnecessarily if a
+    formula is recalculated when its result is unchanged or is recalculated
+    multiple times for an atomic set of changes. For the first, in general the
+    calculation's output value may have changed whenever any of its inputs
+    changed, so recalculate whenever an input changed but skip otherwise. For the
+    second, it must be repeated if it calculated on incorrect (e.g. out-of-date)
+    inputs but otherwise need not be repeated. Thus, recalculate formulas in their
+    dependency partial ordering to avoid this issue.
+  b. Deferring some recalculations: This topic will be deferred for now.
+    Optimizing here is a matter of identifying a set of formula recalculations to
+    defer, which happens before recalculating, deferring those recalculations, and
+    managing consistency with respect to the deferral. Given a formula dependency
+    graph well and incremental recalculations against the graph, which is provided
+    by (a), and given that these are well suited to this problem, which will be
+    assumed, this problem is decoupled from the rest.
+  c. Evaluation order: Performance may be suboptimal if optimal performance relies
+    on (i) the optimistic evaluation of some formulas before their dependencies,
+    (ii) evaluating multiple sibling formulas (those with no dependency
+    relationship) in a batch, or (iii) the relative order of independent
+    evaluation of sibling formulas. Each can be deferred here:
+    i. Optimistic evaluation: We assume a single-processor environment. Thus this
+      provides no benefit.
+    ii. Batch processing of siblings: Given an identification of siblings and the
+      ability to defer their recalculation into a batch, which is provided by (a),
+      and given that it is efficient to associate sibling formulas with whatever
+      metadata aids batch processing, which is assumed, batch processing may be
+      implemented locally.
+    iii. This action can be reduced to (ii).
+  d. Performance of individual formulas: Incremental recalculation is possible in
+    some circumstances but is an advanced problem that will not be considered for
+    now. Thus, performance of individual formula recalculations is a local matter
+    of the implementation of the individual formulas and may be deferred.
+  e. Recalculation machinery: Beyond the considerations above, global
+    optimizations to the recalculation machinery will be ignored for convenience
+    and local optimizations can be deferred.

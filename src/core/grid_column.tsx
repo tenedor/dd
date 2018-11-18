@@ -65,6 +65,12 @@ export class GridColumn extends BaseModel<GridColumnUpdateDescriptor> {
     return this._width;
   }
 
+  public setFormula = (formula: Formula | undefined) => {
+    this._formula = formula;
+    const descriptor = {type: GridColumnUpdateType.FORMULA_UPDATED};
+    this.onSelfMutated([descriptor]);
+  }
+
   public setName = (name: string): void => {
     this.column.setName(name);
   }
