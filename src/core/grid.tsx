@@ -2,14 +2,14 @@ import * as _ from 'lodash';
 import {BaseModel} from './base_model';
 import {Column, DataType} from './column';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
+import {FunctionalKeyedArray} from './functional_keyed_array';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
-import {IndexedFunctionalArray} from './indexed_functional_array';
 import {Namespace} from './resolver';
 import {Row, RowUpdateDescriptor} from './row';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {GridUpdateType} from './update_types';
 
-export type Columns = IndexedFunctionalArray<GridColumn, GridColumnUpdateDescriptor, 'columnId'>;
+export type Columns = FunctionalKeyedArray<GridColumn, GridColumnUpdateDescriptor, 'columnId'>;
 export type Rows = FunctionalArrayM<Row, RowUpdateDescriptor>;
 
 export interface CellIndex {
@@ -40,7 +40,7 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
       columns = this.generateColumns();
       rows = this.generateRows(columns.map(c => c.columnId), false);
     }
-    this.columns = new IndexedFunctionalArray(updateManager, columns, 'columnId');
+    this.columns = new FunctionalKeyedArray(updateManager, columns, 'columnId');
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
     this.rows = new FunctionalArrayM(updateManager, rows);
     this.rows.listenForUpdate(this, this.onRowsUpdated);

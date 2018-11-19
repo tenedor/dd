@@ -1,34 +1,34 @@
 import * as _ from 'lodash';
-import {ROArray} from '../utils/types';
+import {Dictionary, ROArray} from '../utils/types';
 import {assert} from '../utils/utils';
 import {BaseModel} from './base_model';
 import {FunctionalArrayM} from './functional_array';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 
-export class IndexedFunctionalArray<
+export class FunctionalKeyedArray<
   T extends BaseModel<TD> & {[KK in K]: string},
   TD extends UpdateDescriptor,
   K extends string = 'id'
 > extends FunctionalArrayM<T, TD> {
-  private index: {[k: string]: T};
+  private dictionary: Dictionary<T>;
   private readonly key: K;
 
   constructor(updateManager: UpdateManager, array: ROArray<T>, key: K) {
     super(updateManager, array);
     this.key = key;
-    this.index = {};
+    this.dictionary = {};
     this.array.forEach(value => {
       this.assertUnusedKey(value[this.key]);
-      this.index[value[this.key]] = value;
+      this.dictionary[value[this.key]] = value;
     });
   }
 
   private assertUnusedKey = (key: string): void => {
-    assert(!(key in this.index), `Values in IndexedFunctionalArray must be unique by key '${this.key}'.`);
+    assert(!(key in this.dictionary), `Values in FunctionalKeyedArray must be unique by key '${this.key}'.`);
   }
 
   public getByKey = (key: string): T | undefined => {
-    return this.index[key];
+    return this.dictionary[key];
   }
 
   public getIndexByKey = (key: string): number => {
@@ -39,12 +39,12 @@ export class IndexedFunctionalArray<
   protected onValueAdded(value: T) {
     super.onValueAdded(value);
     this.assertUnusedKey(value[this.key]);
-    this.index[value[this.key]] = value;
+    this.dictionary[value[this.key]] = value;
   }
 
   // may be overridden in subclass so can't use arrow method
   protected onValueRemoved(value: T) {
     super.onValueRemoved(value);
-    delete this.index[value[this.key]];
+    delete this.dictionary[value[this.key]];
   }
 }
