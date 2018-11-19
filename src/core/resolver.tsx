@@ -3,13 +3,14 @@ import {Grid} from './grid';
 
 export enum Namespace {
   APP = 'app',
-  ARRAY = 'a',
-  COLUMN = 'c',
-  DOCUMENT = 'd',
-  GRID = 'g',
-  MODEL = 'm',
+  ARRAY = 'arr',
+  COLUMN = 'col',
+  DICTIONARY = 'dict',
+  DOCUMENT = 'doc',
+  GRID = 'grid',
+  MODEL = 'model',
   RESOLVER = 'res',
-  ROW = 'r',
+  ROW = 'row',
 }
 
 export class Resolver {

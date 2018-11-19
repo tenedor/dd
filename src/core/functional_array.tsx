@@ -1,4 +1,3 @@
-import * as _ from 'lodash';
 import {JSPrimitive, ROArray} from '../utils/types';
 import {assert} from '../utils/utils';
 import {BaseModel} from './base_model';
@@ -27,7 +26,7 @@ class BaseFunctionalArray<
     return this.array;
   }
 
-  public get = (index: number): T => {
+  public get = (index: number): T | undefined => {
     return this.array[index];
   }
 

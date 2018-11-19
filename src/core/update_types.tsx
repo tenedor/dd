@@ -13,6 +13,13 @@ export const ArrayUpdateType = {
 };
 export type ArrayUpdateType = (typeof ArrayUpdateType)[keyof typeof ArrayUpdateType];
 
+export const DictionaryUpdateType = {
+  KEY_DELETED: "KEY_DELETED" as "KEY_DELETED",
+  KEY_SET: "KEY_SET" as "KEY_SET",
+  KEY_UPDATED: "KEY_UPDATED" as "KEY_UPDATED",
+};
+export type DictionaryUpdateType = (typeof DictionaryUpdateType)[keyof typeof DictionaryUpdateType];
+
 export const ColumnUpdateType = {
   NAME_UPDATED: "NAME_UPDATED" as "NAME_UPDATED",
 };
@@ -48,6 +55,7 @@ export type DocumentUpdateType = (typeof DocumentUpdateType)[keyof typeof Docume
 export type UpdateType =
   UndefinedUpdateType |
   ArrayUpdateType |
+  DictionaryUpdateType |
   ColumnUpdateType |
   GridColumnUpdateType |
   RowUpdateType |
