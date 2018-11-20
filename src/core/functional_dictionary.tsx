@@ -68,7 +68,8 @@ class BaseFunctionalDictionary<
     this.onSelfMutated([descriptor]);
   }
 
-  public delete = (key: string): T | undefined => {
+  // may be overridden in subclass so can't use arrow method
+  public remove(key: string): T | undefined {
     if (!(key in this.dictionary)) {
       return undefined;
     }

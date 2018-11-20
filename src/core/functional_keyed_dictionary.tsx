@@ -45,4 +45,8 @@ export class FunctionalKeyedDictionary<
   public setValue = (value: T): void => {
     super.set(value[this.key], value);
   }
+
+  public removeValue = (value: T): T | undefined => {
+    return super.remove(value[this.key]);
+  }
 }
