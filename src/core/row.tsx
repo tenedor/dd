@@ -1,48 +1,39 @@
 import * as _ from 'lodash';
-import {deleteObjectKeyFunctionally, setObjectValueFunctionally} from '../utils/utils';
 import {BaseModel} from './base_model';
+import {Cell, CellUpdateDescriptor} from './cell';
+import {DictionaryUpdateDescriptor as DictionaryUD, FunctionalDictionaryM} from './functional_dictionary';
 import {Namespace} from './resolver';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {RowUpdateType} from './update_types';
 
-interface Cell {
-  value: string;
-}
-
 export type CellRO = Readonly<Cell>;
+export type Cells = FunctionalDictionaryM<Cell, CellUpdateDescriptor>;
 
 interface RowData {
-  [columnId: string]: CellRO,
+  [columnId: string]: Cell,
 }
 
 export interface RowUpdateDescriptor extends UpdateDescriptor<RowUpdateType> {
-  columnId: string;
+  columnIds: string[];
 }
 
 export class Row extends BaseModel<RowUpdateDescriptor> {
   protected readonly namespace = Namespace.ROW;
-  private _cells: RowData;
+  public readonly cells: Cells;
 
   constructor(updateManager: UpdateManager, rowData: RowData) {
     super(updateManager);
-    this._cells = Object.assign({}, rowData);
+    this.cells = new FunctionalDictionaryM(updateManager, rowData);
+    this.cells.listenForUpdate(this, this.onCellsUpdated);
   }
 
-  public get cells(): RowData {
-    return this._cells;
-  }
-
-  public setCell = (columnId: string, cell?: CellRO): void => {
-    if (cell) {
-      this._cells = setObjectValueFunctionally(this._cells, columnId, cell);
-    } else {
-      this._cells = deleteObjectKeyFunctionally(this._cells, columnId);
-    }
-    const descriptor = {type: RowUpdateType.CELL_UPDATED, columnId};
-    this.onSelfMutated([descriptor]);
-  }
-
-  public clearCell = (columnId: string): void => {
-    this.setCell(columnId);
+  private onCellsUpdated = (
+    epoch: number,
+    updates?: Array<DictionaryUD<CellUpdateDescriptor>>,
+  ): RowUpdateDescriptor[] => {
+    this.onDependencyUpdated(epoch);
+    const columnIds = updates ? _.uniq(updates.map(d => d.key)) : [];
+    const descriptor = {type: RowUpdateType.CELLS_UPDATED, columnIds};
+    return [descriptor];
   }
 }

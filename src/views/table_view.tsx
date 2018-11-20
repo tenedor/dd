@@ -160,7 +160,7 @@ export class TableView extends BaseComponent<Props, State> {
       const cellIndexString = this.stringEncodeCellIndex({columnId, rowIndex});
       const value = formula ?
         `=${this.getFormulaAsString(formula, columns)}` :
-        cells[columnId].value;
+        cells.d[columnId].value;
       return <CellView key={cellIndexString} dataCellId={cellIndexString} value={value} />;
     });
   }
@@ -169,7 +169,7 @@ export class TableView extends BaseComponent<Props, State> {
     const {columns, rows} = this.props.grid;
     const {columnId, name, type} = columns.a[columnIndex];
     const isHeaderCell = rowIndex < 0;
-    const {value} = isHeaderCell ? {value: name} : rows.a[rowIndex].cells[columnId];
+    const value = isHeaderCell ? name : rows.a[rowIndex].cells.d[columnId].value;
     return {type, value};
   }
 
@@ -189,7 +189,7 @@ export class TableView extends BaseComponent<Props, State> {
       column.setName(value);
     } else {
       const row = grid.rows.a[rowIndex];
-      row.setCell(columnId, {value});
+      row.cells.d[columnId].setManualValue(value);
     }
   }
 

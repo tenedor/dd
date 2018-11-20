@@ -4,6 +4,7 @@ import {Grid} from './grid';
 export enum Namespace {
   APP = 'app',
   ARRAY = 'arr',
+  CELL = 'cell',
   COLUMN = 'col',
   DICTIONARY = 'dict',
   DOCUMENT = 'doc',

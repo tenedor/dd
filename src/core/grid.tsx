@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 import {BaseModel} from './base_model';
+import {Cell} from './cell';
 import {Column, DataType} from './column';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {FunctionalKeyedArray} from './functional_keyed_array';
@@ -35,10 +36,10 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
       this.parent = parentGrid;
       this.parent.listenForUpdate(this, this.onParentGridUpdated);
       columns = this.parent.columns.a.map(c => GridColumn.fromParent(updateManager, c));
-      rows = this.generateRows(columns.map(c => c.columnId), true);
+      rows = this.generateRows(columns, true);
     } else {
       columns = this.generateColumns();
-      rows = this.generateRows(columns.map(c => c.columnId), false);
+      rows = this.generateRows(columns, false);
     }
     this.columns = new FunctionalKeyedArray(updateManager, columns, 'columnId');
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
@@ -91,15 +92,21 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
     return gridColumns;
   }
 
-  private generateRows = (columnIds: string[], hasParent: boolean): Row[] => {
+  private generateRows = (columns: GridColumn[], hasParent: boolean): Row[] => {
+    const {updateManager} = this;
     const rowCount = hasParent ? 3 : 6;
     const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
     return _.range(rowCount).map(i => new Row(this.updateManager, {
-      [columnIds[0]]: {value: `${hasParent ? 300 - i * 60 : i * 20}`},
-      [columnIds[1]]: {value: `${i * i * 10}`},
-      [columnIds[2]]: {value: `${(i + 1) * (i + 1) * 2}`},
-      [columnIds[3]]: {value: colors[i + (hasParent ? 2 : 0)]},
-      [columnIds[4]]: {value: ""},
+      [columns[0].columnId]:
+        new Cell(updateManager, {column: columns[0], manualValue: `${hasParent ? 300 - i * 60 : i * 20}`}),
+      [columns[1].columnId]:
+        new Cell(updateManager, {column: columns[1], manualValue: `${i * i * 10}`}),
+      [columns[2].columnId]:
+        new Cell(updateManager, {column: columns[2], manualValue: `${(i + 1) * (i + 1) * 2}`}),
+      [columns[3].columnId]:
+        new Cell(updateManager, {column: columns[3], manualValue: colors[i + (hasParent ? 2 : 0)]}),
+      [columns[4].columnId]:
+        new Cell(updateManager, {column: columns[4]}),
     }));
   }
 }

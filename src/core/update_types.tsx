@@ -32,8 +32,13 @@ export const GridColumnUpdateType = {
 };
 export type GridColumnUpdateType = (typeof GridColumnUpdateType)[keyof typeof GridColumnUpdateType];
 
+export const CellUpdateType = {
+  VALUE_UPDATED: "VALUE_UPDATED" as "VALUE_UPDATED",
+};
+export type CellUpdateType = (typeof CellUpdateType)[keyof typeof CellUpdateType];
+
 export const RowUpdateType = {
-  CELL_UPDATED: "CELL_UPDATED" as "CELL_UPDATED",
+  CELLS_UPDATED: "CELLS_UPDATED" as "CELLS_UPDATED",
 };
 export type RowUpdateType = (typeof RowUpdateType)[keyof typeof RowUpdateType];
 
@@ -58,6 +63,7 @@ export type UpdateType =
   DictionaryUpdateType |
   ColumnUpdateType |
   GridColumnUpdateType |
+  CellUpdateType |
   RowUpdateType |
   GridUpdateType |
   DocumentUpdateType;
