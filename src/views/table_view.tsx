@@ -1,9 +1,8 @@
 import * as _ from 'lodash';
 import * as React from 'react';
-import {Value} from '../controllers/drawing_controller';
-import {parseFormula} from '../controllers/formula_parser';
-import {CellIndex, Columns, Grid} from '../core/grid';
-import {Formula} from '../core/grid_column';
+import {Cell} from '../core/cell';
+import {CellIndex, Grid} from '../core/grid';
+import {getFormulaAsString} from '../core/grid_column';
 import {Row} from '../core/row';
 import {KeyCode} from '../utils/keycode';
 import {BaseComponent, BaseProps} from './base_component';
@@ -148,29 +147,14 @@ export class TableView extends BaseComponent<Props, State> {
     });
   }
 
-  private getFormulaAsString = (formula: Formula, columns: Columns): string => {
-    const args = formula.args.map(arg => columns.getByKey(arg)!.name);
-    return `${formula.name}(${args.join(", ")})`
-  }
-
   private renderRow = (row: Row, rowIndex: number) => {
-    const {columns} = this.props.grid;
+    const {grid} = this.props;
     const {cells} = row;
-    return columns.a.map(({columnId, formula}) => {
+    return grid.columns.a.map(({columnId, formula}) => {
       const cellIndexString = this.stringEncodeCellIndex({columnId, rowIndex});
-      const value = formula ?
-        `=${this.getFormulaAsString(formula, columns)}` :
-        cells.d[columnId].value;
+      const value = formula ? `=${getFormulaAsString(formula, {grid})}` : cells.d[columnId].value;
       return <CellView key={cellIndexString} dataCellId={cellIndexString} value={value} />;
     });
-  }
-
-  private getValue = ({column: columnIndex, row: rowIndex}: TableIndex): Value => {
-    const {columns, rows} = this.props.grid;
-    const {columnId, name, type} = columns.a[columnIndex];
-    const isHeaderCell = rowIndex < 0;
-    const value = isHeaderCell ? name : rows.a[rowIndex].cells.d[columnId].value;
-    return {type, value};
   }
 
   private getGridArea = ({start, end}: TableRange): string => {
@@ -180,53 +164,21 @@ export class TableView extends BaseComponent<Props, State> {
     return `${start.row + 2}/${start.column + 1}/${end.row + 3}/${end.column + 2}`;
   }
 
-  private onCellValueChange = (value: string) => {
-    const {grid} = this.props;
-    const {selectedCell} = this.state;
-    const {columnId, rowIndex} = this.getCellIndexFromTableIndex(selectedCell);
-    if (rowIndex === -1) {
-      const column = grid.columns.getByKey(columnId)!;
-      column.setName(value);
-    } else {
-      const row = grid.rows.a[rowIndex];
-      row.cells.d[columnId].setManualValue(value);
-    }
-  }
-
-  private onFormulaChange = (value: string) => {
-    const {grid} = this.props;
-    const {selectedCell} = this.state;
-    const {columnId} = this.getCellIndexFromTableIndex(selectedCell);
-    const column = grid.columns.getByKey(columnId)!;
-
-    if (value) {
-      // ignore a leading '='
-      const unparsedFormula = value[0] === '=' ? value.substr(1) : value;
-      const parseResult = parseFormula(unparsedFormula, {columns: grid.columns.a});
-      if (parseResult.parseSucceeded) {
-        column.setFormula(parseResult.formula);
-      } else {
-        // TODO: persist broken formulas
-      }
-    } else {
-      column.setFormula(undefined);
-    }
+  private getCell = (tableIndex: TableIndex): Cell => {
+    const {columnId, rowIndex} = this.getCellIndexFromTableIndex(tableIndex);
+    const row = this.props.grid.rows.a[rowIndex];
+    return row.cells.d[columnId];
   }
 
   private renderCellEditor = (editorIndex: TableIndex) => {
     const {epoch, grid} = this.props;
-    const {formula, type} = grid.columns.a[editorIndex.column];
-    const key = `editor-${editorIndex.column}:r-${editorIndex.row}`;
     const isHeaderCell = editorIndex.row < 0;
-    const editFormula = !!formula && !isHeaderCell;
-    const value = editFormula ?
-      {type, value:`=${this.getFormulaAsString(formula!, grid.columns)}`} :
-      this.getValue(editorIndex);
-
+    const cell = isHeaderCell ? undefined : this.getCell(editorIndex);
+    const column = grid.columns.a[editorIndex.column];
+    const key = `editor-${column.columnId}:r-${editorIndex.row}`;
     const gridArea = this.getGridArea({start: editorIndex, end: editorIndex});
     return <div key="cell-editor" className="cell-editor" style={{gridArea}}>
-      <CellEditorView epoch={epoch} key={key} value={value} isHeader={isHeaderCell}
-        onChangeValue={editFormula ? this.onFormulaChange : this.onCellValueChange} />
+      <CellEditorView epoch={epoch} key={key} cell={cell} column={column} grid={grid} />
     </div>
   }
 }

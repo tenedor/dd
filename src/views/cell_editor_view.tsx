@@ -1,14 +1,19 @@
 import * as _ from 'lodash';
 import * as React from 'react';
-import {Value} from '../controllers/drawing_controller';
+import {parseFormula} from '../controllers/formula_parser';
+import {Cell} from '../core/cell';
+import {Grid} from '../core/grid'; // only a type dependency
+import {getFormulaAsString, GridColumn} from '../core/grid_column';
 import {KeyCode} from '../utils/keycode';
 import {classNames} from '../utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
 
 interface Props extends BaseProps {
-  isHeader: boolean,
-  value: Value,
-  onChangeValue: (newValue: string) => void,
+  // not passing a cell model signals that this is a header cell
+  cell?: Cell,
+  column: GridColumn,
+  // pass a grid as context until context can be retrieved from a formula
+  grid: Grid,
 }
 
 interface State {
@@ -27,12 +32,11 @@ export class CellEditorView extends BaseComponent<Props, State> {
   }
 
   public render = () => {
-    const {isHeader} = this.props;
-    const {value} = this.props.value;
+    const value = this.getEditValue();
     const {isEditing} = this.state;
     const className = classNames("cell-editor-view", {
       editing: isEditing,
-      header: isHeader,
+      header: this.isHeaderCell,
     });
     return (
       <div className={className} tabIndex={0} onKeyDown={this.onKeyDown} onMouseDown={this.onMouseDown} >
@@ -41,8 +45,45 @@ export class CellEditorView extends BaseComponent<Props, State> {
     );
   }
 
+  private get isHeaderCell(): boolean {
+    return !this.props.cell;
+  }
+
+  private getEditValue = (): string => {
+    const {cell, column, grid} = this.props;
+    if (!cell) {
+      return column.name;
+    } else {
+      return cell.formula ? `=${getFormulaAsString(cell.formula, {grid})}` : cell.value;
+    }
+  }
+
   private submitValue = () => {
-    this.props.onChangeValue(this.textAreaRef!.value);
+    const {cell, column} = this.props;
+    const {value} = this.textAreaRef!;
+    if (!cell) {
+      column.setName(value);
+    } else if (cell.formula) {
+      this.setFormula(value);
+    } else {
+      cell.setManualValue(value);
+    }
+  }
+
+  private setFormula = (value: string) => {
+    const {column, grid} = this.props;
+    if (value) {
+      // ignore a leading '='
+      const unparsedFormula = value[0] === '=' ? value.substr(1) : value;
+      const parseResult = parseFormula(unparsedFormula, {columns: grid.columns.a});
+      if (parseResult.parseSucceeded) {
+        column.setFormula(parseResult.formula);
+      } else {
+        // TODO: persist broken formulas
+      }
+    } else {
+      column.setFormula(undefined);
+    }
   }
 
   private onMouseDown = (e: React.MouseEvent) => {
@@ -54,7 +95,6 @@ export class CellEditorView extends BaseComponent<Props, State> {
   }
 
   private onKeyDown = (e: React.KeyboardEvent) => {
-    const {value} = this.props.value;
     const {isEditing} = this.state;
     const {keyCode} = e;
 
@@ -71,7 +111,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
       case KeyCode.ESCAPE:
         if (isEditing) {
           this.setState({isEditing: false});
-          this.textAreaRef!.value = value;
+          this.textAreaRef!.value = this.getEditValue();
           e.stopPropagation();
         }
         e.preventDefault();

@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 import {BaseModel} from './base_model';
 import {Column, ColumnUpdateDescriptor, DataType} from './column';
+import {Grid} from './grid'; // only a type dependency
 import {Namespace} from './resolver';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {ColumnUpdateType, GridColumnUpdateType} from './update_types';
@@ -9,6 +10,16 @@ import {ColumnUpdateType, GridColumnUpdateType} from './update_types';
 export interface Formula {
   name: string,
   args: string[],
+}
+
+// placeholder until there's a real language
+export interface FormulaContext {
+  grid: Grid;
+}
+
+export function getFormulaAsString(formula: Formula, {grid}: FormulaContext): string {
+  const args = formula.args.map(arg => grid.columns.d[arg].name);
+  return `${formula.name}(${args.join(", ")})`
 }
 
 interface GridColumnData {

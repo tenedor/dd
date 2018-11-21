@@ -1,5 +1,5 @@
 import * as _ from 'lodash';
-import {Dictionary, ROArray} from '../utils/types';
+import {Dictionary, ROArray, RODictionary} from '../utils/types';
 import {assert} from '../utils/utils';
 import {BaseModel} from './base_model';
 import {FunctionalArrayM} from './functional_array';
@@ -25,6 +25,10 @@ export class FunctionalKeyedArray<
 
   private assertUnusedKey = (key: string): void => {
     assert(!(key in this.dictionary), `Values in FunctionalKeyedArray must be unique by key '${this.key}'.`);
+  }
+
+  public get d(): RODictionary<T> {
+    return this.dictionary;
   }
 
   public getByKey = (key: string): T | undefined => {
