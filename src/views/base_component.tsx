@@ -10,12 +10,14 @@ export interface BaseProps {
 export class BaseComponent<P extends BaseProps, S = {}> extends React.Component<P, S> {
   private lastRenderedEpoch: number = -1;
 
-  public shouldComponentUpdate? = (nextProps: Readonly<P>, nextState: Readonly<S>): boolean => {
+  // may be overridden in subclass so can't use arrow method
+  public shouldComponentUpdate(nextProps: Readonly<P>, nextState: Readonly<S>): boolean {
     const ignoreKeys = {props: ["epoch"]};
     return this.shouldComponentUpdateHelper(nextProps, nextState, ignoreKeys);
   }
 
-  public componentDidUpdate = () => {
+  // may be overridden in subclass so can't use arrow method
+  public componentDidUpdate() {
     this.lastRenderedEpoch = this.props.epoch;
   }
 

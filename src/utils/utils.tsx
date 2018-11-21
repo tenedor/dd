@@ -8,6 +8,10 @@ export function assert(e: any, message?: string): true {
   return true;
 }
 
+export function assertUnreachable(e: never, message?: string): void {
+  throw new Error(message);
+}
+
 export function shallowEqual<A, B>(a: A, b: B, compare?: (a: A, b: B) => boolean) {
   return shallow(a, b, compare);
 }
