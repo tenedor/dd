@@ -1,4 +1,5 @@
-import {Formula, GridColumn} from '../core/grid_column';
+import {Formula} from '../core/formula';
+import {GridColumn} from '../core/grid_column';
 
 export interface ParseContext {
   columns: ReadonlyArray<GridColumn>,

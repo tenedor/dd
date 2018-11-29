@@ -8,7 +8,7 @@ export function assert(e: any, message?: string): true {
   return true;
 }
 
-export function assertUnreachable(e: never, message?: string): void {
+export function assertUnreachable(e: never, message?: string): never {
   throw new Error(message);
 }
 

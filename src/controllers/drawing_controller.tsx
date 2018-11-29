@@ -1,44 +1,7 @@
 import * as _ from 'lodash';
-import {DataType} from '../core/column';
+import {isDrawingFormula} from '../core/formula';
 import {Grid} from '../core/grid';
-import {Formula} from '../core/grid_column';
-import {Row} from '../core/row';
-import {assert} from '../utils/utils';
-
-export interface Value {
-  type: DataType,
-  value: string,
-}
-
-export interface TypedValue<T> extends Value {
-  typedValue: T,
-}
-
-export interface MaterializedFormula extends Formula {
-  materializedArgs: Value[],
-}
-
-export enum DrawingPrimitive {
-  CIRCLE = "CIRCLE",
-}
-
-export interface BaseDrawing {
-  type: DrawingPrimitive,
-  x: number,
-  y: number,
-  rotation: number,
-  fill: string,
-  // stroke: number
-  // stroke-color: string
-  children: Drawing[],
-}
-
-export interface Circle extends BaseDrawing {
-  type: DrawingPrimitive.CIRCLE,
-  radius: number,
-}
-
-export type Drawing = Circle;
+import {Drawing} from '../core/value';
 
 export class DrawingController {
   private grids: Grid[];
@@ -51,55 +14,10 @@ export class DrawingController {
     return _.flatten(this.grids.map(this.getDrawingsForGrid));
   }
 
-  private materializeFormula = (formula: Formula, row: Row, grid: Grid): MaterializedFormula => {
-    const {name, args} = formula;
-    return {
-      name,
-      args,
-      materializedArgs: args.map(c => ({
-        value: row.cells.d[c].value,
-        type: grid.columns.getByKey(c)!.type,
-      })),
-    }
-  }
-
-  private isDrawingFormula = (formula: Formula): boolean => {
-    return formula.name === 'DrawCircle';
-  }
-
-  private resolveDrawingFormula = (formula: Formula, row: Row, grid: Grid): Drawing => {
-    const materializedFormula = this.materializeFormula(formula, row, grid);
-    assert(this.isDrawingFormula(materializedFormula), 'expected drawing formula');
-    const args = materializedFormula.materializedArgs;
-    assert(args.length === 4, 'invalid arg count');
-    const radius = assert(args[0].type === DataType.NUMBER) && parseFloat(args[0].value);
-    const x = assert(args[1].type === DataType.NUMBER) && parseFloat(args[1].value);
-    const y = assert(args[2].type === DataType.NUMBER) && parseFloat(args[2].value);
-    const fill = assert(args[3].type === DataType.STRING) && args[3].value;
-    return {
-      type: DrawingPrimitive.CIRCLE,
-      radius,
-      x,
-      y,
-      rotation: 0,
-      fill,
-      children: [],
-    };
-  }
-
   private getDrawingsForGrid = (grid: Grid): Drawing[] => {
     const {columns, rows} = grid;
-
-    const drawingFormulas = columns.a
-      .map(c => {
-          return (c.formula && this.isDrawingFormula(c.formula)) ? c.formula : undefined;
-      })
-      .filter(f => !!f) as Formula[];
-
-    const rowDrawings =
-      rows.a.map(row =>
-        drawingFormulas.map(formula =>
-          this.resolveDrawingFormula(formula, row, grid)));
+    const drawingColumns = columns.a.filter(c => c.formula && isDrawingFormula(c.formula));
+    const rowDrawings = rows.a.map(row => drawingColumns.map(c => row.cells.d[c.columnId].value as Drawing));
     return _.flatten(rowDrawings);
   }
 }

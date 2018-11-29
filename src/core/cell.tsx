@@ -1,52 +1,123 @@
 import * as _ from 'lodash';
 import {BaseModel} from './base_model';
-import {Formula, GridColumn} from './grid_column';
+import {computeFormula, Context, Formula} from './formula';
+import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {Namespace} from './resolver';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
-import {CellUpdateType} from './update_types';
+import {CellUpdateType, GridColumnUpdateType} from './update_types';
+import {Value, valuesAreEqual} from './value';
 
 interface CellData {
   column: GridColumn,
-  manualValue?: string,
+  getContextForFormula: (f: Formula) => Context,
+  manualValue?: Value,
 }
-
-// TODO - generalize this definition
-type Value = string;
 
 export interface CellUpdateDescriptor extends UpdateDescriptor<CellUpdateType> {}
 
 export class Cell extends BaseModel<CellUpdateDescriptor> {
   protected readonly namespace = Namespace.CELL;
-  private readonly _column: GridColumn;
+  private readonly column: GridColumn;
+  private context: Context;
+  private readonly getContextFromFormula: (f: Formula) => Context;
   private _manualValue?: Value;
+  private _value?: Value;
 
-  constructor(updateManager: UpdateManager, cellData: CellData) {
+  constructor(updateManager: UpdateManager, {column, getContextForFormula, manualValue}: CellData) {
     super(updateManager);
-    this._column = cellData.column;
-    this._manualValue = cellData.manualValue;
+    this.column = column;
+    this.getContextFromFormula = getContextForFormula;
+    this._manualValue = manualValue;
+
+    // updateContext expects a preexisting context to compare to
+    this.context = {};
+    this.updateContext();
+
+    // may require context to compute value
+    this._value = this.computeValue();
+
+    this.column.listenForUpdate(this, this.onColumnUpdated);
   }
 
-  // TODO - Implement value locally. Depend on GridColumn's formula and default value.
   public get value(): Value {
-    // but for now...
-    return this._manualValue!;
+    return this._value;
   }
 
-  public get manualValue(): Value | undefined {
+  public get manualValue(): Value {
     return this._manualValue;
   }
 
   public get formula(): Formula | undefined {
-    return this._column.formula;
+    return this.column.formula;
   }
 
-  public setManualValue(manualValue: Value | undefined) {
+  public setManualValue(manualValue: Value) {
     this._manualValue = manualValue;
-    const descriptor = {type: CellUpdateType.VALUE_UPDATED};
-    this.onSelfMutated([descriptor]);
+    const descriptors = this.refreshValueAndGetUpdateDescriptors();
+    if (descriptors.length) {
+      this.onSelfMutated(descriptors);
+    }
   }
 
   public setFormula(formula: Formula | undefined) {
-    this._column.setFormula(formula);
+    this.column.setFormula(formula);
+  }
+
+  private getContextDiff(oldContext: Context, newContext: Context): {removedIds: string[], addedIds: string[]} {
+    const oldKeys = Object.keys(oldContext);
+    const newKeys = Object.keys(newContext);
+    const removedIds = _.difference(oldKeys, newKeys);
+    const addedIds = _.difference(newKeys, oldKeys);
+    return {removedIds, addedIds};
+  }
+
+  private updateContext = () => {
+      const oldContext = this.context;
+      this.context = this.formula ? this.getContextFromFormula(this.formula) : {};
+      const {removedIds, addedIds} = this.getContextDiff(oldContext, this.context);
+      removedIds.forEach(id => oldContext[id].removeUpdateListener(this));
+      addedIds.forEach(id => this.context[id].listenForUpdate(this, this.onContextDependencyUpdated));
+  }
+
+  private onColumnUpdated = (epoch: number, updates: GridColumnUpdateDescriptor[]): CellUpdateDescriptor[] => {
+    const formulaUpdated = updates.some(u => u.type === GridColumnUpdateType.FORMULA_UPDATED);
+    if (formulaUpdated) {
+      this.updateContext();
+      const descriptors = this.refreshValueAndGetUpdateDescriptors();
+      if (descriptors.length) {
+        this.onDependencyUpdated(epoch);
+        return descriptors;
+      }
+    }
+    return [];
+  }
+
+  private onContextDependencyUpdated = (epoch: number, updates: CellUpdateDescriptor[]): CellUpdateDescriptor[] => {
+    const valueUpdated = updates.some(u => u.type === CellUpdateType.VALUE_UPDATED);
+    if (valueUpdated) {
+      const descriptors = this.refreshValueAndGetUpdateDescriptors();
+      if (descriptors.length) {
+        this.onDependencyUpdated(epoch);
+        return descriptors;
+      }
+    }
+    return [];
+  }
+
+  private refreshValueAndGetUpdateDescriptors = (): CellUpdateDescriptor[]  => {
+    const newValue = this.computeValue();
+    if (valuesAreEqual(this._value, newValue)) {
+      return [];
+    }
+    this._value = newValue;
+    return [{type: CellUpdateType.VALUE_UPDATED}];
+  }
+
+  private computeValue = (): Value => {
+    if (this.formula) {
+      return computeFormula(this.formula, this.context);
+    } else {
+      return this._manualValue;
+    }
   }
 }
