@@ -18,12 +18,11 @@ interface ColumnData {
 export interface ColumnUpdateDescriptor extends UpdateDescriptor<ColumnUpdateType> {}
 
 export class Column extends BaseModel<ColumnUpdateDescriptor> {
-  protected readonly namespace = Namespace.COLUMN;
   private _name: string;
   private _type: DataType;
 
-  constructor(updateManager: UpdateManager, {name, type}: ColumnData) {
-    super(updateManager);
+  constructor(updateManager: UpdateManager, {name, type}: ColumnData, namespace: Namespace = Namespace.COLUMN) {
+    super(updateManager, namespace);
     this._name = name;
     this._type = type;
   }

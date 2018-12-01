@@ -3,7 +3,6 @@ import {UpdateDescriptor, UpdateGraphNodeId, UpdateListener, UpdateManager} from
 
 export class BaseModel<D extends UpdateDescriptor> {
   public readonly id: string;
-  protected readonly namespace: Namespace = Namespace.MODEL;
   public epoch: number;
   protected readonly updateManager: UpdateManager;
   // The UpdateDescriptors here (not including D) must match per key-value pair.
@@ -11,8 +10,11 @@ export class BaseModel<D extends UpdateDescriptor> {
   public updateListeners: Map<UpdateGraphNodeId<UpdateDescriptor>,
     UpdateListener<this, D, UpdateDescriptor>> = new Map();
 
-  constructor(updateManager: UpdateManager) {
-    this.id = Resolver.generateUID(this.namespace);
+  // Child class properties are not initialized until after calling super() so
+  // the namespace must be overridden by passing it as a constructor parameter.
+  // By contract the base model must initialize the id.
+  constructor(updateManager: UpdateManager, namespace: Namespace = Namespace.MODEL) {
+    this.id = Resolver.generateUID(namespace);
     this.updateManager = updateManager;
     this.epoch = updateManager.epoch;
   }

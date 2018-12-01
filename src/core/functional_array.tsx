@@ -14,11 +14,10 @@ class BaseFunctionalArray<
     T extends JSPrimitive | BaseModel<TD>,
     TD extends UpdateDescriptor,
     > extends BaseModel<ArrayUpdateDescriptor<TD>> {
-  protected readonly namespace = Namespace.ARRAY;
   protected array: T[];
 
-  constructor(updateManager: UpdateManager, array: ROArray<T> = []) {
-    super(updateManager);
+  constructor(updateManager: UpdateManager, array: ROArray<T> = [], namespace: Namespace = Namespace.ARRAY) {
+    super(updateManager, namespace);
     this.array = array.slice();
   }
 

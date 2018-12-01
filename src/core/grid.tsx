@@ -20,15 +20,14 @@ export interface CellIndex {
 export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {}
 
 export class Grid extends BaseModel<GridUpdateDescriptor> {
-  protected readonly namespace = Namespace.GRID;
   // invariant - this grid's persisted data only changes from ancestors if its
   // parent's persisted data changes
   private readonly parent?: Grid;
   public readonly columns: Columns;
   public readonly rows: Rows;
 
-  constructor(updateManager: UpdateManager, parentGrid?: Grid) {
-    super(updateManager);
+  constructor(updateManager: UpdateManager, parentGrid?: Grid, namespace: Namespace = Namespace.GRID) {
+    super(updateManager, namespace);
     let columns: GridColumn[];
     let rows: Row[];
     if (parentGrid) {

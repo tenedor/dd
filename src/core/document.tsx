@@ -7,13 +7,12 @@ import {DocumentUpdateType} from './update_types';
 export interface DocumentUpdateDescriptor extends UpdateDescriptor<DocumentUpdateType> {}
 
 export class Document extends BaseModel<DocumentUpdateDescriptor> {
-  protected readonly namespace = Namespace.DOCUMENT;
   private readonly resolver: Resolver;
 
-  constructor() {
+  constructor(namespace: Namespace = Namespace.DOCUMENT) {
     // Unlike other models, Document creates its own UpdateManager. There is one
     // update manager per document and all other models receive this singleton.
-    super(new UpdateManager());
+    super(new UpdateManager(), namespace);
 
     this.resolver = new Resolver();
   }

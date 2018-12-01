@@ -16,15 +16,18 @@ interface CellData {
 export interface CellUpdateDescriptor extends UpdateDescriptor<CellUpdateType> {}
 
 export class Cell extends BaseModel<CellUpdateDescriptor> {
-  protected readonly namespace = Namespace.CELL;
   private readonly column: GridColumn;
   private context: Context;
   private readonly getContextFromFormula: (f: Formula) => Context;
   private _manualValue?: Value;
   private _value?: Value;
 
-  constructor(updateManager: UpdateManager, {column, getContextForFormula, manualValue}: CellData) {
-    super(updateManager);
+  constructor(
+    updateManager: UpdateManager,
+    {column, getContextForFormula, manualValue}: CellData,
+    namespace: Namespace = Namespace.CELL,
+  ) {
+    super(updateManager, namespace);
     this.column = column;
     this.getContextFromFormula = getContextForFormula;
     this._manualValue = manualValue;

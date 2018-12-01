@@ -18,14 +18,17 @@ interface GridColumnData {
 export interface GridColumnUpdateDescriptor extends UpdateDescriptor<GridColumnUpdateType> {}
 
 export class GridColumn extends BaseModel<GridColumnUpdateDescriptor> {
-  protected readonly namespace = Namespace.COLUMN;
   private readonly column: Column;
   private readonly parentGridColumn?: GridColumn;
   private _formula?: Formula;
   private _width: number;
 
-  constructor(updateManager: UpdateManager, {column, formula, parentGridColumn, width}: GridColumnData) {
-    super(updateManager);
+  constructor(
+    updateManager: UpdateManager,
+    {column, formula, parentGridColumn, width}: GridColumnData,
+    namespace: Namespace = Namespace.GRID_COLUMN,
+  ) {
+    super(updateManager, namespace);
     this.column = column;
     this.parentGridColumn = parentGridColumn;
     this._formula = formula;

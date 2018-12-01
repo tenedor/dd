@@ -36,11 +36,10 @@ export interface RowUpdateDescriptor extends UpdateDescriptor<RowUpdateType> {
 }
 
 export class Row extends BaseModel<RowUpdateDescriptor> {
-  protected readonly namespace = Namespace.ROW;
   public readonly cells: Cells;
 
-  constructor(updateManager: UpdateManager, cellsData: CellData[]) {
-    super(updateManager);
+  constructor(updateManager: UpdateManager, cellsData: CellData[], namespace: Namespace = Namespace.ROW) {
+    super(updateManager, namespace);
     this.cells = new FunctionalDictionaryM(updateManager, {});
     this.constructCells(cellsData);
     this.cells.listenForUpdate(this, this.onCellsUpdated);

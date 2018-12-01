@@ -16,11 +16,14 @@ class BaseFunctionalDictionary<
     T extends JSPrimitive | BaseModel<TD>,
     TD extends UpdateDescriptor,
     > extends BaseModel<DictionaryUpdateDescriptor<TD>> {
-  protected readonly namespace = Namespace.DICTIONARY;
   protected dictionary: Dictionary<T>;
 
-  constructor(updateManager: UpdateManager, dictionary: RODictionary<T> = {}) {
-    super(updateManager);
+  constructor(
+    updateManager: UpdateManager,
+    dictionary: RODictionary<T> = {},
+    namespace: Namespace = Namespace.DICTIONARY,
+  ) {
+    super(updateManager, namespace);
     this.dictionary = Object.assign({}, dictionary);
   }
 
