@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
+import {Drawing} from '../core/drawing_value';
 import {isDrawingFormula} from '../core/formula';
 import {Grid} from '../core/grid';
-import {Drawing} from '../core/value';
 
 export class DrawingController {
   private grids: Grid[];

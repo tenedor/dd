@@ -2,10 +2,11 @@ import * as _ from 'lodash';
 import * as React from 'react';
 import {parseFormula} from '../controllers/formula_parser';
 import {Cell} from '../core/cell';
+import {Drawing} from '../core/drawing_value';
 import {getFormulaAsString} from '../core/formula';
 import {Grid} from '../core/grid'; // only a type dependency
 import {GridColumn} from '../core/grid_column';
-import {Drawing, Value} from '../core/value';
+import {Value} from '../core/value';
 import {KeyCode} from '../utils/keycode';
 import {assert, assertUnreachable, classNames} from '../utils/utils';
 import {BaseComponent, BaseProps} from './base_component';

@@ -2,8 +2,9 @@ import * as _ from 'lodash';
 import {Dictionary} from '../utils/types';
 import {assert} from '../utils/utils';
 import {Cell} from './cell'; // only a type dependency
+import {Drawing, DrawingPrimitive} from './drawing_value';
 import {Grid} from './grid'; // only a type dependency
-import {Drawing, DrawingPrimitive, Value} from './value';
+import {Value} from './value';
 
 // limit to first-order formulas of column values
 export interface Formula {

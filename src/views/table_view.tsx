@@ -1,10 +1,11 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 import {Cell} from '../core/cell';
+import {Drawing} from '../core/drawing_value';
 import {getFormulaAsString} from '../core/formula';
 import {CellIndex, Grid} from '../core/grid';
 import {Row} from '../core/row';
-import {Drawing, Value} from '../core/value';
+import {Value} from '../core/value';
 import {KeyCode} from '../utils/keycode';
 import {BaseComponent, BaseProps} from './base_component';
 import {CellEditorView} from './cell_editor_view';
