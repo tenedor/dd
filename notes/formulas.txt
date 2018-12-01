@@ -127,3 +127,38 @@ Things that are coupled:
   e. Recalculation machinery: Beyond the considerations above, global
     optimizations to the recalculation machinery will be ignored for convenience
     and local optimizations can be deferred.
+
+
+* Calculating Cell Values - Second Pass *
+- Cell value is a function of formula and manual value. Need to know it for
+  drawing to screen and calculating cell values that depend on it through
+  formulas.
+- Want to store these values so we don't recalc many times for multiple
+  dependencies.
+- Want to follow the same invalidation that's used elsewhere until given a
+  compelling reason to optimize further.
+- Thus, cell value is or contains a model that depends on formula and on the
+  values the formula depends on.
+- Must avoid creating a dependency cycle unnecessarily since cycles are
+  rejected and all acyclic calculation graphs are permitted. This is achieved
+  if the cell value only depends on necessary dependencies of its formula.
+- Thus, formulas are GridColumn-level and do not depend on each other or on
+  cell values. Cell values depend on their formula, their manual value, and the
+  models (e.g. cells) that its formula in its context depends on.
+- So, need a way to determine contextual dependencies of a formula on a cell.
+- Need to rebind contextual dependencies when the formula changes. To bind
+  these, need to lookup models from formula and context.
+
+Implementation:
+  - Cell models:
+    - A cell value depends on changes to its column formula.
+    - A cell value with a column formula has a context that captures just those
+      values the formula references. The cell value depends on changes to this
+      context.
+  - Formulas:
+    - A formula has a display value that is consistent across cells in a column.
+    - A formula's display value depends on the display values of its references.
+      - E.g. displaying a column reference depends on the column's name.
+  - Cell editor:
+    - A cell editor depends on changes to the formula's display value.
+
