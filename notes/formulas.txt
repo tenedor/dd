@@ -162,3 +162,63 @@ Implementation:
   - Cell editor:
     - A cell editor depends on changes to the formula's display value.
 
+
+* Resolving Dependency Mutation *
+Efficiently resolving mutations to dependent objects is difficult in general. Here
+I construct a definition of higher-order dependency structure and show that when
+this structure exists, efficient resolution is straightforward. Higher-order
+dependency structure is general enough to represent non-recursive live-programming
+data structures including classical inheritance.
+
+An object's value may depend on other objects' values. A dependency relates a
+dependent object to a target object. A dependency is static if it is fixed at the
+dependent object's construction and dynamic otherwise. A generating dependency
+is a dependency where changes to the target's value cause changes to the object's
+dependencies. An object is classified as static if it never has dependencies and
+otherwise as static-dependent, dynamic-dependent, or generating-dynamic in
+increasing order of dynamism.
+
+Call objects and generating dependencies resolvables, or RBs for short. Mutating
+an object makes it unresolved and dependent RBs of an unresolved RB are likewise
+unresolved. In general, resolving an RB relies on all its dependencies being
+resolved in advance. If dependency cycles are forbidden, this can always be done.
+For simplicity, we have chosen to forbid dependency cycles.
+
+A resolution of a set of RBs resolves all RBs in the set. Its resolution set is
+the set of all RBs resolved during resolution, which are the unresolved RBs in the
+set and all unresolved RBs they recursively depend on. A resolution is simple if
+no RB in the resolution set depends on an unresolved RB. A resolution is static if
+no dependencies change during resolution. Both simple and static resolutions are
+straightforward to resolve efficiently. The algorithm for simple resolves each
+dependency in a single shot until none remain, and the algorithm for static
+recalculates unresolved objects in dependency order.
+
+Dependencies can change during resolution from causes originating external to the
+resolution or causes originating internal to the resolution. Thus a resolution is
+static if it is both externally and internally static. When resolution can be
+executed atomically with respect to mutations originating from outside the
+resolution, an externally static resolution can be guaranteed.
+
+A sufficient condition for an internally static resolution is an absence of
+unresolved generating dependencies in the resolution set. If every generating
+dependency in a resolution set depends only on resolved objects and the same is
+recursively true of any generating dependencies they generate, the generating
+dependencies may be simply resolved to reduce the original resolution set to an
+internally static one.
+
+Under certain circumstances objects can be partitioned at their construction so
+that any resolution may be broken into a sequence of simple resolutions and
+internally static resolutions. In particular, consider a partial ordering of
+partitions such that any object in a partition may take arbitrary dependencies on
+objects in earlier partitions and may take non-generating dependencies on objects
+in the same partition. Then any resolution can recursively pick a partition whose
+precursor partitions' objects are all resolved, simply resolve all generating
+dependencies in the partition, then internally-statically resolve all objects in
+the partition.
+
+This partitioning is analogous to higher-order logic: objects of nth-order may
+only take generating dependencies on objects of (n-1)th and lower order. Thus,
+call an object dependencies system with this structure a higher-order dependencies
+system. A higher-order dependencies system has the valuable feature that if
+externally static resolution can be guaranteed, it is always straightforward to
+efficiently resolve all objects.
