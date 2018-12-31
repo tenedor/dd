@@ -8,6 +8,7 @@ export enum Namespace {
   COLUMN = 'col',
   DICTIONARY = 'dict',
   DOCUMENT = 'doc',
+  FORMULA_CONTAINER = 'formula',
   GRID = 'grid',
   GRID_COLUMN = 'gridcol',
   MODEL = 'model',

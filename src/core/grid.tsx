@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 import {BaseModel} from './base_model';
 import {Column, DataType} from './column';
+import {FormulaContainer} from './formula_container';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {FunctionalKeyedArray} from './functional_keyed_array';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
@@ -76,7 +77,11 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
       {name: 'Radius', type: DataType.NUMBER},
       {name: 'Fill', type: DataType.STRING},
     ].map(columnData => new Column(this.updateManager, columnData));
-    const gridColumns = columns.map(column => new GridColumn(this.updateManager, {column, width: 100}));
+    const gridColumns = columns.map(column => new GridColumn(this.updateManager, {
+      column,
+      formulaContainer: new FormulaContainer(this.updateManager, {}),
+      width: 100,
+    }));
     const cIds = gridColumns.map(c => c.columnId);
 
     const circleColumn = new Column(this.updateManager, {
@@ -85,7 +90,11 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
     });
     const circleFormula = {name: "DrawCircle", args: [cIds[2], cIds[0], cIds[1], cIds[3]]};
     columns.push(circleColumn);
-    gridColumns.push(new GridColumn(this.updateManager, {column: circleColumn, formula: circleFormula, width: 150}));
+    gridColumns.push(new GridColumn(this.updateManager, {
+      column: circleColumn,
+      formulaContainer: new FormulaContainer(this.updateManager, {formula: circleFormula}),
+      width: 150,
+    }));
 
     return gridColumns;
   }

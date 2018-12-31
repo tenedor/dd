@@ -20,6 +20,11 @@ export const DictionaryUpdateType = {
 };
 export type DictionaryUpdateType = (typeof DictionaryUpdateType)[keyof typeof DictionaryUpdateType];
 
+export const FormulaContainerUpdateType = {
+  FORMULA_UPDATED: "FORMULA_UPDATED" as "FORMULA_UPDATED",
+};
+export type FormulaContainerUpdateType = (typeof FormulaContainerUpdateType)[keyof typeof FormulaContainerUpdateType];
+
 export const ColumnUpdateType = {
   NAME_UPDATED: "NAME_UPDATED" as "NAME_UPDATED",
 };
@@ -61,6 +66,7 @@ export type UpdateType =
   UndefinedUpdateType |
   ArrayUpdateType |
   DictionaryUpdateType |
+  FormulaContainerUpdateType |
   ColumnUpdateType |
   GridColumnUpdateType |
   CellUpdateType |
