@@ -21,7 +21,7 @@ export interface GridColumnUpdateDescriptor extends UpdateDescriptor<GridColumnU
 export class GridColumn extends BaseModel<GridColumnUpdateDescriptor> {
   private readonly column: Column;
   private readonly parentGridColumn?: GridColumn;
-  private _formulaContainer: FormulaContainer;
+  private readonly _formulaContainer: FormulaContainer;
   private _width: number;
 
   constructor(
@@ -42,9 +42,14 @@ export class GridColumn extends BaseModel<GridColumnUpdateDescriptor> {
     }
   }
 
-  public static fromParent(updateManager: UpdateManager, parentColumn: GridColumn): GridColumn {
-    const {column, _formulaContainer: formulaContainer, width} = parentColumn;
-    return new GridColumn(updateManager, {column, formulaContainer, parentGridColumn: parentColumn, width});
+  public static fromParent(updateManager: UpdateManager, parentGridColumn: GridColumn): GridColumn {
+    const {column, _formulaContainer: parentContainer, width} = parentGridColumn;
+    return new GridColumn(updateManager, {
+      column,
+      formulaContainer: new FormulaContainer(updateManager, {parentContainer}),
+      parentGridColumn,
+      width,
+    });
   }
 
   public get columnId(): string {

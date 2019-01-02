@@ -6,31 +6,31 @@ import {FormulaContainerUpdateType} from './update_types';
 
 interface FormulaContainerData {
   formula?: Formula;
-  parentFormula?: FormulaContainer;
+  parentContainer?: FormulaContainer;
 }
 
 export interface FormulaContainerUpdateDescriptor extends UpdateDescriptor<FormulaContainerUpdateType> {}
 
 export class FormulaContainer extends BaseModel<FormulaContainerUpdateDescriptor> {
   private _formula?: Formula;
-  private readonly parentFormula?: FormulaContainer;
+  private readonly parentContainer?: FormulaContainer;
 
   constructor(
     updateManager: UpdateManager,
-    {formula, parentFormula}: FormulaContainerData,
+    {formula, parentContainer}: FormulaContainerData,
     namespace: Namespace = Namespace.FORMULA_CONTAINER,
   ) {
     super(updateManager, namespace);
     this._formula = formula;
-    this.parentFormula = parentFormula;
+    this.parentContainer = parentContainer;
 
-    if (this.parentFormula) {
-      this.parentFormula.listenForUpdate(this, this.onParentFormulaUpdated);
+    if (this.parentContainer) {
+      this.parentContainer.listenForUpdate(this, this.onParentContainerUpdated);
     }
   }
 
   public get formula(): Formula | undefined {
-    return this._formula || (this.parentFormula ? this.parentFormula.formula : undefined);
+    return this._formula || (this.parentContainer ? this.parentContainer.formula : undefined);
   }
 
   public setFormula = (formula: Formula | undefined) => {
@@ -39,7 +39,7 @@ export class FormulaContainer extends BaseModel<FormulaContainerUpdateDescriptor
     this.onSelfMutated([descriptor]);
   }
 
-  private onParentFormulaUpdated = (
+  private onParentContainerUpdated = (
     epoch: number,
     updates: FormulaContainerUpdateDescriptor[],
   ): FormulaContainerUpdateDescriptor[] => {
