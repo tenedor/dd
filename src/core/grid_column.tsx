@@ -60,6 +60,10 @@ export class GridColumn extends BaseModel<GridColumnUpdateDescriptor> {
     return this._formulaContainer.formula;
   }
 
+  public get formulaContainer(): FormulaContainer {
+    return this._formulaContainer;
+  }
+
   public get name(): string {
     return this.column.name;
   }

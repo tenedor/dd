@@ -1,10 +1,11 @@
 import * as _ from 'lodash';
 import {BaseModel} from './base_model';
 import {computeFormula, Context, Formula} from './formula';
+import {FormulaContainer, FormulaContainerUpdateDescriptor} from './formula_container';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {Namespace} from './resolver';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
-import {CellUpdateType, GridColumnUpdateType} from './update_types';
+import {CellUpdateType, FormulaContainerUpdateType} from './update_types';
 import {Value, valuesAreEqual} from './value';
 
 interface CellData {
@@ -18,6 +19,7 @@ export interface CellUpdateDescriptor extends UpdateDescriptor<CellUpdateType> {
 export class Cell extends BaseModel<CellUpdateDescriptor> {
   private readonly column: GridColumn;
   private context: Context;
+  private readonly formulaContainer: FormulaContainer;
   private readonly getContextFromFormula: (f: Formula) => Context;
   private _manualValue?: Value;
   private _value?: Value;
@@ -29,6 +31,7 @@ export class Cell extends BaseModel<CellUpdateDescriptor> {
   ) {
     super(updateManager, namespace);
     this.column = column;
+    this.formulaContainer = column.formulaContainer;
     this.getContextFromFormula = getContextForFormula;
     this._manualValue = manualValue;
 
@@ -40,6 +43,7 @@ export class Cell extends BaseModel<CellUpdateDescriptor> {
     this._value = this.computeValue();
 
     this.column.listenForUpdate(this, this.onColumnUpdated);
+    this.formulaContainer.listenForUpdate(this, this.onFormulaContainerUpdated);
   }
 
   public get value(): Value {
@@ -83,7 +87,12 @@ export class Cell extends BaseModel<CellUpdateDescriptor> {
   }
 
   private onColumnUpdated = (epoch: number, updates: GridColumnUpdateDescriptor[]): CellUpdateDescriptor[] => {
-    const formulaUpdated = updates.some(u => u.type === GridColumnUpdateType.FORMULA_UPDATED);
+    // for now do nothing
+    return [];
+  }
+
+  private onFormulaContainerUpdated = (epoch: number, updates: FormulaContainerUpdateDescriptor[]): CellUpdateDescriptor[] => {
+    const formulaUpdated = updates.some(u => u.type === FormulaContainerUpdateType.FORMULA_UPDATED);
     if (formulaUpdated) {
       this.updateContext();
       const descriptors = this.refreshValueAndGetUpdateDescriptors();
