@@ -1,7 +1,7 @@
 import {BaseModel} from './base_model';
 import {Formula} from './formula';
 import {Namespace} from './resolver';
-import {UpdateDescriptor, UpdateManager} from './update_manager';
+import {DependencyGraphPartitionIndex, UpdateDescriptor, UpdateManager} from './update_manager';
 import {FormulaContainerUpdateType} from './update_types';
 
 interface FormulaContainerData {
@@ -12,6 +12,7 @@ interface FormulaContainerData {
 export interface FormulaContainerUpdateDescriptor extends UpdateDescriptor<FormulaContainerUpdateType> {}
 
 export class FormulaContainer extends BaseModel<FormulaContainerUpdateDescriptor> {
+  public readonly dependencyGraphPartitionIndex = DependencyGraphPartitionIndex.FORMULA;
   private _formula?: Formula;
   private readonly parentContainer?: FormulaContainer;
 

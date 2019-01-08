@@ -4,8 +4,8 @@ import {computeFormula, Context, Formula} from './formula';
 import {FormulaContainer, FormulaContainerUpdateDescriptor} from './formula_container';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {Namespace} from './resolver';
-import {UpdateDescriptor, UpdateManager} from './update_manager';
-import {CellUpdateType, FormulaContainerUpdateType} from './update_types';
+import {DependencySetUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
+import {CellUpdateType, DependencySetUpdateType, FormulaContainerUpdateType} from './update_types';
 import {Value, valuesAreEqual} from './value';
 
 interface CellData {
@@ -43,7 +43,7 @@ export class Cell extends BaseModel<CellUpdateDescriptor> {
     this._value = this.computeValue();
 
     this.column.listenForUpdate(this, this.onColumnUpdated);
-    this.formulaContainer.listenForUpdate(this, this.onFormulaContainerUpdated);
+    this.formulaContainer.listenForDependencyUpdate(this, this.onFormulaContainerUpdated);
   }
 
   public get value(): Value {
@@ -78,12 +78,16 @@ export class Cell extends BaseModel<CellUpdateDescriptor> {
     return {removedIds, addedIds};
   }
 
-  private updateContext = () => {
+  private updateContext = (): DependencySetUpdateDescriptor[] => {
       const oldContext = this.context;
       this.context = this.formula ? this.getContextFromFormula(this.formula) : {};
       const {removedIds, addedIds} = this.getContextDiff(oldContext, this.context);
-      removedIds.forEach(id => oldContext[id].removeUpdateListener(this));
-      addedIds.forEach(id => this.context[id].listenForUpdate(this, this.onContextDependencyUpdated));
+      if (removedIds.length || addedIds.length) {
+        removedIds.forEach(id => oldContext[id].removeUpdateListener(this));
+        addedIds.forEach(id => this.context[id].listenForUpdate(this, this.onContextDependencyUpdated));
+        return [{type: DependencySetUpdateType.DEPENDENCY_SET_UPDATED}];
+      }
+      return [];
   }
 
   private onColumnUpdated = (epoch: number, updates: GridColumnUpdateDescriptor[]): CellUpdateDescriptor[] => {
@@ -91,15 +95,19 @@ export class Cell extends BaseModel<CellUpdateDescriptor> {
     return [];
   }
 
-  private onFormulaContainerUpdated = (epoch: number, updates: FormulaContainerUpdateDescriptor[]): CellUpdateDescriptor[] => {
+  private onFormulaContainerUpdated = (updates: FormulaContainerUpdateDescriptor[]): DependencySetUpdateDescriptor[] => {
     const formulaUpdated = updates.some(u => u.type === FormulaContainerUpdateType.FORMULA_UPDATED);
-    if (formulaUpdated) {
-      this.updateContext();
-      const descriptors = this.refreshValueAndGetUpdateDescriptors();
-      if (descriptors.length) {
-        this.onDependencyUpdated(epoch);
-        return descriptors;
-      }
+    return formulaUpdated ? this.updateContext() : [];
+  }
+
+  public onDependencySetUpdated = (
+    epoch: number,
+    updates: DependencySetUpdateDescriptor[],
+  ): CellUpdateDescriptor[] => {
+    const descriptors = this.refreshValueAndGetUpdateDescriptors();
+    if (descriptors.length) {
+      this.onDependencyUpdated(epoch);
+      return descriptors;
     }
     return [];
   }

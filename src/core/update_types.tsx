@@ -6,6 +6,11 @@ export const UndefinedUpdateType = {
 };
 export type UndefinedUpdateType = (typeof UndefinedUpdateType)[keyof typeof UndefinedUpdateType];
 
+export const DependencySetUpdateType = {
+  DEPENDENCY_SET_UPDATED: "DEPENDENCY_SET_UPDATED" as "DEPENDENCY_SET_UPDATED",
+};
+export type DependencySetUpdateType = (typeof DependencySetUpdateType)[keyof typeof DependencySetUpdateType];
+
 export const ArrayUpdateType = {
   ELEMENT_DELETED: "ELEMENT_DELETED" as "ELEMENT_DELETED",
   ELEMENT_INSERTED: "ELEMENT_INSERTED" as "ELEMENT_INSERTED",
@@ -64,6 +69,7 @@ export type DocumentUpdateType = (typeof DocumentUpdateType)[keyof typeof Docume
 
 export type UpdateType =
   UndefinedUpdateType |
+  DependencySetUpdateType |
   ArrayUpdateType |
   DictionaryUpdateType |
   FormulaContainerUpdateType |
