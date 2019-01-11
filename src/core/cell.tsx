@@ -43,7 +43,11 @@ export class Cell extends BaseModel<CellUpdateDescriptor> {
     this._value = this.computeValue();
 
     this.column.listenForUpdate(this, this.onColumnUpdated);
-    this.formulaContainer.listenForDependencyUpdate(this, this.onFormulaContainerUpdated);
+
+    // Need to listen to the formula container for dependency updates but this
+    // is not enough: the formula might change without changing dependencies.
+    this.formulaContainer.listenForDependencyUpdate(this, this.onFormulaContainerUpdatedDependencies);
+    this.formulaContainer.listenForUpdate(this, this.onFormulaContainerUpdated);
   }
 
   public get value(): Value {
@@ -95,20 +99,35 @@ export class Cell extends BaseModel<CellUpdateDescriptor> {
     return [];
   }
 
-  private onFormulaContainerUpdated = (updates: FormulaContainerUpdateDescriptor[]): DependencySetUpdateDescriptor[] => {
+  private onFormulaContainerUpdatedDependencies = (
+    updates: FormulaContainerUpdateDescriptor[],
+  ): DependencySetUpdateDescriptor[] => {
     const formulaUpdated = updates.some(u => u.type === FormulaContainerUpdateType.FORMULA_UPDATED);
     return formulaUpdated ? this.updateContext() : [];
+  }
+
+  private onFormulaContainerUpdated = (
+    epoch: number,
+    updates: FormulaContainerUpdateDescriptor[],
+  ): CellUpdateDescriptor[] => {
+    const formulaUpdated = updates.some(u => u.type === FormulaContainerUpdateType.FORMULA_UPDATED);
+    if (formulaUpdated) {
+      const descriptors = this.refreshValueAndGetUpdateDescriptors();
+      if (descriptors.length) {
+        this.onDependencyUpdated(epoch);
+        return descriptors;
+      }
+    }
+    return [];
   }
 
   public onDependencySetUpdated = (
     epoch: number,
     updates: DependencySetUpdateDescriptor[],
   ): CellUpdateDescriptor[] => {
-    const descriptors = this.refreshValueAndGetUpdateDescriptors();
-    if (descriptors.length) {
-      this.onDependencyUpdated(epoch);
-      return descriptors;
-    }
+    // For now all dependency set updates are formula container updates. These
+    // are already handled by the update-cycle listener on formula container so
+    // no need to handle them here.
     return [];
   }
 
