@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 import {BaseModel} from './base_model';
 import {Column, DataType} from './column';
+import {FormulaName} from './formula';
 import {FormulaContainer} from './formula_container';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {FunctionalKeyedArray} from './functional_keyed_array';
@@ -88,7 +89,7 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
       name: 'Draw Circle',
       type: DataType.DRAWING,
     });
-    const circleFormula = {name: "DrawCircle", args: [cIds[2], cIds[0], cIds[1], cIds[3]]};
+    const circleFormula = {name: FormulaName.DRAW_CIRCLE, args: [cIds[2], cIds[0], cIds[1], cIds[3]]};
     columns.push(circleColumn);
     gridColumns.push(new GridColumn(this.updateManager, {
       column: circleColumn,
