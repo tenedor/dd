@@ -42,13 +42,17 @@ export class GridColumn extends BaseModel<GridColumnUpdateDescriptor> {
     }
   }
 
-  public static fromParent(updateManager: UpdateManager, parentGridColumn: GridColumn): GridColumn {
-    const {column, _formulaContainer: parentContainer, width} = parentGridColumn;
+  public static fromParent(
+    updateManager: UpdateManager,
+    parentGridColumn: GridColumn,
+    {formula, width}: {formula?: Formula, width?: number},
+  ): GridColumn {
+    const {column, _formulaContainer: parentContainer, width: _width} = parentGridColumn;
     return new GridColumn(updateManager, {
       column,
-      formulaContainer: new FormulaContainer(updateManager, {parentContainer}),
+      formulaContainer: new FormulaContainer(updateManager, {formula, parentContainer}),
       parentGridColumn,
-      width,
+      width: width || _width,
     });
   }
 

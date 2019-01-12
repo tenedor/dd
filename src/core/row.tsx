@@ -58,13 +58,14 @@ export class Row extends BaseModel<RowUpdateDescriptor> {
   private constructCells = (cellsData: CellData[]) => {
     // Must order cell construction by formula dependencies
     const dependenciesMap = this.getCellsDataDependencyMap(cellsData);
-    cellsData.sort((c1, c2) => {
+    const sortedCellsData = cellsData.slice(0);
+    sortedCellsData.sort((c1, c2) => {
       const id1 = c1.column.columnId;
       const id2 = c2.column.columnId;
       const cell2DependsOnCell1 = dependenciesMap[id2].dependencies.indexOf(id1) > -1;
       return cell2DependsOnCell1 ? -1 : (dependenciesMap[id1].dependencies.indexOf(id2) > -1 ? 1 : 0);
     });
-    cellsData.forEach(({column, manualValue}) => this.cells.set(column.columnId, new Cell(this.updateManager, {
+    sortedCellsData.forEach(({column, manualValue}) => this.cells.set(column.columnId, new Cell(this.updateManager, {
       column,
       getContextForFormula: this.getContextForFormula,
       manualValue,

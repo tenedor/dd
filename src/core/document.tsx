@@ -1,4 +1,6 @@
+import * as _ from 'lodash';
 import {BaseModel} from './base_model';
+import {getBuildInGrids} from './built_in_grids';
 import {Grid, GridUpdateDescriptor} from './grid';
 import {Namespace, Resolver} from './resolver';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
@@ -18,13 +20,11 @@ export class Document extends BaseModel<DocumentUpdateDescriptor> {
   }
 
   public createGrids = () => {
-    const grid1 = new Grid(this.updateManager);
-    grid1.listenForUpdate(this, this.onGridUpdated);
-    this.resolver.addGrid(grid1);
-
-    const grid2 = new Grid(this.updateManager, grid1);
-    grid2.listenForUpdate(this, this.onGridUpdated);
-    this.resolver.addGrid(grid2);
+    const grids = getBuildInGrids(this.updateManager);
+    grids.forEach(grid => {
+      grid.listenForUpdate(this, this.onGridUpdated);
+      this.resolver.addGrid(grid);
+    });
 
     const descriptor = {type: DocumentUpdateType.GRID_UPDATED};
     this.onSelfMutated([descriptor]);
