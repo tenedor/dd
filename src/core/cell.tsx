@@ -1,97 +1,106 @@
 import * as _ from 'lodash';
-import {BaseModel} from './base_model';
-import {computeFormula, Context, Formula} from './formula';
-import {FormulaContainer, FormulaContainerUpdateDescriptor} from './formula_container';
+import {RODictionary} from 'src/utils/types';
+import {BaseModel, ModelType} from './base_model';
+import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
-import {Namespace} from './resolver';
+import {Identifier, Type} from './language/types';
+import {DictValue, Value, ValueUtils} from './language/values';
+import {RowContext} from './row';
 import {DependencySetUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
-import {CellUpdateType, DependencySetUpdateType, FormulaContainerUpdateType} from './update_types';
-import {Value, valuesAreEqual} from './value';
+import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType} from './update_types';
 
-interface CellData {
-  column: GridColumn,
-  getContextForFormula: (f: Formula) => Context,
-  manualValue?: Value,
+interface CellData<T extends Type> {
+  column: GridColumn<T>,
+  getRowContext: () => RowContext,
+  gridId: Identifier,
+  manualValue?: Value<T>,
 }
 
 export interface CellUpdateDescriptor extends UpdateDescriptor<CellUpdateType> {}
 
-export class Cell extends BaseModel<CellUpdateDescriptor> {
-  private readonly column: GridColumn;
-  private context: Context;
-  private readonly formulaContainer: FormulaContainer;
-  private readonly getContextFromFormula: (f: Formula) => Context;
-  private _manualValue?: Value;
-  private _value?: Value;
+export class Cell<T extends Type = Type> extends BaseModel<CellUpdateDescriptor> {
+  private readonly column: GridColumn<T>;
+  private readonly getRowContext: () => RowContext;
+  private readonly gridId: Identifier;
+  private dependencies: RODictionary<Cell>;
+  private manualValue?: Value<T>;
+  private _value: Value<T>;
 
   constructor(
     updateManager: UpdateManager,
-    {column, getContextForFormula, manualValue}: CellData,
-    namespace: Namespace = Namespace.CELL,
+    {column, getRowContext, gridId, manualValue}: CellData<T>,
+    namespace: ModelType = ModelType.CELL,
   ) {
     super(updateManager, namespace);
     this.column = column;
-    this.formulaContainer = column.formulaContainer;
-    this.getContextFromFormula = getContextForFormula;
-    this._manualValue = manualValue;
+    this.getRowContext = getRowContext;
+    this.gridId = gridId;
+    this.manualValue = manualValue;
 
-    // updateContext expects a preexisting context to compare to
-    this.context = {};
-    this.updateContext();
+    // updateDependencies expects a preexisting dependencies object to compare to
+    this.dependencies = {};
+    this.updateDependencies();
 
-    // may require context to compute value
     this._value = this.computeValue();
 
     this.column.listenForUpdate(this, this.onColumnUpdated);
 
     // Need to listen to the formula container for dependency updates but this
     // is not enough: the formula might change without changing dependencies.
-    this.formulaContainer.listenForDependencyUpdate(this, this.onFormulaContainerUpdatedDependencies);
-    this.formulaContainer.listenForUpdate(this, this.onFormulaContainerUpdated);
+    this.formulaExpression.listenForDependencyUpdate(this, this.onFormulaExpressionUpdatedDependencies);
+    this.formulaExpression.listenForUpdate(this, this.onFormulaExpressionUpdated);
   }
 
   public get value(): Value {
     return this._value;
   }
 
-  public get manualValue(): Value {
-    return this._manualValue;
+  public get formulaExpression(): FormulaExpression<T> {
+    return this.column.formulaExpression;
   }
 
-  public get formula(): Formula | undefined {
-    return this.column.formula;
+  private getDefaultValue(): Value<T> {
+    if (ValueUtils.supportsDefaultValue(this.column.type)) {
+      return ValueUtils.getDefaultValue(this.column.type);
+    }
+    throw new Error(`Default value is not supported for type ${this.column.type}`);
   }
 
-  public setManualValue(manualValue: Value) {
-    this._manualValue = manualValue;
+  public setManualValue(manualValue: Value<T>) {
+    this.manualValue = manualValue;
     const descriptors = this.refreshValueAndGetUpdateDescriptors();
     if (descriptors.length) {
       this.onSelfMutated(descriptors);
     }
   }
 
-  public setFormula(formula: Formula | undefined) {
-    this.column.setFormula(formula);
-  }
-
-  private getContextDiff(oldContext: Context, newContext: Context): {removedIds: string[], addedIds: string[]} {
-    const oldKeys = Object.keys(oldContext);
-    const newKeys = Object.keys(newContext);
+  private getDependenciesDiff(oldDependencies: RODictionary<Cell>, newDependencies: RODictionary<Cell>): {removedIds: string[], addedIds: string[]} {
+    const oldKeys = Object.keys(oldDependencies);
+    const newKeys = Object.keys(newDependencies);
     const removedIds = _.difference(oldKeys, newKeys);
     const addedIds = _.difference(newKeys, oldKeys);
     return {removedIds, addedIds};
   }
 
-  private updateContext = (): DependencySetUpdateDescriptor[] => {
-      const oldContext = this.context;
-      this.context = this.formula ? this.getContextFromFormula(this.formula) : {};
-      const {removedIds, addedIds} = this.getContextDiff(oldContext, this.context);
-      if (removedIds.length || addedIds.length) {
-        removedIds.forEach(id => oldContext[id].removeUpdateListener(this));
-        addedIds.forEach(id => this.context[id].listenForUpdate(this, this.onContextDependencyUpdated));
-        return [{type: DependencySetUpdateType.DEPENDENCY_SET_UPDATED}];
-      }
-      return [];
+  private resolveDependencies = (): RODictionary<Cell> => {
+    const rowContext = this.getRowContext();
+    const allDependencies = this.formulaExpression.dependencies.map(d => d.id);
+    const cellDependencyIds = _.intersection(allDependencies, Object.keys(rowContext));
+    const dependenciesDict= {};
+    cellDependencyIds.forEach(id => dependenciesDict[id] = rowContext[id]);
+    return dependenciesDict;
+  }
+
+  private updateDependencies = (): DependencySetUpdateDescriptor[] => {
+    const oldDependencies = this.dependencies;
+    this.dependencies = this.resolveDependencies();
+    const {removedIds, addedIds} = this.getDependenciesDiff(oldDependencies, this.dependencies);
+    if (removedIds.length || addedIds.length) {
+      removedIds.forEach(id => oldDependencies[id].removeUpdateListener(this));
+      addedIds.forEach(id => this.dependencies[id].listenForUpdate(this, this.onContextDependencyUpdated));
+      return [{type: DependencySetUpdateType.DEPENDENCY_SET_UPDATED}];
+    }
+    return [];
   }
 
   private onColumnUpdated = (epoch: number, updates: GridColumnUpdateDescriptor[]): CellUpdateDescriptor[] => {
@@ -99,18 +108,18 @@ export class Cell extends BaseModel<CellUpdateDescriptor> {
     return [];
   }
 
-  private onFormulaContainerUpdatedDependencies = (
-    updates: FormulaContainerUpdateDescriptor[],
+  private onFormulaExpressionUpdatedDependencies = (
+    updates: FormulaExpressionUpdateDescriptor[],
   ): DependencySetUpdateDescriptor[] => {
-    const formulaUpdated = updates.some(u => u.type === FormulaContainerUpdateType.FORMULA_UPDATED);
-    return formulaUpdated ? this.updateContext() : [];
+    const formulaUpdated = updates.some(u => u.type === FormulaExpressionUpdateType.FORMULA_EXPRESSION_UPDATED);
+    return formulaUpdated ? this.updateDependencies() : [];
   }
 
-  private onFormulaContainerUpdated = (
+  private onFormulaExpressionUpdated = (
     epoch: number,
-    updates: FormulaContainerUpdateDescriptor[],
+    updates: FormulaExpressionUpdateDescriptor[],
   ): CellUpdateDescriptor[] => {
-    const formulaUpdated = updates.some(u => u.type === FormulaContainerUpdateType.FORMULA_UPDATED);
+    const formulaUpdated = updates.some(u => u.type === FormulaExpressionUpdateType.FORMULA_EXPRESSION_UPDATED);
     if (formulaUpdated) {
       const descriptors = this.refreshValueAndGetUpdateDescriptors();
       if (descriptors.length) {
@@ -145,18 +154,25 @@ export class Cell extends BaseModel<CellUpdateDescriptor> {
 
   private refreshValueAndGetUpdateDescriptors = (): CellUpdateDescriptor[]  => {
     const newValue = this.computeValue();
-    if (valuesAreEqual(this._value, newValue)) {
+    if (ValueUtils.areEqual(this._value, newValue)) {
       return [];
     }
     this._value = newValue;
     return [{type: CellUpdateType.VALUE_UPDATED}];
   }
 
-  private computeValue = (): Value => {
-    if (this.formula) {
-      return computeFormula(this.formula, this.context);
+  private getDependencyValues = (): DictValue => {
+    const cellValues = _.mapValues(this.dependencies, c => c.value);
+    return ValueUtils.dictOf(cellValues, this.gridId);
+  }
+
+  private computeValue = (): Value<T> => {
+    if (this.formulaExpression.isSet) {
+      return this.formulaExpression.eval(this.getDependencyValues());
+    } else if (this.manualValue !== undefined) {
+      return this.manualValue;
     } else {
-      return this._manualValue;
+      return this.getDefaultValue();
     }
   }
 }

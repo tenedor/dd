@@ -1,9 +1,21 @@
-import {assert} from 'src/utils/utils';
-import {Namespace, Resolver} from './resolver';
+import {assert, generateUID} from 'src/utils/utils';
 import {
   DependencyGraphPartitionIndex, DependencySetUpdateDescriptor, DependencySetUpdateListener, DependencyUpdateListener,
   UpdateDescriptor, UpdateGraphNodeId, UpdateListener, UpdateManager,
 } from './update_manager';
+
+export enum ModelType {
+  ARRAY = 'arr',
+  CELL = 'cell',
+  COLUMN = 'col',
+  DICTIONARY = 'dict',
+  DOCUMENT = 'doc',
+  FORMULA_EXPRESSION = 'formula-expr',
+  GRID = 'grid',
+  GRID_COLUMN = 'gridcol',
+  MODEL = 'model',
+  ROW = 'row',
+}
 
 export class BaseModel<D extends UpdateDescriptor> {
   public readonly id: string;
@@ -20,8 +32,8 @@ export class BaseModel<D extends UpdateDescriptor> {
   // Child class properties are not initialized until after calling super() so
   // the namespace must be overridden by passing it as a constructor parameter.
   // By contract the base model must initialize the id.
-  constructor(updateManager: UpdateManager, namespace: Namespace = Namespace.MODEL) {
-    this.id = Resolver.generateUID(namespace);
+  constructor(updateManager: UpdateManager, namespace: ModelType = ModelType.MODEL) {
+    this.id = generateUID(namespace);
     this.updateManager = updateManager;
     this.epoch = updateManager.epoch;
   }

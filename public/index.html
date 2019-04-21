@@ -6,6 +6,128 @@
     <meta name="theme-color" content="#000000">
     <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico">
     <title>Dynamic Drawings</title>
+    <!--script src="ohm/grammar.ohm" type="text/ohm-js"-->
+    <script type="text/ohm-js">
+Formula {
+  Exp
+    = LambdaExp
+
+  LambdaExp
+    = ident "->" Exp  -- lambda
+    | AndOrExp
+
+  AndOrExp
+    = AndOrExp "&" EqExp  -- and
+    | AndOrExp "|" EqExp  -- or
+    | EqExp
+
+  EqExp
+    = EqExp "=="  RelExp  -- eq
+    | EqExp "!=" RelExp   -- neq
+    | RelExp
+
+  RelExp
+    = RelExp "<" AddExp   -- lt
+    | RelExp "<=" AddExp  -- lte
+    | RelExp ">" AddExp   -- gt
+    | RelExp ">=" AddExp  -- gte
+    | AddExp
+
+  AddExp
+    = AddExp "+" MulExp  -- plus
+    | AddExp "-" MulExp  -- minus
+    | MulExp
+
+  MulExp
+    = MulExp "*" UnaryOpExp  -- times
+    | MulExp "/" UnaryOpExp  -- divide
+    | MulExp "%" UnaryOpExp  -- mod
+    | UnaryOpExp
+
+  UnaryOpExp
+    = "!" UnaryOpExp  -- not
+    | "-" UnaryOpExp  -- negate
+    | IndexExp
+
+  IndexExp
+    = IndexExp #"[" Exp "]"  -- index
+    | IndexExp #"." #ident   -- project
+    | CallExp
+
+  CallExp
+    = ident #"(" ListOf<Assignment, ","> ")"  -- call
+    | IdentExp
+
+  Assignment
+    = ident "=" Exp
+
+  IdentExp
+    = ident  -- ident
+    | GroupExp
+
+  GroupExp
+    = "(" Exp ")"               -- parens
+    | "[" ListOf<Exp, ","> "]"  -- list
+    | primitive
+
+
+  // Lexical rules
+
+  primitive
+    = number   -- number
+    | boolean  -- boolean
+    | string   -- string
+
+  number
+    = digit+ ("." digit+)?
+
+  boolean
+    = trueK   -- true
+    | falseK  -- false
+
+  trueK
+    = "true" ~identChar
+
+  falseK
+    = "false" ~identChar
+
+  string
+    = "\"" stringChar+ "\""
+
+  stringChar
+    = ~stringReservedChar any  -- char
+    | "\\" any                 -- escaped
+
+  stringReservedChar
+    = "\\"
+    | "\""
+
+  ident
+    = unquotedIdent  -- unquoted
+    | quotedIdent    -- quoted
+
+  unquotedIdent
+    = ~keyword letter identChar*
+
+  identChar
+    = alnum
+    | "_"
+
+  quotedIdent
+    = "'" quotedIdentChar+ "'"
+
+  quotedIdentChar
+    = ~quotedIdentReservedChar any  -- char
+    | "\\" any                      -- escaped
+
+  quotedIdentReservedChar
+    = "\\"
+    | "'"
+
+  keyword
+    = trueK | falseK
+}
+    </script>
   </head>
   <body>
     <div id="root"></div>

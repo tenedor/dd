@@ -1,9 +1,10 @@
 import * as _ from 'lodash';
-import {BaseModel} from './base_model';
+import {BaseModel, ModelType} from './base_model';
+import {FormulaEnvironment} from './formula_environment';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {FunctionalKeyedArray} from './functional_keyed_array';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
-import {Namespace} from './resolver';
+import {NameResolver, ValueNamespace, ValueReference} from './language/reference';
 import {Row, RowUpdateDescriptor} from './row';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {GridUpdateType} from './update_types';
@@ -16,31 +17,66 @@ export interface CellIndex {
   rowIndex: number,
 }
 
-interface GridData {
-  columns: GridColumn[],
-  rows: Row[],
+export interface GridData {
   parentGrid?: Grid,
 }
 
 export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {}
 
 export class Grid extends BaseModel<GridUpdateDescriptor> {
+  private readonly formulaEnvironment: FormulaEnvironment;
   // invariant - this grid's persisted data only changes from ancestors if its
   // parent's persisted data changes
   private readonly parent?: Grid;
   public readonly columns: GridColumns;
   public readonly rows: Rows;
 
-  constructor(updateManager: UpdateManager, {columns, rows, parentGrid}: GridData, namespace: Namespace = Namespace.GRID) {
+  constructor(
+    updateManager: UpdateManager,
+    formulaEnvironment: FormulaEnvironment,
+    {parentGrid}: GridData,
+    namespace: ModelType = ModelType.GRID,
+  ) {
     super(updateManager, namespace);
+    this.formulaEnvironment = formulaEnvironment;
     if (parentGrid) {
       this.parent = parentGrid;
       this.parent.listenForUpdate(this, this.onParentGridUpdated);
     }
-    this.columns = new FunctionalKeyedArray(updateManager, columns, 'columnId');
+    this.columns = new FunctionalKeyedArray(updateManager, [], 'columnId');
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
-    this.rows = new FunctionalArrayM(updateManager, rows);
+    this.rows = new FunctionalArrayM(updateManager, []);
     this.rows.listenForUpdate(this, this.onRowsUpdated);
+  }
+
+  public get resolver(): NameResolver {
+    return this.formulaEnvironment.resolver;
+  }
+
+  public getNamespace = (): ValueNamespace => {
+    return {
+      getReferenceForName: (name: string) => {
+        const column = this.getColumnByName(name);
+        if (!column) {
+          return undefined;
+        }
+        const {columnId: id, type} = column;
+        return new ValueReference(id, type, (r: NameResolver) => column.name);
+      },
+      getNameForReference: (columnId: string) => this.columns.d[columnId] && this.columns.d[columnId].name,
+    }
+  }
+
+  private getColumnByName = (name: string): GridColumn | undefined => {
+    return this.columns.a.find(c => c.name === name);
+  }
+
+  public addColumns = (columns: GridColumn[]) => {
+    this.columns.pushAll(columns);
+  }
+
+  public addRows = (rows: Row[]) => {
+    this.rows.pushAll(rows);
   }
 
   private onColumnsUpdated = (

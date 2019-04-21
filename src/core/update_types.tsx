@@ -25,10 +25,11 @@ export const DictionaryUpdateType = {
 };
 export type DictionaryUpdateType = (typeof DictionaryUpdateType)[keyof typeof DictionaryUpdateType];
 
-export const FormulaContainerUpdateType = {
-  FORMULA_UPDATED: "FORMULA_UPDATED" as "FORMULA_UPDATED",
+export const FormulaExpressionUpdateType = {
+  FORMULA_EXPRESSION_UPDATED: "FORMULA_EXPRESSION_UPDATED" as "FORMULA_EXPRESSION_UPDATED",
 };
-export type FormulaContainerUpdateType = (typeof FormulaContainerUpdateType)[keyof typeof FormulaContainerUpdateType];
+export type FormulaExpressionUpdateType =
+    (typeof FormulaExpressionUpdateType)[keyof typeof FormulaExpressionUpdateType];
 
 export const ColumnUpdateType = {
   NAME_UPDATED: "NAME_UPDATED" as "NAME_UPDATED",
@@ -36,7 +37,7 @@ export const ColumnUpdateType = {
 export type ColumnUpdateType = (typeof ColumnUpdateType)[keyof typeof ColumnUpdateType];
 
 export const GridColumnUpdateType = {
-  FORMULA_UPDATED: "FORMULA_UPDATED" as "FORMULA_UPDATED",
+  FORMULA_EXPRESSION_UPDATED: "FORMULA_EXPRESSION_UPDATED" as "FORMULA_EXPRESSION_UPDATED",
   NAME_UPDATED: "NAME_UPDATED" as "NAME_UPDATED",
   WIDTH_UPDATED: "WIDTH_UPDATED" as "WIDTH_UPDATED",
 };
@@ -62,7 +63,7 @@ export const GridUpdateType = {
 export type GridUpdateType = (typeof GridUpdateType)[keyof typeof GridUpdateType];
 
 export const DocumentUpdateType = {
-  GRID_UPDATED: "GRID_UPDATED" as "GRID_UPDATED",
+  GRIDS_UPDATED: "GRIDS_UPDATED" as "GRIDS_UPDATED",
 };
 export type DocumentUpdateType = (typeof DocumentUpdateType)[keyof typeof DocumentUpdateType];
 
@@ -72,7 +73,7 @@ export type UpdateType =
   DependencySetUpdateType |
   ArrayUpdateType |
   DictionaryUpdateType |
-  FormulaContainerUpdateType |
+  FormulaExpressionUpdateType |
   ColumnUpdateType |
   GridColumnUpdateType |
   CellUpdateType |

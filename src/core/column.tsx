@@ -1,27 +1,21 @@
 import * as _ from 'lodash';
-import {BaseModel} from './base_model';
-import {Namespace} from './resolver';
+import {BaseModel, ModelType} from './base_model';
+import {Type} from './language/types';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {ColumnUpdateType} from './update_types';
 
-export enum DataType {
-  DRAWING = 'DRAWING',
-  NUMBER = 'NUMBER',
-  STRING = 'STRING',
-}
-
-interface ColumnData {
+interface ColumnData<T extends Type> {
   name: string;
-  type: DataType;
+  type: T;
 }
 
 export interface ColumnUpdateDescriptor extends UpdateDescriptor<ColumnUpdateType> {}
 
-export class Column extends BaseModel<ColumnUpdateDescriptor> {
+export class Column<T extends Type = Type> extends BaseModel<ColumnUpdateDescriptor> {
   private _name: string;
-  private _type: DataType;
+  private _type: T;
 
-  constructor(updateManager: UpdateManager, {name, type}: ColumnData, namespace: Namespace = Namespace.COLUMN) {
+  constructor(updateManager: UpdateManager, {name, type}: ColumnData<T>, namespace: ModelType = ModelType.COLUMN) {
     super(updateManager, namespace);
     this._name = name;
     this._type = type;
@@ -31,7 +25,7 @@ export class Column extends BaseModel<ColumnUpdateDescriptor> {
     return this._name;
   }
 
-  public get type(): DataType {
+  public get type(): Type {
     return this._type;
   }
 

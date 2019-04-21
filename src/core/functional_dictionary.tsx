@@ -1,8 +1,7 @@
 import * as _ from 'lodash';
-import {Dictionary, JSPrimitive, RODictionary} from '../utils/types';
-import {assert} from '../utils/utils';
-import {BaseModel} from './base_model';
-import {Namespace} from './resolver';
+import {Dictionary, JSPrimitive, RODictionary} from 'src/utils/types';
+import {assert} from 'src/utils/utils';
+import {BaseModel, ModelType} from './base_model';
 import {UndefinedUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
 import {DictionaryUpdateType} from './update_types';
 
@@ -21,7 +20,7 @@ class BaseFunctionalDictionary<
   constructor(
     updateManager: UpdateManager,
     dictionary: RODictionary<T> = {},
-    namespace: Namespace = Namespace.DICTIONARY,
+    namespace: ModelType = ModelType.DICTIONARY,
   ) {
     super(updateManager, namespace);
     this.dictionary = Object.assign({}, dictionary);

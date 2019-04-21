@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 import {Document} from './core/document';
-import {Namespace, Resolver} from './core/resolver';
+import {generateUID} from './utils/utils';
 import {DocumentView} from './views/document_view';
 
 export class App {
@@ -11,11 +11,12 @@ export class App {
   private documentRef?: DocumentView;
 
   constructor() {
-    this.id = Resolver.generateUID(Namespace.APP);
+    this.id = generateUID('app');
     this.document = new Document();
     this.epoch = this.document.epoch;
     this.document.listenForUpdate(this.id, this.onEpochUpdated);
-    this.document.createGrids();
+    this.document.loadBuiltInFormulas();
+    this.document.addBuiltInGrids();
   }
 
   private onEpochUpdated = (epoch: number) => {

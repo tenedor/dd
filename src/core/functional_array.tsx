@@ -1,7 +1,6 @@
-import {JSPrimitive, ROArray} from '../utils/types';
-import {assert} from '../utils/utils';
-import {BaseModel} from './base_model';
-import {Namespace} from './resolver';
+import {JSPrimitive, ROArray} from 'src/utils/types';
+import {assert} from 'src/utils/utils';
+import {BaseModel, ModelType} from './base_model';
 import {UndefinedUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
 import {ArrayUpdateType} from './update_types';
 
@@ -16,7 +15,7 @@ class BaseFunctionalArray<
     > extends BaseModel<ArrayUpdateDescriptor<TD>> {
   protected array: T[];
 
-  constructor(updateManager: UpdateManager, array: ROArray<T> = [], namespace: Namespace = Namespace.ARRAY) {
+  constructor(updateManager: UpdateManager, array: ROArray<T> = [], namespace: ModelType = ModelType.ARRAY) {
     super(updateManager, namespace);
     this.array = array.slice();
   }
@@ -67,6 +66,10 @@ class BaseFunctionalArray<
 
   public push = (value: T): void => {
     this.set(this.length, value);
+  }
+
+  public pushAll = (values: T[]): void => {
+    values.forEach(v => this.push(v));
   }
 
   public pop = (): T | undefined => {

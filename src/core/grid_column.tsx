@@ -1,58 +1,73 @@
 import * as _ from 'lodash';
-import {BaseModel} from './base_model';
-import {Column, ColumnUpdateDescriptor, DataType} from './column';
-import {Formula} from './formula';
-import {FormulaContainer, FormulaContainerUpdateDescriptor} from './formula_container';
-import {Namespace} from './resolver';
+import {BaseModel, ModelType} from './base_model';
+import {Column, ColumnUpdateDescriptor} from './column';
+import {FormulaEnvironment} from './formula_environment';
+import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
+import {Grid} from './grid';
+import {ExpressionRes} from './language/ast';
+import {NameResolver} from './language/reference';
+import {Type, TypeUtils} from './language/types';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
-import {ColumnUpdateType, FormulaContainerUpdateType, GridColumnUpdateType} from './update_types';
+import {ColumnUpdateType, FormulaExpressionUpdateType, GridColumnUpdateType} from './update_types';
 
-interface GridColumnData {
-  column: Column;
+interface GridColumnData<T extends Type, C extends Type, P extends Type = Type> {
+  column: Column<C>;
+  formulaEnvironment: FormulaEnvironment;
+  grid: Grid;
+  parentGridColumn?: GridColumn<P, C>;
+  type: T;
   // TODO: defaultValue
-  formulaContainer: FormulaContainer;
-  parentGridColumn?: GridColumn;
   // TODO: visible
   width: number;
 }
 
 export interface GridColumnUpdateDescriptor extends UpdateDescriptor<GridColumnUpdateType> {}
 
-export class GridColumn extends BaseModel<GridColumnUpdateDescriptor> {
-  private readonly column: Column;
-  private readonly parentGridColumn?: GridColumn;
-  private readonly _formulaContainer: FormulaContainer;
+export class GridColumn<T extends Type = Type, C extends Type = Type, P extends Type = Type>
+    extends BaseModel<GridColumnUpdateDescriptor> {
+  private readonly column: Column<C>;
+  private readonly grid: Grid;
+  private readonly parentGridColumn?: GridColumn<P, C>;
+  private readonly _type: T;
+  private readonly formulaEnvironment: FormulaEnvironment;
+  private readonly _formulaExpression: FormulaExpression<T>;
   private _width: number;
 
   constructor(
     updateManager: UpdateManager,
-    {column, formulaContainer, parentGridColumn, width}: GridColumnData,
-    namespace: Namespace = Namespace.GRID_COLUMN,
+    {column, formulaEnvironment, grid, parentGridColumn, type, width}: GridColumnData<T, C, P>,
+    namespace: ModelType = ModelType.GRID_COLUMN,
   ) {
     super(updateManager, namespace);
     this.column = column;
+    this.grid = grid;
     this.parentGridColumn = parentGridColumn;
-    this._formulaContainer = formulaContainer;
+    this._type = type;
+    this.formulaEnvironment = formulaEnvironment;
+    const parentExpression = parentGridColumn ? parentGridColumn.formulaExpression : undefined;
+    this._formulaExpression = new FormulaExpression(updateManager,
+        {type, formulaEnvironment, parent: parentExpression});
     this._width = width;
 
     this.column.listenForUpdate(this, this.onColumnUpdated);
-    this._formulaContainer.listenForUpdate(this, this.onFormulaContainerUpdated);
+    this._formulaExpression.listenForUpdate(this, this.onFormulaExpressionUpdated);
     if (this.parentGridColumn) {
       this.parentGridColumn.listenForUpdate(this, this.onParentGridColumnUpdated);
     }
   }
 
-  public static fromParent(
-    updateManager: UpdateManager,
-    parentGridColumn: GridColumn,
-    {formula, width}: {formula?: Formula, width?: number},
-  ): GridColumn {
-    const {column, _formulaContainer: parentContainer, width: _width} = parentGridColumn;
+  public static fromParent<T extends Type, C extends Type, P extends Type>(
+    parentGridColumn: GridColumn<P, C>,
+    {grid, type, width}: {grid: Grid, type: T, width?: number},
+  ): GridColumn<T, C, P> {
+    const {column, formulaEnvironment, updateManager, width: parentWidth} = parentGridColumn;
     return new GridColumn(updateManager, {
       column,
-      formulaContainer: new FormulaContainer(updateManager, {formula, parentContainer}),
+      formulaEnvironment,
+      grid,
       parentGridColumn,
-      width: width || _width,
+      type,
+      width: width || parentWidth,
     });
   }
 
@@ -60,28 +75,32 @@ export class GridColumn extends BaseModel<GridColumnUpdateDescriptor> {
     return this.column.id;
   }
 
-  public get formula(): Formula | undefined {
-    return this._formulaContainer.formula;
+  public get type(): T {
+    return this._type;
   }
 
-  public get formulaContainer(): FormulaContainer {
-    return this._formulaContainer;
+  public get formulaExpression(): FormulaExpression<T> {
+    return this._formulaExpression;
+  }
+
+  public get resolver(): NameResolver {
+    return this.formulaEnvironment.resolver.resolverOf(TypeUtils.GridOf(this.grid.id));
   }
 
   public get name(): string {
     return this.column.name;
   }
 
-  public get type(): DataType {
-    return this.column.type;
-  }
-
   public get width(): number {
     return this._width;
   }
 
-  public setFormula = (formula: Formula | undefined) => {
-    this._formulaContainer.setFormula(formula);
+  public hasExpression = (): boolean => {
+    return this._formulaExpression.isSet;
+  }
+
+  public setExpression = (expression: ExpressionRes<T> | undefined) => {
+    this._formulaExpression.setExpression(expression);
   }
 
   public setName = (name: string): void => {
@@ -98,11 +117,11 @@ export class GridColumn extends BaseModel<GridColumnUpdateDescriptor> {
     return [];
   }
 
-  private onFormulaContainerUpdated = (epoch: number, updates: FormulaContainerUpdateDescriptor[]): GridColumnUpdateDescriptor[] => {
-    const formulaUpdated = updates.some(u => u.type === FormulaContainerUpdateType.FORMULA_UPDATED);
+  private onFormulaExpressionUpdated = (epoch: number, updates: FormulaExpressionUpdateDescriptor[]): GridColumnUpdateDescriptor[] => {
+    const formulaUpdated = updates.some(u => u.type === FormulaExpressionUpdateType.FORMULA_EXPRESSION_UPDATED);
     if (formulaUpdated) {
       this.onDependencyUpdated(epoch);
-      const descriptor = {type: GridColumnUpdateType.FORMULA_UPDATED};
+      const descriptor = {type: GridColumnUpdateType.FORMULA_EXPRESSION_UPDATED};
       return [descriptor];
     }
     return [];

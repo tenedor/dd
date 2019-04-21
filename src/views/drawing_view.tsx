@@ -1,13 +1,14 @@
 import * as _ from 'lodash';
 import * as React from 'react';
-import {DrawingController} from '../controllers/drawing_controller';
-import {DrawingPrimitive} from '../core/drawing_value';
-import {Grid} from '../core/grid';
-import {assertUnreachable} from '../utils/utils';
+import {DrawingController} from 'src/controllers/drawing_controller';
+import {DrawingVariant} from 'src/core/drawing_value';
+import {Grid} from 'src/core/grid';
+import {ROArray} from 'src/utils/types';
+import {assertUnreachable} from 'src/utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
 
 interface Props extends BaseProps {
-  grids: Grid[],
+  grids: ROArray<Grid>,
 }
 
 export class DrawingView extends BaseComponent<Props> {
@@ -21,12 +22,12 @@ export class DrawingView extends BaseComponent<Props> {
   public render = () => {
     const drawings = this.controller.getDrawings();
     const renderedDrawings = drawings.map((d, i) => {
-      switch (d.type) {
-        case DrawingPrimitive.CIRCLE:
+      switch (d.drawingType) {
+        case DrawingVariant.CIRCLE:
           return <circle key={`d-${i}`} cx={d.center.x} cy={d.center.y} r={d.radius} fill={d.fill} />;
-        case DrawingPrimitive.ELLIPSE:
+        case DrawingVariant.ELLIPSE:
           return <ellipse key={`d-${i}`} cx={d.center.x} cy={d.center.y} rx={d.radius1} ry={d.radius2} fill={d.fill} />;
-        case DrawingPrimitive.PATH:
+        case DrawingVariant.PATH:
           const path = `M${d.center.x},${d.center.y} ` + d.path;
           return <path key={`d-${i}`} d={path} fill={d.fill} />;
         default:

@@ -1,14 +1,13 @@
 import * as _ from 'lodash';
-import {Dictionary} from '../utils/types';
-import {BaseModel} from './base_model';
+import {Dictionary, RODictionary} from 'src/utils/types';
+import {BaseModel, ModelType} from './base_model';
 import {Cell, CellUpdateDescriptor} from './cell';
-import {Formula} from './formula';
 import {DictionaryUpdateDescriptor as DictionaryUD, FunctionalDictionaryM} from './functional_dictionary';
 import {GridColumn} from './grid_column';
-import {Namespace} from './resolver';
+import {Identifier} from './language/types';
+import {Value} from './language/values';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {RowUpdateType} from './update_types';
-import {Value} from './value';
 
 export type CellRO = Readonly<Cell>;
 export type Cells = FunctionalDictionaryM<Cell, CellUpdateDescriptor>;
@@ -18,38 +17,49 @@ interface CellData {
   manualValue?: Value,
 }
 
-type DependenciesMap = Dictionary<{dependencies: string[], resolved: boolean}>;
+interface RowData {
+  cells: CellData[],
+  gridId: Identifier,
+}
+
+type DependenciesMap = Dictionary<{internalDependencies: string[], resolved: boolean}>;
 
 function resolveDependenciesForId(dependenciesMap: DependenciesMap, id: string) {
   const node = dependenciesMap[id];
   if (node.resolved) {
     return;
   }
-  node.dependencies.forEach(dep => resolveDependenciesForId(dependenciesMap, dep));
-  const childDeps = _.flatMap(node.dependencies, dep => dependenciesMap[dep].dependencies);
-  node.dependencies = _.uniq(node.dependencies.concat(childDeps));
+  node.internalDependencies.forEach(dep => resolveDependenciesForId(dependenciesMap, dep));
+  const childDeps = _.flatMap(node.internalDependencies, dep => dependenciesMap[dep].internalDependencies);
+  node.internalDependencies = _.uniq(node.internalDependencies.concat(childDeps));
   node.resolved = true;
 }
+
+export type RowContext = RODictionary<Cell>;
 
 export interface RowUpdateDescriptor extends UpdateDescriptor<RowUpdateType> {
   columnIds: string[];
 }
 
 export class Row extends BaseModel<RowUpdateDescriptor> {
+  private readonly gridId: Identifier;
   public readonly cells: Cells;
 
-  constructor(updateManager: UpdateManager, cellsData: CellData[], namespace: Namespace = Namespace.ROW) {
+  constructor(updateManager: UpdateManager, {cells, gridId}: RowData, namespace: ModelType = ModelType.ROW) {
     super(updateManager, namespace);
     this.cells = new FunctionalDictionaryM(updateManager, {});
-    this.constructCells(cellsData);
+    this.gridId = gridId;
+    this.constructCells(cells);
     this.cells.listenForUpdate(this, this.onCellsUpdated);
   }
 
   private getCellsDataDependencyMap = (cellsData: CellData[]): DependenciesMap => {
     const dependenciesMap: DependenciesMap = {};
+    const columnIds = cellsData.map(({column}) => column.columnId);
     cellsData.forEach(({column}) => {
-      const dependencies = column.formula ? column.formula.args.slice(0) : [];
-      dependenciesMap[column.columnId] = {dependencies, resolved: false};
+      const dependencies = column.formulaExpression.dependencies.map(d => d.id);
+      const internalDependencies = dependencies.filter(id => columnIds.includes(id));
+      dependenciesMap[column.columnId] = {internalDependencies, resolved: false};
     });
     Object.keys(dependenciesMap).forEach(id => resolveDependenciesForId(dependenciesMap, id));
     return dependenciesMap;
@@ -62,20 +72,19 @@ export class Row extends BaseModel<RowUpdateDescriptor> {
     sortedCellsData.sort((c1, c2) => {
       const id1 = c1.column.columnId;
       const id2 = c2.column.columnId;
-      const cell2DependsOnCell1 = dependenciesMap[id2].dependencies.indexOf(id1) > -1;
-      return cell2DependsOnCell1 ? -1 : (dependenciesMap[id1].dependencies.indexOf(id2) > -1 ? 1 : 0);
+      const cell2DependsOnCell1 = dependenciesMap[id2].internalDependencies.indexOf(id1) > -1;
+      return cell2DependsOnCell1 ? -1 : (dependenciesMap[id1].internalDependencies.indexOf(id2) > -1 ? 1 : 0);
     });
     sortedCellsData.forEach(({column, manualValue}) => this.cells.set(column.columnId, new Cell(this.updateManager, {
       column,
-      getContextForFormula: this.getContextForFormula,
+      getRowContext: this.getRowContext,
+      gridId: this.gridId,
       manualValue,
     })));
   }
 
-  private getContextForFormula = (formula: Formula): Dictionary<Cell> => {
-    const context: Dictionary<Cell> = {};
-    formula.args.forEach(c => context[c] = this.cells.d[c]);
-    return context;
+  private getRowContext = (): RowContext => {
+    return this.cells.d;
   }
 
   private onCellsUpdated = (

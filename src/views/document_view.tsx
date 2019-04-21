@@ -1,9 +1,10 @@
 import * as _ from 'lodash';
 import * as React from 'react';
-import {Document} from '../core/document';
-import {Grid} from '../core/grid';
-import {DrawingView} from '../views/drawing_view';
-import {TableView} from '../views/table_view';
+import {Document} from 'src/core/document';
+import {Grid} from 'src/core/grid';
+import {ROArray} from 'src/utils/types';
+import {DrawingView} from 'src/views/drawing_view';
+import {TableView} from 'src/views/table_view';
 import {BaseComponent, BaseProps} from './base_component';
 
 interface Props extends BaseProps {
@@ -23,7 +24,7 @@ export class DocumentView extends BaseComponent<Props> {
     );
   }
 
-  private renderTables = (epoch: number, grids: Grid[]) => {
+  private renderTables = (epoch: number, grids: ROArray<Grid>) => {
     return grids.map(grid =>
       <TableView key={`table-${grid.id}`} epoch={epoch} grid={grid} />
     );
