@@ -1,11 +1,11 @@
 import * as _ from 'lodash';
+import {Identifier} from 'src/core/language/types';
+import {Value} from 'src/core/language/values';
 import {Dictionary, RODictionary} from 'src/utils/types';
 import {BaseModel, ModelType} from './base_model';
 import {Cell, CellUpdateDescriptor} from './cell';
 import {DictionaryUpdateDescriptor as DictionaryUD, FunctionalDictionaryM} from './functional_dictionary';
 import {GridColumn} from './grid_column';
-import {Identifier} from './language/types';
-import {Value} from './language/values';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {RowUpdateType} from './update_types';
 

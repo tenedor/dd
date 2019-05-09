@@ -1,15 +1,15 @@
 import * as _ from 'lodash';
-import {Column} from './column';
-import {Document} from './document';
-import {FormulaEnvironment} from './formula_environment';
-import {Grid} from './grid';
-import {GridColumn} from './grid_column';
-import {Parser} from './language/parser';
-import {NameResolver} from './language/reference';
-import {Type, TypeUtils} from './language/types';
-import {ValueUtils} from './language/values';
-import {Row} from './row';
-import {UpdateManager} from './update_manager';
+import {FormulaEnvironment} from 'src/core/language/formula_environment';
+import {Parser} from 'src/core/language/parser';
+import {NameResolver} from 'src/core/language/reference';
+import {Type, TypeUtils} from 'src/core/language/types';
+import {ValueUtils} from 'src/core/language/values';
+import {Column} from 'src/core/models/column';
+import {Document} from 'src/core/models/document';
+import {Grid} from 'src/core/models/grid';
+import {GridColumn} from 'src/core/models/grid_column';
+import {Row} from 'src/core/models/row';
+import {UpdateManager} from 'src/core/models/update_manager';
 
 // Draw a regular n-pointed star with density m and the specified side length.
 // See https://en.wikipedia.org/wiki/Regular_polygon#Regular_star_polygons.

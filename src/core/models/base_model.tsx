@@ -1,8 +1,7 @@
 import {assert, generateUID} from 'src/utils/utils';
-import {
-  DependencyGraphPartitionIndex, DependencySetUpdateDescriptor, DependencySetUpdateListener, DependencyUpdateListener,
-  UpdateDescriptor, UpdateGraphNodeId, UpdateListener, UpdateManager,
-} from './update_manager';
+import {DependencyGraphPartitionIndex, DependencySetUpdateDescriptor,
+        DependencySetUpdateListener, DependencyUpdateListener, UpdateDescriptor,
+        UpdateGraphNodeId, UpdateListener, UpdateManager} from './update_manager';
 
 export enum ModelType {
   ARRAY = 'arr',

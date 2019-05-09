@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 import {DrawingController} from 'src/controllers/drawing_controller';
-import {DrawingVariant} from 'src/core/drawing_value';
-import {Grid} from 'src/core/grid';
+import {DrawingVariant} from 'src/core/language/drawing_value';
+import {Grid} from 'src/core/models/grid';
 import {ROArray} from 'src/utils/types';
 import {assertUnreachable} from 'src/utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
@@ -28,7 +28,7 @@ export class DrawingView extends BaseComponent<Props> {
         case DrawingVariant.ELLIPSE:
           return <ellipse key={`d-${i}`} cx={d.center.x} cy={d.center.y} rx={d.radius1} ry={d.radius2} fill={d.fill} />;
         case DrawingVariant.PATH:
-          const path = `M${d.center.x},${d.center.y} ` + d.path;
+          const path = `M${d.center.x},${d.center.y} ${d.path}`;
           return <path key={`d-${i}`} d={path} fill={d.fill} />;
         default:
           return assertUnreachable(d);

@@ -1,11 +1,12 @@
 import * as _ from 'lodash';
+import {Grid} from 'src/core/models/grid'; // only a type dependency
 import {Dictionary, RODictionary} from 'src/utils/types';
-import {Grid} from './grid';
-import {buildNamespace, BuiltInFormulaReference, ConstructorNamespace, Context, GridReference, NameResolver,
-        ValueNamespace, ValueReference} from './language/reference';
-import {BuiltInFormula, getBuiltInFormulas} from './language/standard_library';
-import {Identifier, Type, TypeUtils} from './language/types';
-import {DictValue, Value} from './language/values';
+import {buildNamespace, BuiltInFormulaReference, ConstructorNamespace, Context,
+        GridReference, NameResolver, ValueNamespace, ValueReference}
+        from './reference';
+import {BuiltInFormula, getBuiltInFormulas} from './standard_library';
+import {Identifier, Type, TypeUtils} from './types';
+import {DictValue, Value} from './values';
 
 interface FormulaGrid {
   getNamespace: () => ValueNamespace;

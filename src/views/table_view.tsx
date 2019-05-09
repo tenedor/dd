@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
 import * as React from 'react';
-import {Cell} from 'src/core/cell';
-import {CellIndex, Grid} from 'src/core/grid';
 import {ValueUtils} from 'src/core/language/values';
-import {Row} from 'src/core/row';
+import {Cell} from 'src/core/models/cell';
+import {CellIndex, Grid} from 'src/core/models/grid';
+import {Row} from 'src/core/models/row';
 import {KeyCode} from 'src/utils/keycode';
 import {BaseComponent, BaseProps} from './base_component';
 import {CellEditorView} from './cell_editor_view';

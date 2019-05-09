@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
-import {Drawing} from 'src/core/drawing_value';
-import {Grid} from 'src/core/grid';
+import {Drawing} from 'src/core/language/drawing_value';
 import {TypeUtils} from 'src/core/language/types';
 import {DrawingValue} from 'src/core/language/values';
+import {Grid} from 'src/core/models/grid';
 import {ROArray} from 'src/utils/types';
 
 export class DrawingController {

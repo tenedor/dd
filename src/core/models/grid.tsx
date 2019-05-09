@@ -1,10 +1,10 @@
 import * as _ from 'lodash';
+import {FormulaEnvironment} from 'src/core/language/formula_environment';
+import {NameResolver, ValueNamespace, ValueReference} from 'src/core/language/reference';
 import {BaseModel, ModelType} from './base_model';
-import {FormulaEnvironment} from './formula_environment';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {FunctionalKeyedArray} from './functional_keyed_array';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
-import {NameResolver, ValueNamespace, ValueReference} from './language/reference';
 import {Row, RowUpdateDescriptor} from './row';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {GridUpdateType} from './update_types';

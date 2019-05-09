@@ -74,7 +74,7 @@ interface PartitionData {
   readonly seedResolvedUpdates: ResolvedUpdatesMap;
 };
 
-export class UpdateResolver {
+class UpdateResolver {
   private readonly unresolvedPartitions: DependencyGraphPartitionIndex[];
   private readonly partitionsData: Map<DependencyGraphPartitionIndex, PartitionData>;
 

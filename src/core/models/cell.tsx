@@ -1,10 +1,10 @@
 import * as _ from 'lodash';
+import {Identifier, Type} from 'src/core/language/types';
+import {DictValue, Value, ValueUtils} from 'src/core/language/values';
 import {RODictionary} from 'src/utils/types';
 import {BaseModel, ModelType} from './base_model';
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
-import {Identifier, Type} from './language/types';
-import {DictValue, Value, ValueUtils} from './language/values';
 import {RowContext} from './row';
 import {DependencySetUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
 import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType} from './update_types';

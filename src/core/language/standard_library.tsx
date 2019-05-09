@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
-import {DrawingVariant} from 'src/core/drawing_value';
 import {RODictionary} from 'src/utils/types';
+import {DrawingVariant} from './drawing_value';
 import {Identifier, PrimitiveType, Type, TypeUtils} from './types';
 import {DictValue, DrawingValue, PrimitiveValue, Value, ValueUtils} from './values';
 

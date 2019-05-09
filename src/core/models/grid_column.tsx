@@ -1,12 +1,12 @@
 import * as _ from 'lodash';
+import {ExpressionRes} from 'src/core/language/ast';
+import {FormulaEnvironment} from 'src/core/language/formula_environment';
+import {NameResolver} from 'src/core/language/reference';
+import {Type, TypeUtils} from 'src/core/language/types';
 import {BaseModel, ModelType} from './base_model';
 import {Column, ColumnUpdateDescriptor} from './column';
-import {FormulaEnvironment} from './formula_environment';
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 import {Grid} from './grid';
-import {ExpressionRes} from './language/ast';
-import {NameResolver} from './language/reference';
-import {Type, TypeUtils} from './language/types';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {ColumnUpdateType, FormulaExpressionUpdateType, GridColumnUpdateType} from './update_types';
 

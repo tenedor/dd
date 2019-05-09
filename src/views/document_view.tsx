@@ -1,11 +1,11 @@
 import * as _ from 'lodash';
 import * as React from 'react';
-import {Document} from 'src/core/document';
-import {Grid} from 'src/core/grid';
+import {Document} from 'src/core/models/document';
+import {Grid} from 'src/core/models/grid';
 import {ROArray} from 'src/utils/types';
-import {DrawingView} from 'src/views/drawing_view';
-import {TableView} from 'src/views/table_view';
 import {BaseComponent, BaseProps} from './base_component';
+import {DrawingView} from './drawing_view';
+import {TableView} from './table_view';
 
 interface Props extends BaseProps {
   document: Document,

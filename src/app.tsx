@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 import * as React from 'react';
-import {Document} from './core/document';
+import {Document} from './core/models/document';
 import {generateUID} from './utils/utils';
 import {DocumentView} from './views/document_view';
 
