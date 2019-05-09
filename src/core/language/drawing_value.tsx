@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
-import {Scalar, Vector} from 'src/core/geometry';
+
+import {Scalar, Vector} from '@core/geometry';
 
 // for now, use these stand-in types
 type Color = string;

@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
-import {ROArray, RODictionary} from 'src/utils/types';
+
+import {ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
 import {Parser} from './parser';
 import {ConstructorReference, Context, NameResolver, Reference, ValueReference} from './reference';

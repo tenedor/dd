@@ -1,7 +1,8 @@
 import * as _ from 'lodash';
-import {Identifier, Type} from 'src/core/language/types';
-import {DictValue, Value, ValueUtils} from 'src/core/language/values';
-import {RODictionary} from 'src/utils/types';
+
+import {Identifier, Type} from '@language/types';
+import {DictValue, Value, ValueUtils} from '@language/values';
+import {RODictionary} from '@utils/types';
 import {BaseModel, ModelType} from './base_model';
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';

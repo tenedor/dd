@@ -1,9 +1,10 @@
 import * as _ from 'lodash';
-import {Drawing} from 'src/core/language/drawing_value';
-import {TypeUtils} from 'src/core/language/types';
-import {DrawingValue} from 'src/core/language/values';
-import {Grid} from 'src/core/models/grid';
-import {ROArray} from 'src/utils/types';
+
+import {Drawing} from '@language/drawing_value';
+import {TypeUtils} from '@language/types';
+import {DrawingValue} from '@language/values';
+import {Grid} from '@models/grid';
+import {ROArray} from '@utils/types';
 
 export class DrawingController {
   private grids: ROArray<Grid>;

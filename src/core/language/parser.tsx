@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
-import {RODictionary} from 'src/utils/types';
-import {escapeAndQuote} from 'src/utils/utils';
+
+import {RODictionary} from '@utils/types';
+import {escapeAndQuote} from '@utils/utils';
 import {AssignmentsUnres, BinaryOpUnres, CallUnres, ExpressionUnres, IdentifierUnres,
         IndexUnres, LambdaUnres, ListUnres, PrimitiveUnres, ProjectUnres, UnaryOpUnres,
         UnresolvedAST} from './ast';

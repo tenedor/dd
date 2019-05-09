@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
-import {ROArray} from 'src/utils/types';
-import {assert} from 'src/utils/utils';
+
+import {ROArray} from '@utils/types';
+import {assert} from '@utils/utils';
 import {BaseModel} from './base_model';
 import {DependencySetUpdateType, UndefinedUpdateType, UpdateType} from './update_types';
 

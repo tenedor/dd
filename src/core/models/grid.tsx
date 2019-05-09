@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
-import {FormulaEnvironment} from 'src/core/language/formula_environment';
-import {NameResolver, ValueNamespace, ValueReference} from 'src/core/language/reference';
+
+import {FormulaEnvironment} from '@language/formula_environment';
+import {NameResolver, ValueNamespace, ValueReference} from '@language/reference';
 import {BaseModel, ModelType} from './base_model';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {FunctionalKeyedArray} from './functional_keyed_array';

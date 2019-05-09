@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
-import {Grid} from 'src/core/models/grid'; // only a type dependency
-import {Dictionary, RODictionary} from 'src/utils/types';
+
+import {Grid} from '@core/models/grid'; // only a type dependency
+import {Dictionary, RODictionary} from '@utils/types';
 import {buildNamespace, BuiltInFormulaReference, ConstructorNamespace, Context,
         GridReference, NameResolver, ValueNamespace, ValueReference}
         from './reference';

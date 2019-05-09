@@ -1,10 +1,11 @@
 import * as _ from 'lodash';
 import * as React from 'react';
-import {DrawingController} from 'src/controllers/drawing_controller';
-import {DrawingVariant} from 'src/core/language/drawing_value';
-import {Grid} from 'src/core/models/grid';
-import {ROArray} from 'src/utils/types';
-import {assertUnreachable} from 'src/utils/utils';
+
+import {DrawingController} from '@controllers/drawing_controller';
+import {DrawingVariant} from '@language/drawing_value';
+import {Grid} from '@models/grid';
+import {ROArray} from '@utils/types';
+import {assertUnreachable} from '@utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
 
 interface Props extends BaseProps {

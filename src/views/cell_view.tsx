@@ -1,5 +1,6 @@
 import * as React from 'react';
-import {classNames} from 'src/utils/utils';
+
+import {classNames} from '@utils/utils';
 
 interface Props {
   dataCellId: string;

@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
-import {assertUnreachable} from 'src/utils/utils';
+
+import {assertUnreachable} from '@utils/utils';
 
 export enum PrimitiveType {
   NUMBER = "NUMBER",

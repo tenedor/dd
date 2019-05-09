@@ -1,7 +1,8 @@
 import * as _ from 'lodash';
 import * as React from 'react';
-import {BaseModel} from 'src/core/models/base_model';
-import {keysEqual, shallowEqual} from 'src/utils/utils';
+
+import {BaseModel} from '@models/base_model';
+import {keysEqual, shallowEqual} from '@utils/utils';
 
 export interface BaseProps {
   epoch: number,

@@ -1,7 +1,8 @@
 import * as _ from 'lodash';
-import {addBuiltInGrids} from 'src/core/built_in_grids';
-import {FormulaEnvironment} from 'src/core/language/formula_environment';
-import {ROArray} from 'src/utils/types';
+
+import {addBuiltInGrids} from '@core/built_in_grids';
+import {FormulaEnvironment} from '@language/formula_environment';
+import {ROArray} from '@utils/types';
 import {BaseModel, ModelType} from './base_model';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {Grid, GridData, GridUpdateDescriptor} from './grid';

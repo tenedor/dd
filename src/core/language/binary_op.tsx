@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
-import {assertUnreachable} from 'src/utils/utils';
+
+import {assertUnreachable} from '@utils/utils';
 import {Type, TypeUtils} from './types';
 import {BooleanValue, Value, ValueUtils} from './values';
 

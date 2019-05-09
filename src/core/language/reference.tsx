@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
-import {RODictionary} from 'src/utils/types';
+
+import {RODictionary} from '@utils/types';
 import {DictType, GridType, Identifier, Type, TypeUtils} from './types';
 import {DictValue, Value} from './values';
 

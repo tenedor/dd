@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
-import {Type} from 'src/core/language/types';
+
+import {Type} from '@language/types';
 import {BaseModel, ModelType} from './base_model';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {ColumnUpdateType} from './update_types';

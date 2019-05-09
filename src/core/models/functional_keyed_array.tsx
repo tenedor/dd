@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
-import {Dictionary, ROArray, RODictionary} from 'src/utils/types';
-import {assert} from 'src/utils/utils';
+
+import {Dictionary, ROArray, RODictionary} from '@utils/types';
+import {assert} from '@utils/utils';
 import {BaseModel} from './base_model';
 import {FunctionalArrayM} from './functional_array';
 import {UpdateDescriptor, UpdateManager} from './update_manager';

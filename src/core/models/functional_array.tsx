@@ -1,5 +1,5 @@
-import {JSPrimitive, ROArray} from 'src/utils/types';
-import {assert} from 'src/utils/utils';
+import {JSPrimitive, ROArray} from '@utils/types';
+import {assert} from '@utils/utils';
 import {BaseModel, ModelType} from './base_model';
 import {UndefinedUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
 import {ArrayUpdateType} from './update_types';

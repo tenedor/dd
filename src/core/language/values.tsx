@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
-import {assertUnreachable} from 'src/utils/utils';
+
+import {assertUnreachable} from '@utils/utils';
 import {Drawing, drawingsAreEqual} from './drawing_value';
 import {DictType, DrawingType, GridType, Identifier, LambdaType, ListType, PrimitiveType,
         SchemaIdentifier, Type, TypeUtils} from './types';

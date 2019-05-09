@@ -1,10 +1,11 @@
 import * as _ from 'lodash';
 import * as React from 'react';
-import {ValueUtils} from 'src/core/language/values';
-import {Cell} from 'src/core/models/cell';
-import {CellIndex, Grid} from 'src/core/models/grid';
-import {Row} from 'src/core/models/row';
-import {KeyCode} from 'src/utils/keycode';
+
+import {ValueUtils} from '@language/values';
+import {Cell} from '@models/cell';
+import {CellIndex, Grid} from '@models/grid';
+import {Row} from '@models/row';
+import {KeyCode} from '@utils/keycode';
 import {BaseComponent, BaseProps} from './base_component';
 import {CellEditorView} from './cell_editor_view';
 import {CellView} from './cell_view';

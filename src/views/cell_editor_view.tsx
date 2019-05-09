@@ -1,13 +1,14 @@
 import * as _ from 'lodash';
 import * as React from 'react';
-import {Parser} from 'src/core/language/parser';
-import {TypeUtils} from 'src/core/language/types';
-import {PrimitiveValue, ValueUtils} from 'src/core/language/values';
-import {Cell} from 'src/core/models/cell';
-import {Grid} from 'src/core/models/grid'; // only a type dependency
-import {GridColumn} from 'src/core/models/grid_column';
-import {KeyCode} from 'src/utils/keycode';
-import {assert, assertUnreachable, classNames} from 'src/utils/utils';
+
+import {Parser} from '@language/parser';
+import {TypeUtils} from '@language/types';
+import {PrimitiveValue, ValueUtils} from '@language/values';
+import {Cell} from '@models/cell';
+import {Grid} from '@models/grid'; // only a type dependency
+import {GridColumn} from '@models/grid_column';
+import {KeyCode} from '@utils/keycode';
+import {assert, assertUnreachable, classNames} from '@utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
 
 enum EditState {

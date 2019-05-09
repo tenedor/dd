@@ -1,5 +1,5 @@
-import {ROArray, RODictionary} from 'src/utils/types';
-import {assert} from 'src/utils/utils';
+import {ROArray, RODictionary} from '@utils/types';
+import {assert} from '@utils/utils';
 import {BaseModel} from './base_model';
 import {FunctionalDictionaryM} from './functional_dictionary';
 import {UpdateDescriptor, UpdateManager} from './update_manager';

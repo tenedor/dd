@@ -1,9 +1,9 @@
-import {ExpressionRes} from 'src/core/language/ast';
-import {FormulaEnvironment} from 'src/core/language/formula_environment';
-import {Context, Reference} from 'src/core/language/reference';
-import {Type, TypeUtils} from 'src/core/language/types';
-import {DictValue, Value} from 'src/core/language/values';
-import {ROArray} from 'src/utils/types';
+import {ExpressionRes} from '@language/ast';
+import {FormulaEnvironment} from '@language/formula_environment';
+import {Context, Reference} from '@language/reference';
+import {Type, TypeUtils} from '@language/types';
+import {DictValue, Value} from '@language/values';
+import {ROArray} from '@utils/types';
 import {BaseModel, ModelType} from './base_model';
 import {DependencyGraphPartitionIndex, UpdateDescriptor, UpdateManager} from './update_manager';
 import {FormulaExpressionUpdateType} from './update_types';

@@ -1,4 +1,4 @@
-import {assert, generateUID} from 'src/utils/utils';
+import {assert, generateUID} from '@utils/utils';
 import {DependencyGraphPartitionIndex, DependencySetUpdateDescriptor,
         DependencySetUpdateListener, DependencyUpdateListener, UpdateDescriptor,
         UpdateGraphNodeId, UpdateListener, UpdateManager} from './update_manager';
