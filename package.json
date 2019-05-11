@@ -27,5 +27,16 @@
     "@types/react": "^16.4.16",
     "@types/react-dom": "^16.0.8",
     "typescript": "^3.1.1"
+  },
+  "jest": {
+    "moduleNameMapper": {
+      "^@css(.*)$": "<rootDir>/src/css$1",
+      "^@controllers(.*)$": "<rootDir>/src/controllers$1",
+      "^@core(.*)$": "<rootDir>/src/core$1",
+      "^@language(.*)$": "<rootDir>/src/core/language$1",
+      "^@models(.*)$": "<rootDir>/src/core/models$1",
+      "^@utils(.*)$": "<rootDir>/src/utils$1",
+      "^@views(.*)$": "<rootDir>/src/views$1"
+    }
   }
 }
