@@ -1,7 +1,7 @@
 import * as ReactDOM from 'react-dom';
 
+import {App} from '@app/app';
 import '@css/allthestyles.css';
-import {App} from './app';
 
 const app = new App();
 

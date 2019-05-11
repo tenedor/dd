@@ -19,11 +19,13 @@
     "suppressImplicitAnyIndexErrors": true,
     "noUnusedLocals": true,
     "paths": {
+      "@app/*": ["src/app/*"],
       "@css/*": ["src/css/*"],
       "@controllers/*": ["src/controllers/*"],
       "@core/*": ["src/core/*"],
       "@language/*": ["src/core/language/*"],
       "@models/*": ["src/core/models/*"],
+      "@test_utils/*": ["src/test_utils/*"],
       "@utils/*": ["src/utils/*"],
       "@views/*": ["src/views/*"]
     }

@@ -30,11 +30,13 @@
   },
   "jest": {
     "moduleNameMapper": {
+      "^@app(.*)$": "<rootDir>/src/app$1",
       "^@css(.*)$": "<rootDir>/src/css$1",
       "^@controllers(.*)$": "<rootDir>/src/controllers$1",
       "^@core(.*)$": "<rootDir>/src/core$1",
       "^@language(.*)$": "<rootDir>/src/core/language$1",
       "^@models(.*)$": "<rootDir>/src/core/models$1",
+      "^@test_utils(.*)$": "<rootDir>/src/test_utils$1",
       "^@utils(.*)$": "<rootDir>/src/utils$1",
       "^@views(.*)$": "<rootDir>/src/views$1"
     }

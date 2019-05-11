@@ -6,7 +6,7 @@ declare namespace OhmTS {
     nodeList?: NodeList,
     namespace?: Ohm.Namespace): Ohm.Namespace;
 
-  type Namespace = number;
+  type Namespace = Ohm.Namespace;
 }
 
 // re-export ohm with corrected types

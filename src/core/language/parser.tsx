@@ -1,4 +1,5 @@
 import * as _ from 'lodash';
+import {Namespace} from 'ohm-js';
 
 import {RODictionary} from '@utils/types';
 import {escapeAndQuote} from '@utils/utils';
@@ -23,6 +24,7 @@ export type ParseResult = SuccessfulParseResult | ParseError;
 
 export class Parser {
   private static initialized = false;
+  private static _grammar: Namespace;
   private static formulaGrammar: Grammar;
   private static formulaSemantics: Semantics;
 
@@ -49,14 +51,24 @@ export class Parser {
     return escapeAndQuote(str, '"');
   }
 
+  public static setGrammarForTests = (source: string) => {
+    Parser._grammar = ohm.grammars(source);
+  }
+
+  private static get grammar(): Namespace {
+    if (!Parser._grammar) {
+      Parser._grammar = ohm.grammarsFromScriptElements();
+    }
+    return Parser._grammar;
+  }
+
   private static ensureInitialized = () => {
     if (Parser.initialized) {
       return;
     }
     Parser.initialized = true;
 
-    const g = ohm.grammarsFromScriptElements();
-    Parser.formulaGrammar = g.Formula;
+    Parser.formulaGrammar = Parser.grammar.Formula;
     Parser.formulaSemantics = Parser.formulaGrammar.createSemantics().addOperation('toAST', {
       Exp(e) {
         return new ExpressionUnres(e.toAST());
