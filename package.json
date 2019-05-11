@@ -22,11 +22,11 @@
     "watch-less": "less-watch-compiler src/css src/css allthestyles.less --source-map"
   },
   "devDependencies": {
-    "@types/jest": "^23.3.3",
-    "@types/node": "^10.11.4",
-    "@types/react": "^16.4.16",
-    "@types/react-dom": "^16.0.8",
-    "typescript": "^3.1.1"
+    "@types/jest": "^23.3.14",
+    "@types/node": "^10.14.6",
+    "@types/react": "^16.8.17",
+    "@types/react-dom": "^16.8.4",
+    "typescript": "^3.4.5"
   },
   "jest": {
     "moduleNameMapper": {
