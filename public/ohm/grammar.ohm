@@ -45,7 +45,7 @@ Formula {
     | CallExp
 
   CallExp
-    = ident #"(" ListOf<Assignment, ","> ")"  -- call
+    = ident #"(" ListOf<Assignment, ","> ","? ")"  -- call
     | IdentExp
 
   Assignment
@@ -57,7 +57,7 @@ Formula {
 
   GroupExp
     = "(" Exp ")"               -- parens
-    | "[" ListOf<Exp, ","> "]"  -- list
+    | "[" ListOf<Exp, ","> ","? "]"  -- list
     | primitive
 
 

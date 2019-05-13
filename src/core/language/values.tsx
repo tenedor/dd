@@ -77,27 +77,33 @@ export class ValueUtils {
     return {value, type: PrimitiveType.STRING};
   }
 
-  public static primitiveOf = <T extends PrimitiveType> (value: primitiveValue, type: T): Value<T> => {
-    // Apologies to R. Milner for the type casts, here and elsewhere...
-    //
-    // Typescript does not support enum generics properly and needs help.
-    // See https://github.com/Microsoft/TypeScript/issues/24085
-    if (TypeUtils.isNumber(type)) {
-      return typeof value === 'number' ? ValueUtils.numberOf(value) as Value<T> :
-        throwValueConstructionTypeError(value, type);
-    } else if (TypeUtils.isBoolean(type)) {
-      return typeof value === 'boolean' ? ValueUtils.booleanOf(value) as Value<T> :
-        throwValueConstructionTypeError(value, type);
-    } else if (TypeUtils.isString(type)) {
-      return typeof value === 'string' ? ValueUtils.stringOf(value) as Value<T> :
-        throwValueConstructionTypeError(value, type);
+  public static primitiveOfInferType = (value: primitiveValue): Value => {
+    if (typeof value === 'number') {
+      return ValueUtils.numberOf(value);
+    } else if (typeof value === 'boolean') {
+      return ValueUtils.booleanOf(value);
+    } else if (typeof value === 'string') {
+      return ValueUtils.stringOf(value);
     } else {
       throw new Error('This code should never be reached.');
     }
   }
 
+  public static primitiveOf = <T extends PrimitiveType> (value: primitiveValue, type: T): Value<T> => {
+    const wrappedValue = ValueUtils.primitiveOfInferType(value);
+    if (TypeUtils.areEqual(wrappedValue.type, type)) {
+      return wrappedValue as Value<T>;
+    }
+    return throwValueConstructionTypeError(value, type);
+  }
+
   public static drawingOf = (drawing: Drawing): DrawingValue => {
     return {drawing, type: DrawingType.DRAWING};
+  }
+
+  public static listOfInferType = (list: Value[]): ListValue => {
+    const itemType = TypeUtils.unionAll(list.map(v => v.type));
+    return {list, type: TypeUtils.ListOf(itemType)};
   }
 
   public static listOf = <T extends Type> (list: Array<Value<T>>, itemType: T): ListValue<T> => {
@@ -108,7 +114,7 @@ export class ValueUtils {
     return {dict, type: TypeUtils.DictOf(id)};
   }
 
-  public static gridOf = <I extends Identifier> (...rest: any[]): GridValue<I> => {
+  public static gridOf = (): never => {
     throw new Error("Constructing a grid value with Value.gridOf is not allowed.");
   }
 
@@ -179,7 +185,10 @@ export class ValueUtils {
   public static defaultListOfType = <T extends Type> (itemType: T) => ValueUtils.listOf([], itemType)
 
   public static getDefaultValue = <T extends TypeWithDefaultValue> (type: T & TypeWithDefaultValue): Value<T> => {
-    // Apologies to R. Milner
+    // Apologies to R. Milner for the type casts, here and elsewhere...
+    //
+    // Typescript does not support enum generics properly and needs help.
+    // See https://github.com/Microsoft/TypeScript/issues/24085
     if (TypeUtils.isNumber(type)) {
       return ValueUtils.defaultNumber as Value<T>;
     } else if (TypeUtils.isString(type)) {

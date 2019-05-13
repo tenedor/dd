@@ -37,7 +37,7 @@ export class DrawingView extends BaseComponent<Props> {
     });
 
     return (
-      <svg height="300" width="300" style={{backgroundColor: "#888888"}}>
+      <svg viewBox="0 0 100 100" height="300" width="300" style={{backgroundColor: "#888888"}}>
         {renderedDrawings}
       </svg>
     );

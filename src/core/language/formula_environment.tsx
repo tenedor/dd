@@ -9,19 +9,19 @@ import {BuiltInFormula, getBuiltInFormulas} from './standard_library';
 import {Identifier, Type, TypeUtils} from './types';
 import {DictValue, Value} from './values';
 
-interface FormulaGrid {
-  getNamespace: () => ValueNamespace;
+interface ObjectWithNamespace {
+  id: string,
+  getNamespace: () => ValueNamespace,
 }
-type DocumentScopedObject = Grid | FormulaGrid;
 
 export class FormulaEnvironment {
-  private readonly documentScopedObjects: Dictionary<DocumentScopedObject>;
+  private readonly documentScopedObjects: Dictionary<ObjectWithNamespace>;
   private readonly _resolver: NameResolver;
 
   constructor() {
     const builtInFormulas = getBuiltInFormulas();
     this._resolver = this.constructResolver(builtInFormulas);
-    this.documentScopedObjects = this.constructBuiltInGrids(builtInFormulas);
+    this.documentScopedObjects = this.constructBuiltInFormulaGrids(builtInFormulas);
   }
 
   private constructResolver = (builtInFormulas: RODictionary<BuiltInFormula>): NameResolver => {
@@ -31,7 +31,7 @@ export class FormulaEnvironment {
     return new NameResolver(namespaceResolver, constructorNamespace, valueNamespace);
   }
 
-  private constructBuiltInGrids = (builtInFormulas: RODictionary<BuiltInFormula>): Dictionary<DocumentScopedObject> => {
+  private constructBuiltInFormulaGrids = (builtInFormulas: RODictionary<BuiltInFormula>): Dictionary<ObjectWithNamespace> => {
     const byGridId = _.mapKeys(builtInFormulas, formula => this.getFormulaGridId(formula.id))
     return _.mapValues(byGridId, formula => {
       const nameToParameterMap = _.mapKeys(formula.parameters, 'name');
@@ -39,7 +39,8 @@ export class FormulaEnvironment {
         return new ValueReference(p.id, p.type, () => p.name);
       });
       const getNamespace = () => buildNamespace(nameToReferenceMap);
-      return {getNamespace};
+      const id = this.getFormulaGridId(formula.id)
+      return {id, getNamespace};
     });
   }
 
@@ -79,18 +80,26 @@ export class FormulaEnvironment {
   }
 
   public addGrid = (grid: Grid): void => {
-    this.documentScopedObjects[grid.id] = grid;
+    this.addObjectWithNamespace(grid);
   }
 
   public removeGrid = (gridId: string): void => {
-    delete this.documentScopedObjects[gridId];
+    this.removeObjectWithNamespace(gridId);
+  }
+
+  public addObjectWithNamespace = (object: ObjectWithNamespace): void => {
+    this.documentScopedObjects[object.id] = object;
+  }
+
+  public removeObjectWithNamespace = (objectId: string): void => {
+    delete this.documentScopedObjects[objectId];
   }
 
   public get resolver(): NameResolver {
     return this._resolver;
   }
 
-  private getObject = (objectId: Identifier): DocumentScopedObject | undefined => {
+  private getObject = (objectId: Identifier): ObjectWithNamespace | undefined => {
     return this.documentScopedObjects[objectId];
   }
 }

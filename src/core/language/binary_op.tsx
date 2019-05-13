@@ -48,6 +48,8 @@ const assertOpTypes = (valid: boolean, op: string, requirement: string) => {
   }
 }
 
+const throwRuntimeError = (message: string) => {throw new Error(message)};
+
 export class BinaryOpUtils {
 
   // ===========
@@ -173,7 +175,7 @@ export class BinaryOpUtils {
     const n1 = v1 as number;
     switch (op) {
       case BinaryOpTNT.TIMES: return n1 * n2;
-      case BinaryOpTNT.DIV: return n1 / n2;
+      case BinaryOpTNT.DIV: return n2 === 0 ? throwRuntimeError('divide by zero') : n1 / n2;
       default:
         return assertUnreachable(op);
     }

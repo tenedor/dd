@@ -17,8 +17,9 @@ enum ASTNodeType {
   INDEX = "INDEX",
   PROJECT = "PROJECT",
   CALL = "CALL",
+  ASSIGNMENTS = "ASSIGNMENTS",
   IDENTIFIER = "IDENTIFIER",
-  ASSIGNMENTS = "ASSIGNMENT",
+  PARENTHESES = "PARENTHESES",
   LIST = "LIST",
   PRIMITIVE = "PRIMITIVE",
 };
@@ -573,7 +574,52 @@ export class IdentifierRes<R extends Type = Type> extends IdentifierAST
   }
 
   public toText = (resolver: NameResolver): string => {
-    return this.ref.toText(resolver);
+    const name = this.ref.toText(resolver);
+    return Parser.identToText(name);
+  }
+}
+
+
+// ===============
+// Parentheses AST
+// ===============
+
+// This is formally not an AST, it's a CST - shrug.
+// Parentheses are explicitly tracked in the AST in order to recover parentheses when
+// converting back to text.
+abstract class ParenthesesAST<A extends AST> implements AST<ASTNodeType.PARENTHESES> {
+  public readonly nodeType: ASTNodeType.PARENTHESES;
+
+  protected readonly e: A;
+
+  constructor(e: A) {
+    this.e = e;
+  }
+
+  public toText = (resolver: NameResolver): string => {
+    return `(${this.e.toText(resolver)})`;
+  }
+}
+
+export class ParenthesesUnres extends ParenthesesAST<UnresolvedAST> implements UnresolvedAST<ASTNodeType.PARENTHESES> {
+  public resolve = (resolver: NameResolver) => {
+    const eR = this.e.resolve(resolver);
+    return new ParenthesesRes(eR, eR.type);
+  }
+}
+
+export class ParenthesesRes<R extends Type = Type> extends ParenthesesAST<ResolvedAST<R>> implements ResolvedAST<R, ASTNodeType.PARENTHESES> {
+  public readonly type: R;
+  public readonly externalDependencies: ROArray<Reference>;
+
+  constructor(e: ResolvedAST<R>, type: R) {
+    super(e);
+    this.type = type;
+    this.externalDependencies = e.externalDependencies;
+  }
+
+  public eval = (context: Context): Value<R> => {
+    return this.e.eval(context);
   }
 }
 

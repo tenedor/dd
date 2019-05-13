@@ -2,10 +2,10 @@ import * as _ from 'lodash';
 import {Namespace} from 'ohm-js';
 
 import {RODictionary} from '@utils/types';
-import {escapeAndQuote} from '@utils/utils';
+import {escapeAndQuote, unescape} from '@utils/utils';
 import {AssignmentsUnres, BinaryOpUnres, CallUnres, ExpressionUnres, IdentifierUnres,
-        IndexUnres, LambdaUnres, ListUnres, PrimitiveUnres, ProjectUnres, UnaryOpUnres,
-        UnresolvedAST} from './ast';
+        IndexUnres, LambdaUnres, ListUnres, ParenthesesUnres, PrimitiveUnres,
+        ProjectUnres, UnaryOpUnres, UnresolvedAST} from './ast';
 import {BinaryOpUtils} from './binary_op';
 import {Grammar, Node, ohm, Semantics} from './ohm';
 import {TypeUtils} from './types';
@@ -97,7 +97,7 @@ export class Parser {
       IndexExp_project(e1, _dot, e2) {
         return new ProjectUnres(e1.toAST(), e2.toAST());
       },
-      CallExp_call(id, _p1, asmts, _p2) {
+      CallExp_call(id, _p1, asmts, _c, _p2) {
         const asmtPTuples = asmts.toAST() as Array<[string, UnresolvedAST]>;
         const asmtsPList = asmtPTuples.map(([asmtId, e]) => ({[asmtId]: e}));
         const asmtsP = _.extend({}, ...asmtsPList) as RODictionary<UnresolvedAST>;
@@ -113,10 +113,9 @@ export class Parser {
         return new IdentifierUnres(id.toAST());
       },
       GroupExp_parens(_p1, e, _p2) {
-        // TODO add a ParensAST node to support proper toText conversion (technically a CST)
-        return e.toAST();
+        return new ParenthesesUnres(e.toAST());
       },
-      GroupExp_list(_b1, es, _b2) {
+      GroupExp_list(_b1, es, _c, _b2) {
         return new ListUnres(es.toAST());
       },
       number(_int, _dot, _fraction) {
@@ -130,14 +129,14 @@ export class Parser {
         return new PrimitiveUnres(false, TypeUtils.Boolean);
       },
       string(_q1, str, _q2) {
-        const s = unescape(str.sourceString);
+        const s = unescape(str.sourceString, "\\");
         return new PrimitiveUnres(s, TypeUtils.String);
       },
       unquotedIdent(_char, _str) {
         return (this as Node).sourceString;
       },
       quotedIdent(_q1, str, _q2) {
-        return unescape(str.sourceString);
+        return unescape(str.sourceString, "\\");
       },
       NonemptyListOf(e, _sep, es) {
         return [e.toAST()].concat(es.toAST());
@@ -149,10 +148,6 @@ export class Parser {
   }
 }
 
-
-const unescape = (str: string): string => {
-  return str.replace(/\\"/g, '"').replace(/\\'/g, "'").replace(/\\\\/g, '\\');
-}
 
 const createBinaryOpUnres = (e1: Node, op: Node, e2: Node): BinaryOpUnres  => {
   const _op = op.sourceString.trim();

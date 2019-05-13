@@ -135,6 +135,14 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({Value: value}: {Value: number}): number => value * value,
   },
+  Power: {
+    returnType: TypeUtils.Number,
+    parameters: {
+      Base: ParameterUtils.number(2),
+      Exponent: ParameterUtils.number(3),
+    },
+    eval: ({Base: base, Exponent: exponent}: {Base: number, Exponent: number}): number => Math.pow(base, exponent),
+  },
   DrawCircle: {
     returnType: TypeUtils.Drawing,
     parameters: _.extend({}, ParameterUtils.baseDrawing, {
@@ -165,7 +173,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
   DrawPath: {
     returnType: TypeUtils.Drawing,
     parameters: _.extend({}, ParameterUtils.baseDrawing, {
-      Path: ParameterUtils.string("TODO!"),
+      Path: ParameterUtils.string("m -15 9, c 10 -25, 20 -25, 30 0 z"),
     }),
     eval: ({
       Path: path, X: x, Y: y, Fill: fill,

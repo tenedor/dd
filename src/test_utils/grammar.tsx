@@ -47,7 +47,7 @@ export const ohmGrammar = '\
       | CallExp\n\
   \n\
     CallExp\n\
-      = ident #"(" ListOf<Assignment, ","> ")"  -- call\n\
+      = ident #"(" ListOf<Assignment, ","> ","? ")"  -- call\n\
       | IdentExp\
   \n\
     Assignment\n\
@@ -59,7 +59,7 @@ export const ohmGrammar = '\
   \n\
     GroupExp\n\
       = "(" Exp ")"               -- parens\n\
-      | "[" ListOf<Exp, ","> "]"  -- list\n\
+      | "[" ListOf<Exp, ","> ","? "]"  -- list\n\
       | primitive\n\
   \n\
   \n\

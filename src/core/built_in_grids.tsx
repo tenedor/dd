@@ -98,10 +98,10 @@ function generateRows(
   const gridId = grid.id;
   const rowCount = hasParent ? 3 : 6;
   const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
-  const sideLength = (i: number) => 50 * (0.5 + i / 4);
+  const sideLength = (i: number) => 15 * (0.5 + i / 4);
   return _.range(rowCount).map(i => new Row(updateManager, {gridId, cells: [
-    {column: columns[0], manualValue: ValueUtils.numberOf(hasParent ? 300 - i * 60 : i * 20)},
-    {column: columns[1], manualValue: ValueUtils.numberOf(i * i * 10)},
+    {column: columns[0], manualValue: ValueUtils.numberOf(hasParent ? 100 - i * 20 : i * 10)},
+    {column: columns[1], manualValue: ValueUtils.numberOf(i * i * 3)},
     {column: columns[2], manualValue: ValueUtils.numberOf((i + 1) * (i + 1) * 2)},
     {column: columns[3], manualValue: ValueUtils.stringOf(colors[i + (hasParent ? 2 : 0)])},
     {column: columns[4], manualValue: ValueUtils.stringOf(getStarPath(5 + 2*i, 2+2*i, sideLength(i)))},
