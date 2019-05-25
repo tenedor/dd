@@ -4,8 +4,8 @@ import {ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
 import {Parser} from './parser';
 import {ConstructorReference, Context, NameResolver, Reference, ValueReference} from './reference';
-import {DictType, GridType, Identifier, LambdaType, ListType, PrimitiveType, Type,
-        TypeUtils} from './types';
+import {DictType, GridType, Identifier, LambdaType, ListType, PrimitiveType, RowType,
+        Type, TypeUtils} from './types';
 import {UnaryOp, UnaryOpUtils} from './unary_op';
 import {DictValue, ListValue, Value, ValueUtils} from './values';
 
@@ -64,6 +64,9 @@ class ResolvedASTUtils {
   }
   public static resolvesToDict = (astR: ResolvedAST): astR is ResolvedAST<DictType> => {
     return TypeUtils.isDict(astR.type);
+  }
+  public static resolvesToRow = (astR: ResolvedAST): astR is ResolvedAST<RowType> => {
+    return TypeUtils.isRow(astR.type);
   }
   public static resolvesToGrid = (astR: ResolvedAST): astR is ResolvedAST<GridType> => {
     return TypeUtils.isGrid(astR.type);

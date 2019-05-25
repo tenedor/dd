@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 import {assertUnreachable} from '@utils/utils';
 import {Drawing, drawingsAreEqual} from './drawing_value';
 import {DictType, DrawingType, GridType, Identifier, LambdaType, ListType, PrimitiveType,
-        SchemaIdentifier, Type, TypeUtils} from './types';
+        RowType, SchemaIdentifier, Type, TypeUtils} from './types';
 
 interface BaseValue<T extends Type = Type> {
   type: T,
@@ -35,11 +35,13 @@ export interface DictValue<I extends Identifier = Identifier> extends BaseValue<
   dict: {[id: string]: Value},
 }
 
+export type RowValue<I extends Identifier = Identifier> = DictValue<SchemaIdentifier<I>>;
+
 export interface GridValue<I extends Identifier = Identifier>
-    extends BaseValue<GridType<I>>, ListValue<DictType<SchemaIdentifier<I>>>, DictValue<I> {
+    extends BaseValue<GridType<I>>, ListValue<RowType<I>>, DictValue<I> {
   type: GridType<I>,
   dict: {[id: string]: ListValue},
-  list: Array<Value<DictType<I>>>,
+  list: Array<RowValue<I>>,
 }
 
 export interface LambdaValue<I extends Type = Type, O extends Type = Type>
@@ -47,7 +49,8 @@ export interface LambdaValue<I extends Type = Type, O extends Type = Type>
   lambda: (input: Value<I>) => Value<O>,
 }
 
-type ValueUnion = PrimitiveValue | DrawingValue | ListValue | DictValue | GridValue | LambdaValue;
+type ValueUnion = PrimitiveValue | DrawingValue | ListValue | DictValue | RowValue |
+    GridValue | LambdaValue;
 export type Value<T extends Type = Type> = BaseValue<T> & ValueUnion;
 
 
@@ -114,6 +117,10 @@ export class ValueUtils {
     return {dict, type: TypeUtils.DictOf(id)};
   }
 
+  public static rowOf = (): never => {
+    throw new Error("Constructing a row value with Value.rowOf is not allowed.");
+  }
+
   public static gridOf = (): never => {
     throw new Error("Constructing a grid value with Value.gridOf is not allowed.");
   }
@@ -135,6 +142,7 @@ export class ValueUtils {
   public static isDrawing = (v: Value): v is DrawingValue => TypeUtils.isDrawing(v.type)
   public static isList = (v: Value): v is ListValue => TypeUtils.isList(v.type)
   public static isDict = (v: Value): v is DictValue => TypeUtils.isDict(v.type)
+  public static isRow = (v: Value): v is RowValue => TypeUtils.isRow(v.type)
   public static isGrid = (v: Value): v is GridValue => TypeUtils.isGrid(v.type)
   public static isLambda = (v: Value): v is LambdaValue => TypeUtils.isLambda(v.type)
 
@@ -208,8 +216,10 @@ export class ValueUtils {
       return 'fn';
     } else if (ValueUtils.isGrid(v)) {
       return `Grid{${v.type.schemaId}}`;
-    } else if (ValueUtils.isDict(v)) {
+    } else if (ValueUtils.isRow(v)) {
       return `InstanceOf{${v.type.schemaId}}`;
+    } else if (ValueUtils.isDict(v)) {
+      return `DictOf{${v.type.schemaId}}`;
     } else if (ValueUtils.isList(v)) {
       const values = v.list.map(e => ValueUtils.toString(e));
       return `[${values.join(", ")}]`;

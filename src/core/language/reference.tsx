@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 
 import {RODictionary} from '@utils/types';
-import {DictType, GridType, Identifier, Type, TypeUtils} from './types';
-import {DictValue, Value} from './values';
+import {DictType, GridType, Identifier, RowType, Type, TypeUtils} from './types';
+import {DictValue, RowValue, Value} from './values';
 
 export interface Reference {
   readonly id: Identifier;
@@ -37,7 +37,7 @@ export interface ConstructorReference<R extends Type = Type, I extends Identifie
   eval: (context: Context, asmts: DictValue<I>) => Value<R>;
 }
 
-export type GridConstructorReference<I extends Identifier = Identifier> = ConstructorReference<GridType<I>, I>;
+export type GridConstructorReference<I extends Identifier = Identifier> = ConstructorReference<RowType<I>, I>;
 
 export interface CustomFormulaReference<R extends Type = Type, I extends Identifier = Identifier>
     extends ConstructorReference<R, I> {
@@ -176,7 +176,7 @@ export class Context {
     throw new Error("not implemented");
   }
 
-  public constructRow = <I extends Identifier>(ref: GridReference<I>, asmts: DictValue<I>): DictValue<I> => {
+  public constructRow = <I extends Identifier>(ref: GridReference<I>, asmts: DictValue<I>): RowValue<I> => {
     // validate assignments and construct a row
     throw new Error("not implemented");
   }

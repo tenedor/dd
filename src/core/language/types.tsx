@@ -26,8 +26,10 @@ export interface DictType<I extends Identifier = Identifier> {
 
 export type SchemaIdentifier<I extends Identifier = Identifier> = Identifier;
 
-export interface GridType<I extends Identifier = Identifier> extends ListType<DictType<SchemaIdentifier<I>>>, DictType<I> {
-  itemType: DictType<SchemaIdentifier<I>>,
+export type RowType<I extends Identifier = Identifier> = DictType<SchemaIdentifier<I>>;
+
+export interface GridType<I extends Identifier = Identifier> extends ListType<RowType<I>>, DictType<I> {
+  itemType: RowType<I>,
   schemaId: I,
 }
 
@@ -47,7 +49,8 @@ export enum BoundingType {
 }
 
 export type Identifier = string;
-export type Type = PrimitiveType | DrawingType | ListTypeBase | DictType | GridType | LambdaTypeBase | BoundingType;
+export type Type = PrimitiveType | DrawingType | ListTypeBase | DictType | RowType |
+    GridType | LambdaTypeBase | BoundingType;
 
 
 export class TypeUtils {
@@ -69,8 +72,12 @@ export class TypeUtils {
     return {schemaId};
   }
 
+  public static RowOf = <I extends Identifier> (schemaId: I): RowType<I> => {
+    return {schemaId};
+  }
+
   public static GridOf = <I extends Identifier>(schemaId: I): GridType<I> => {
-    return {itemType: TypeUtils.DictOf(schemaId), schemaId};
+    return {itemType: TypeUtils.RowOf(schemaId), schemaId};
   }
 
   public static LambdaOf = <I extends Type, O extends Type> (inputType: I, outputType: O): LambdaType<I, O> => {
@@ -94,7 +101,9 @@ export class TypeUtils {
 
   public static isDict = (t: Type): t is DictType => !TypeUtils.isAtomic(t) && 'schemaId' in t
 
-  public static isGrid = (t: Type): t is GridType => TypeUtils.isList(t) && TypeUtils.isDict(t)
+  public static isRow = (t: Type): t is RowType => TypeUtils.isDict(t)
+
+  public static isGrid = (t: Type): t is GridType => TypeUtils.isList(t) && TypeUtils.isRow(t)
 
   public static isLambda = (t: Type): t is LambdaType => !TypeUtils.isAtomic(t) &&
     'inputType' in t && 'outputType' in t
