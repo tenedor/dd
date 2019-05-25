@@ -14,10 +14,10 @@
     "noImplicitReturns": true,
     "noImplicitThis": true,
     "noImplicitAny": true,
+    "noUnusedLocals": false,
     "importHelpers": true,
     "strictNullChecks": true,
     "suppressImplicitAnyIndexErrors": true,
-    "noUnusedLocals": true,
     "paths": {
       "@app/*": ["src/app/*"],
       "@css/*": ["src/css/*"],
