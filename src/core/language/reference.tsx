@@ -30,37 +30,6 @@ export interface GridReference<I extends Identifier = Identifier> extends ValueR
   readonly id: I;
 }
 
-/*
-
-References
-
-Can reference:
-
-Data:
-- A grid's values
-- A row column's value
-- A grid column's values (syntax looks like projection)
-
-Functions:
-- A grid's constructor
-- A custom formula's constructor
-- A built-in formula's constructor
-
-For each, need an id and a toText
-For data, need a type
-For functions, need a return type and an arguments schema
-
-Need to be able to add a deps graph dependency on the constituents of the reference
-- Data ref: depend on the value's existence, type, and value
-- Function ref:
-  - Built-in: nothing, it's static
-  - Grid/custom: depend on the constructor's existence and the backing grid's schema:
-    its columns (existence, type, formula, default value) and optionaly a projection column
-
-Internally for custom formulas, need a grid constructor and a projection column
-
-*/
-
 export interface ConstructorReference<R extends Type = Type, I extends Identifier = Identifier> extends Reference {
   readonly returnType: R;
   readonly gridRef: GridReference<I>;
