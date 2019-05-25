@@ -10,6 +10,11 @@ body {
   line-height: 18px;
 }
 
+.title-text() {
+  font-size: 18px;
+  line-height: 22px;
+}
+
 #root {
   .text();
   padding: 80px;
@@ -26,10 +31,19 @@ input, textarea, select, button {
   resize: none;
 }
 
+.grid {
+  margin-top: 24px;
+
+  .grid-name {
+    .title-text();
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+}
+
 .table-view {
   border: 1px solid #cccccc;
   display: grid;
-  margin-top: 20px;
   position: relative;
 
   .cell-editor {

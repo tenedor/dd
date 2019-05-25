@@ -35,7 +35,7 @@ export class Document extends BaseModel<DocumentUpdateDescriptor> {
     addBuiltInGrids(this, this.updateManager, this.formulaEnvironment);
   }
 
-  public createGrid = (gridData: GridData = {}): Grid => {
+  public createGrid = (gridData: GridData): Grid => {
     const grid = new Grid(this.updateManager, this.formulaEnvironment, gridData);
     this.formulaEnvironment.addGrid(grid);
     this.grids.push(grid);

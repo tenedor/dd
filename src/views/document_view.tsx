@@ -27,7 +27,10 @@ export class DocumentView extends BaseComponent<Props> {
 
   private renderTables = (epoch: number, grids: ROArray<Grid>) => {
     return grids.map(grid =>
-      <TableView key={`table-${grid.id}`} epoch={epoch} grid={grid} />
+      <div key={`grid-${grid.id}`} className="grid">
+        <div className="grid-name">{grid.name}</div>
+        <TableView key={`table-${grid.id}`} epoch={epoch} grid={grid} />
+      </div>
     );
   }
 }

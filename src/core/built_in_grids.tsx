@@ -134,7 +134,7 @@ export function addBuiltInGrids(
     {column: columns.Path, width: 100},
     {column: columns.DrawShape, width: 150, expressionString: 'DrawPath(Path=Path,X=X,Y=Y,Fill=Fill)'},
   ];
-  const grid1 = document.createGrid();
+  const grid1 = document.createGrid({name: "Shapes"});
   const grid1Columns = generateGridColumns(updateManager, formulaEnvironment, grid1, grid1ColumnsData);
   grid1.addColumns(grid1Columns);
   setColumnExpressions(grid1, grid1ColumnsData, resolver.resolverOf(TypeUtils.GridOf(grid1.id)));
@@ -147,7 +147,7 @@ export function addBuiltInGrids(
     }
     return {parentGridColumn}
   });
-  const grid2 = document.createGrid({parentGrid: grid1});
+  const grid2 = document.createGrid({name: "More Shapes", parentGrid: grid1});
   const grid2Columns = generateGridColumns(updateManager, formulaEnvironment, grid2, grid2ColumnsData);
   grid2.addColumns(grid2Columns);
   setColumnExpressions(grid2, grid2ColumnsData, resolver.resolverOf(TypeUtils.GridOf(grid2.id)));

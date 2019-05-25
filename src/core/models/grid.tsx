@@ -19,15 +19,15 @@ export interface CellIndex {
 }
 
 export interface GridData {
+  name: string,
   parentGrid?: Grid,
 }
 
 export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {}
 
 export class Grid extends BaseModel<GridUpdateDescriptor> {
+  private _name: string;
   private readonly formulaEnvironment: FormulaEnvironment;
-  // invariant - this grid's persisted data only changes from ancestors if its
-  // parent's persisted data changes
   private readonly parent?: Grid;
   public readonly columns: GridColumns;
   public readonly rows: Rows;
@@ -35,10 +35,11 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
   constructor(
     updateManager: UpdateManager,
     formulaEnvironment: FormulaEnvironment,
-    {parentGrid}: GridData,
+    {name, parentGrid}: GridData,
     namespace: ModelType = ModelType.GRID,
   ) {
     super(updateManager, namespace);
+    this._name = name;
     this.formulaEnvironment = formulaEnvironment;
     if (parentGrid) {
       this.parent = parentGrid;
@@ -48,6 +49,10 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
     this.rows = new FunctionalArrayM(updateManager, []);
     this.rows.listenForUpdate(this, this.onRowsUpdated);
+  }
+
+  public get name(): string {
+    return this._name;
   }
 
   public get resolver(): NameResolver {
