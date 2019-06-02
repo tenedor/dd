@@ -398,7 +398,8 @@ export class ProjectRes<R extends Type = Type> extends ProjectAST<ResolvedAST<Di
   }
 
   public toText = (resolver: NameResolver): string => {
-    return `${this.dict.toText(resolver)}.${this.ref.toText(resolver)}`;
+    const refName = this.ref.getName(resolver);
+    return `${this.dict.toText(resolver)}.${Parser.identToText(refName)}`;
   }
 }
 
@@ -457,7 +458,8 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
   }
 
   public toText = (resolver: NameResolver): string => {
-    return `${this.constructorRef.toText(resolver)}(${this.asmts.toText(resolver)})`;
+    const constructorName = this.constructorRef.getName(resolver)
+    return `${Parser.identToText(constructorName)}(${this.asmts.toText(resolver)})`;
   }
 }
 
@@ -526,7 +528,8 @@ export class AssignmentsRes<I extends Identifier = Identifier>
   }
 
   protected asmtIdToText(asmtId: string, resolver: NameResolver): string {
-    return resolver.nameForIdInConstructor(asmtId, this.constructorRef);
+    const name = resolver.nameForIdInConstructor(asmtId, this.constructorRef);
+    return Parser.identToText(name);
   }
 }
 
@@ -577,7 +580,7 @@ export class IdentifierRes<R extends Type = Type> extends IdentifierAST
   }
 
   public toText = (resolver: NameResolver): string => {
-    const name = this.ref.toText(resolver);
+    const name = this.ref.getName(resolver);
     return Parser.identToText(name);
   }
 }

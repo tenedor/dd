@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 
 import {Identifier} from '@language/types';
-import {Value} from '@language/values';
+import {RowValue, Value, ValueUtils} from '@language/values';
 import {Dictionary, RODictionary} from '@utils/types';
 import {BaseModel, ModelType} from './base_model';
 import {Cell, CellUpdateDescriptor} from './cell';
@@ -86,6 +86,11 @@ export class Row extends BaseModel<RowUpdateDescriptor> {
 
   private getRowContext = (): RowContext => {
     return this.cells.d;
+  }
+
+  public asValue = (): RowValue => {
+    const cellValues = _.mapValues(this.cells.d, c => c.value);
+    return ValueUtils.dictOf(cellValues, this.gridId);
   }
 
   private onCellsUpdated = (

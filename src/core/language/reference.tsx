@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 
+import {Grid} from '@core/models/grid';
 import {RODictionary} from '@utils/types';
 import {DictType, GridType, Identifier, RowType, Type, TypeUtils} from './types';
 import {DictValue, RowValue, Value} from './values';
@@ -7,18 +8,18 @@ import {DictValue, RowValue, Value} from './values';
 export interface Reference {
   readonly id: Identifier;
 
-  toText(resolver: NameResolver): string;
+  getName(resolver: NameResolver): string;
 }
 
 export class ValueReference<T extends Type = Type> implements Reference {
   public readonly id: Identifier;
-  public readonly toText: (resolver: NameResolver) => string;
+  public readonly getName: (resolver: NameResolver) => string;
   public readonly type: T;
 
-  constructor(id: Identifier, type: T, toText: (resolver: NameResolver) => string) {
+  constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string) {
     this.id = id;
     this.type = type;
-    this.toText = toText;
+    this.getName = getName;
   }
 
   public eval = (context: Context): Value<T> => {
@@ -53,7 +54,52 @@ interface Namespace<R extends Reference> {
 }
 
 export type ValueNamespace = Namespace<ValueReference>;
-export type ConstructorNamespace = Namespace<ConstructorReference>;
+
+
+export class ConstructorNamespace implements Namespace<ConstructorReference> {
+  private readonly nameToReferenceMap: {[name: string]: ConstructorReference};
+  private readonly idToNameMap: {[id: string]: string};
+  private readonly grids: {[id: string]: Grid};
+
+  constructor(nameToReferenceMap: {[name: string]: ConstructorReference}) {
+    this.nameToReferenceMap = nameToReferenceMap;
+    const nameToIdMap = _.mapValues(nameToReferenceMap, ref => ref.id);
+    this.idToNameMap = _.invert(nameToIdMap);
+    this.grids = {};
+  }
+
+  public getReferenceForName = (name: string): ConstructorReference => {
+    const grid = Object.values(this.grids).find(g => g.name === name);
+    return grid ? this.getConstructorForGrid(grid) : this.nameToReferenceMap[name];
+  }
+
+  public getNameForReference = (refId: Identifier): string => {
+    const grid = this.grids[refId];
+    return grid ? grid.name : this.idToNameMap[refId];
+  }
+
+  public addGrid = (grid: Grid) => {
+    this.grids[grid.id] = grid;
+  }
+
+  public removeGrid = (gridId: string) => {
+    delete this.grids[gridId];
+  }
+
+  private getConstructorForGrid = (grid: Grid): ConstructorReference<RowType> => {
+    const {id} = grid;
+    const getName = (r: NameResolver) => r.nameForConstructorId(id);
+    const gridRef = new ValueReference(id, TypeUtils.GridOf(id), getName);
+    return {
+      id,
+      returnType: TypeUtils.RowOf(id),
+      gridRef,
+      getName,
+      eval: grid.evalConstructor,
+    }
+  }
+}
+
 
 export const buildNamespace = <R extends Reference> (nameToReferenceMap: {[name: string]: R}): Namespace<R> => {
   const nameToIdMap = _.mapValues(nameToReferenceMap, ref => ref.id);
@@ -113,6 +159,16 @@ export class NameResolver {
   public nameForIdInConstructor = (id: Identifier, constructor: ConstructorReference): string => {
     const namespace = this.resolveNamespace(constructor.gridRef.id);
     const name = namespace.getNameForReference(id);
+    return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
+  }
+
+  public nameForValueId = (id: Identifier): string => {
+    const name = this.valueNamespace.getNameForReference(id);
+    return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
+  }
+
+  public nameForConstructorId = (id: Identifier): string => {
+    const name = this.constructorNamespace.getNameForReference(id);
     return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
   }
 

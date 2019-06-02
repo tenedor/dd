@@ -16,19 +16,26 @@ interface ObjectWithNamespace {
 
 export class FormulaEnvironment {
   private readonly documentScopedObjects: Dictionary<ObjectWithNamespace>;
+  private readonly valueNamespace: ValueNamespace;
+  private readonly constructorNamespace: ConstructorNamespace;
   private readonly _resolver: NameResolver;
 
   constructor() {
     const builtInFormulas = getBuiltInFormulas();
-    this._resolver = this.constructResolver(builtInFormulas);
+    this.valueNamespace = buildNamespace({});
+    this.constructorNamespace = this.buildConstructorNamespace(builtInFormulas);
+    this._resolver = this.constructResolver();
     this.documentScopedObjects = this.constructBuiltInFormulaGrids(builtInFormulas);
   }
 
-  private constructResolver = (builtInFormulas: RODictionary<BuiltInFormula>): NameResolver => {
+  private buildConstructorNamespace = (builtInFormulas: RODictionary<BuiltInFormula>): ConstructorNamespace => {
+    const builtInFormulaReferences = _.mapValues(builtInFormulas, this.getReferenceForFormula);
+    return new ConstructorNamespace(builtInFormulaReferences);
+  }
+
+  private constructResolver = (): NameResolver => {
     const namespaceResolver = {resolveNamespace: this.resolveNamespace};
-    const constructorNamespace = this.buildConstructorNamespace(builtInFormulas);
-    const valueNamespace: ValueNamespace = buildNamespace({});
-    return new NameResolver(namespaceResolver, constructorNamespace, valueNamespace);
+    return new NameResolver(namespaceResolver, this.constructorNamespace, this.valueNamespace);
   }
 
   private constructBuiltInFormulaGrids = (builtInFormulas: RODictionary<BuiltInFormula>): Dictionary<ObjectWithNamespace> => {
@@ -49,18 +56,13 @@ export class FormulaEnvironment {
     return object && object.getNamespace();
   }
 
-  private buildConstructorNamespace = (builtInFormulas: RODictionary<BuiltInFormula>): ConstructorNamespace => {
-    const builtInFormulaReferences = _.mapValues(builtInFormulas, this.getReferenceForFormula);
-    return buildNamespace(builtInFormulaReferences);
-  }
-
   private getReferenceForFormula = <R extends Type> (formula: BuiltInFormula<R>): BuiltInFormulaReference<R> => {
     const {id, returnType, name} = formula;
     return {
       id,
       returnType,
       gridRef: this.makeGridForBuiltInFormula(id),
-      toText: () => name,
+      getName: () => name,
       eval: (context: Context, asmts: DictValue): Value<R> => {
         return formula.eval(asmts);
       },
@@ -69,10 +71,10 @@ export class FormulaEnvironment {
 
   private makeGridForBuiltInFormula = (formulaId: Identifier): GridReference => {
     const id = this.getFormulaGridId(formulaId);
-    const toText = (r: NameResolver) => {
+    const getName = (r: NameResolver) => {
       throw new Error("A formula grid should never be displayed to the user");
     };
-    return new ValueReference(id, TypeUtils.GridOf(id), toText);
+    return new ValueReference(id, TypeUtils.GridOf(id), getName);
   }
 
   private getFormulaGridId = (formulaId: Identifier): Identifier => {
@@ -81,10 +83,12 @@ export class FormulaEnvironment {
 
   public addGrid = (grid: Grid): void => {
     this.addObjectWithNamespace(grid);
+    this.constructorNamespace.addGrid(grid);
   }
 
   public removeGrid = (gridId: string): void => {
     this.removeObjectWithNamespace(gridId);
+    this.constructorNamespace.removeGrid(gridId);
   }
 
   public addObjectWithNamespace = (object: ObjectWithNamespace): void => {

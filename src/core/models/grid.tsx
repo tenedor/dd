@@ -1,7 +1,8 @@
 import * as _ from 'lodash';
 
+import {DictValue, RowValue} from '@core/language/values';
 import {FormulaEnvironment} from '@language/formula_environment';
-import {NameResolver, ValueNamespace, ValueReference} from '@language/reference';
+import {Context, NameResolver, ValueNamespace, ValueReference} from '@language/reference';
 import {BaseModel, ModelType} from './base_model';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {FunctionalKeyedArray} from './functional_keyed_array';
@@ -83,6 +84,16 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
 
   public addRows = (rows: Row[]) => {
     this.rows.pushAll(rows);
+  }
+
+  public evalConstructor = (context: Context, asmts: DictValue): RowValue => {
+    const updateManager = new UpdateManager();
+    const cellConstructionData = this.columns.a.map(column => ({column, manualValue: asmts.dict[column.columnId]}));
+    const row = new Row(updateManager, {
+      gridId: this.id,
+      cells: cellConstructionData,
+    });
+    return row.asValue();
   }
 
   private onColumnsUpdated = (

@@ -109,11 +109,45 @@ function generateRows(
   ]}));
 }
 
-export function addBuiltInGrids(
+export function addArithmeticGrid(
   document: Document,
   updateManager: UpdateManager,
   formulaEnvironment: FormulaEnvironment,
-): Grid[] {
+) {
+  const {resolver} = formulaEnvironment;
+
+  const grid = document.createGrid({name: "Radius Calculator"});
+
+  const columnsDataMap = {
+    In: {name: 'In', type: TypeUtils.Number},
+    Out: {name: 'Out', type: TypeUtils.Number},
+  };
+  const columns = generateColumns(updateManager, columnsDataMap);
+  const gridColumnsData: GridColumnData[] = [
+    {column: columns.In, width: 100},
+    {column: columns.Out, width: 100, expressionString: 'Square(Value = In / 10 + 1) * 2'},
+  ];
+  const gridColumns = generateGridColumns(updateManager, formulaEnvironment, grid, gridColumnsData);
+  grid.addColumns(gridColumns);
+  setColumnExpressions(grid, gridColumnsData, resolver.resolverOf(TypeUtils.GridOf(grid.id)));
+
+  const gridRows = [
+    new Row(updateManager, {
+      gridId: grid.id,
+      cells: [
+        {column: gridColumns[0], manualValue: ValueUtils.numberOf(5)},
+        {column: gridColumns[1]},
+      ],
+    }),
+  ];
+  grid.addRows(gridRows);
+}
+
+export function addShapeGrids(
+  document: Document,
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+) {
   const {resolver} = formulaEnvironment;
 
   const columnsDataMap = {
@@ -129,7 +163,7 @@ export function addBuiltInGrids(
   const grid1ColumnsData: GridColumnData[] = [
     {column: columns.X, width: 100},
     {column: columns.Y, width: 100},
-    {column: columns.Radius, width: 100},
+    {column: columns.Radius, width: 100, expressionString: "'Radius Calculator'(In=X).Out"},
     {column: columns.Fill, width: 100},
     {column: columns.Path, width: 100},
     {column: columns.DrawShape, width: 150, expressionString: 'DrawPath(Path=Path,X=X,Y=Y,Fill=Fill)'},
@@ -153,6 +187,13 @@ export function addBuiltInGrids(
   setColumnExpressions(grid2, grid2ColumnsData, resolver.resolverOf(TypeUtils.GridOf(grid2.id)));
   const grid2Rows = generateRows(updateManager, grid2, grid2Columns, true);
   grid2.addRows(grid2Rows);
+}
 
-  return [grid1, grid2];
+export function addBuiltInGrids(
+  document: Document,
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+) {
+  addArithmeticGrid(document, updateManager, formulaEnvironment);
+  addShapeGrids(document, updateManager, formulaEnvironment);
 }

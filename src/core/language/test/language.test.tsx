@@ -3,8 +3,8 @@ import * as _ from 'lodash';
 import {ConvertibleToValue, JestErrorMatcher, TestUtils} from '@test_utils/test_utils';
 import {FormulaEnvironment} from '../formula_environment';
 import {Parser} from '../parser';
-import {buildNamespace, Context, NameResolver, NamespaceResolver, ValueNamespace,
-        ValueReference} from '../reference';
+import {buildNamespace, ConstructorNamespace, Context, NameResolver, NamespaceResolver,
+        ValueNamespace, ValueReference} from '../reference';
 import {TypeUtils} from '../types';
 import {ValueUtils} from '../values';
 
@@ -35,7 +35,7 @@ const gridColumnResolver = formulaEnvironment.resolver.resolverOf(TypeUtils.Grid
 const gridColumnContext = new Context(ValueUtils.dictOf(_.mapValues(fakeColumns, 'value'), fakeGridId));
 
 const nullNamespaceResolver: NamespaceResolver = {resolveNamespace: () => {throw new Error("unexpected namespace resolution")}};
-const nullResolver = new NameResolver(nullNamespaceResolver, buildNamespace({}), buildNamespace({}));
+const nullResolver = new NameResolver(nullNamespaceResolver, new ConstructorNamespace({}), buildNamespace({}));
 const nullContext = new Context(ValueUtils.dictOf({}, "null-context"));
 
 
