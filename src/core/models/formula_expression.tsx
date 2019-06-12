@@ -1,8 +1,7 @@
 import {ExpressionRes} from '@language/ast';
-import {FormulaEnvironment} from '@language/formula_environment';
-import {Context, Reference} from '@language/reference';
+import {Context, NameResolver, Reference} from '@language/reference';
 import {Type, TypeUtils} from '@language/types';
-import {DictValue, Value} from '@language/values';
+import {Value} from '@language/values';
 import {ROArray} from '@utils/types';
 import {BaseModel, ModelType} from './base_model';
 import {DependencyGraphPartitionIndex, UpdateDescriptor, UpdateManager} from './update_manager';
@@ -10,7 +9,7 @@ import {FormulaExpressionUpdateType} from './update_types';
 
 interface FormulaExpressionData<T extends Type, P extends Type> {
   type: T;
-  formulaEnvironment: FormulaEnvironment;
+  nameResolver: NameResolver;
   parent?: FormulaExpression<P>;
 }
 
@@ -19,18 +18,18 @@ export interface FormulaExpressionUpdateDescriptor extends UpdateDescriptor<Form
 export class FormulaExpression<T extends Type = Type, P extends Type = Type> extends BaseModel<FormulaExpressionUpdateDescriptor> {
   public readonly dependencyGraphPartitionIndex = DependencyGraphPartitionIndex.FORMULA;
   private readonly type: T;
-  private readonly formulaEnvironment: FormulaEnvironment;
+  private readonly nameResolver: NameResolver;
   private _expression?: ExpressionRes<T>;
   private readonly parent?: FormulaExpression<P>;
 
   constructor(
     updateManager: UpdateManager,
-    {type, formulaEnvironment, parent}: FormulaExpressionData<T, P>,
+    {type, nameResolver, parent}: FormulaExpressionData<T, P>,
     namespace: ModelType = ModelType.FORMULA_EXPRESSION,
   ) {
     super(updateManager, namespace);
     this.type = type;
-    this.formulaEnvironment = formulaEnvironment;
+    this.nameResolver = nameResolver;
     this.parent = parent;
 
     if (this.parent) {
@@ -59,17 +58,12 @@ export class FormulaExpression<T extends Type = Type, P extends Type = Type> ext
     return this.expression === undefined ? [] : this.expression.externalDependencies;
   }
 
-  public eval = (rowContextValues: DictValue): Value<T> => {
+  public eval = (context: Context): Value<T> => {
     const expr = this.expression;
     if (expr) {
-      const context = this.getContext(rowContextValues);
       return expr.eval(context);
     }
     throw new Error("Tried to evaluate a formula expression that was not set.");
-  }
-
-  private getContext = (rowContextValues: DictValue): Context => {
-    return new Context(rowContextValues);
   }
 
   public setExpression = (expression: ExpressionRes<T> | undefined) => {
@@ -84,7 +78,7 @@ export class FormulaExpression<T extends Type = Type, P extends Type = Type> ext
   public toText = (): string => {
     const expression = this.expression;
     if (expression) {
-      return expression.toText(this.formulaEnvironment.resolver);
+      return expression.toText(this.nameResolver);
     } else {
       return "";
     }

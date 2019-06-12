@@ -366,7 +366,7 @@ export class ProjectUnres extends ProjectAST<UnresolvedAST> implements Unresolve
     if (!ResolvedASTUtils.resolvesToDict(dictR)) {
       throw new TypeError("Can only project values from grids and rows");
     }
-    const refR = resolver.resolverOf(dictR.type).resolveValueReference(this.name);
+    const refR = resolver.resolverFor(dictR.type).resolveValueReference(this.name);
     return new ProjectRes(dictR, refR);
   }
 
@@ -393,7 +393,7 @@ export class ProjectRes<R extends Type = Type> extends ProjectAST<ResolvedAST<Di
     if (!ValueUtils.isDict(dictV)) {
       throw new TypeError("Can only project values from grids and rows");
     }
-    const refV = this.ref.eval(context.contextOf(dictV));
+    const refV = this.ref.eval(context.contextOf(dictV.dict));
     return refV;
   }
 
@@ -496,7 +496,7 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
 
   public resolveForConstructor = (resolver: NameResolver, constructorRef: ConstructorReference) => {
     const {type} = constructorRef.gridRef;
-    const nameResolver = resolver.resolverOf(type);
+    const nameResolver = resolver.resolverFor(type);
     const namesResolved = _.mapKeys(this.asmts, (_e, name) => nameResolver.resolveValueReference(name).id);
     const asmtsR = _.mapValues(namesResolved, e => e.resolve(resolver));
     const asmtTypes = _.mapValues(asmtsR, asmt => asmt.type);

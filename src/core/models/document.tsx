@@ -6,7 +6,7 @@ import {ROArray} from '@utils/types';
 import {BaseModel, ModelType} from './base_model';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {Grid, GridData, GridUpdateDescriptor} from './grid';
-import {UpdateDescriptor, UpdateManager} from './update_manager';
+import {SimpleUpdateManager, UpdateDescriptor} from './update_manager';
 import {DocumentUpdateType} from './update_types';
 
 export type Grids = FunctionalArrayM<Grid, GridUpdateDescriptor>;
@@ -20,7 +20,7 @@ export class Document extends BaseModel<DocumentUpdateDescriptor> {
   constructor(namespace: ModelType = ModelType.DOCUMENT) {
     // Unlike other models, Document creates its own UpdateManager. There is one
     // update manager per document and all other models receive this singleton.
-    super(new UpdateManager(), namespace);
+    super(new SimpleUpdateManager(), namespace);
 
     this.formulaEnvironment = new FormulaEnvironment();
     this.grids = new FunctionalArrayM(this.updateManager, []);
@@ -36,7 +36,7 @@ export class Document extends BaseModel<DocumentUpdateDescriptor> {
   }
 
   public createGrid = (gridData: GridData): Grid => {
-    const grid = new Grid(this.updateManager, this.formulaEnvironment, gridData);
+    const grid = new Grid(this.updateManager, gridData);
     this.formulaEnvironment.addGrid(grid);
     this.grids.push(grid);
     return grid;

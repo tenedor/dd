@@ -7,6 +7,7 @@ export enum ModelType {
   ARRAY = 'arr',
   CELL = 'cell',
   COLUMN = 'col',
+  CONSTANT = 'const',
   DICTIONARY = 'dict',
   DOCUMENT = 'doc',
   FORMULA_EXPRESSION = 'formula-expr',
@@ -16,7 +17,7 @@ export enum ModelType {
   ROW = 'row',
 }
 
-export class BaseModel<D extends UpdateDescriptor> {
+export class BaseModel<D extends UpdateDescriptor = UpdateDescriptor> {
   public readonly id: string;
   public readonly dependencyGraphPartitionIndex: DependencyGraphPartitionIndex = DependencyGraphPartitionIndex.DEFAULT;
   public epoch: number;

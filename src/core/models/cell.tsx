@@ -1,14 +1,15 @@
 import * as _ from 'lodash';
 
+import {BaseModelWithValue, Context, ReferenceUtils} from '@core/language/reference';
 import {Identifier, Type} from '@language/types';
-import {DictValue, Value, ValueUtils} from '@language/values';
+import {Value, ValueUtils} from '@language/values';
 import {RODictionary} from '@utils/types';
 import {BaseModel, ModelType} from './base_model';
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {RowContext} from './row';
 import {DependencySetUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
-import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType} from './update_types';
+import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType, GridUpdateType} from './update_types';
 
 interface CellData<T extends Type> {
   column: GridColumn<T>,
@@ -23,7 +24,7 @@ export class Cell<T extends Type = Type> extends BaseModel<CellUpdateDescriptor>
   private readonly column: GridColumn<T>;
   private readonly getRowContext: () => RowContext;
   private readonly gridId: Identifier;
-  private dependencies: RODictionary<Cell>;
+  private dependencies: RODictionary<BaseModelWithValue>;
   private manualValue?: Value<T>;
   private _value: Value<T>;
 
@@ -75,7 +76,10 @@ export class Cell<T extends Type = Type> extends BaseModel<CellUpdateDescriptor>
     }
   }
 
-  private getDependenciesDiff(oldDependencies: RODictionary<Cell>, newDependencies: RODictionary<Cell>): {removedIds: string[], addedIds: string[]} {
+  private getDependenciesDiff(
+    oldDependencies: RODictionary<BaseModelWithValue>,
+    newDependencies: RODictionary<BaseModelWithValue>,
+  ): {removedIds: string[], addedIds: string[]} {
     const oldKeys = Object.keys(oldDependencies);
     const newKeys = Object.keys(newDependencies);
     const removedIds = _.difference(oldKeys, newKeys);
@@ -83,13 +87,13 @@ export class Cell<T extends Type = Type> extends BaseModel<CellUpdateDescriptor>
     return {removedIds, addedIds};
   }
 
-  private resolveDependencies = (): RODictionary<Cell> => {
-    const rowContext = this.getRowContext();
-    const allDependencies = this.formulaExpression.dependencies.map(d => d.id);
-    const cellDependencyIds = _.intersection(allDependencies, Object.keys(rowContext));
-    const dependenciesDict= {};
-    cellDependencyIds.forEach(id => dependenciesDict[id] = rowContext[id]);
-    return dependenciesDict;
+  private resolveDependencies = (): RODictionary<BaseModelWithValue> => {
+    const absoluteReferences = this.formulaExpression.dependencies.filter(ReferenceUtils.isAbsoluteReference);
+    const relativeReferences = this.formulaExpression.dependencies.filter(ReferenceUtils.isRelativeReference);
+    const absoluteDependenciesList = absoluteReferences.map(r => r.model);
+    const absoluteDependencies = _.mapKeys(absoluteDependenciesList, d => d.id);
+    const relativeDependencies = _.pick(this.getRowContext(), relativeReferences.map(r => r.id));
+    return _.extend({}, absoluteDependencies, relativeDependencies);
   }
 
   private updateDependencies = (): DependencySetUpdateDescriptor[] => {
@@ -142,13 +146,10 @@ export class Cell<T extends Type = Type> extends BaseModel<CellUpdateDescriptor>
   }
 
   private onContextDependencyUpdated = (epoch: number, updates: CellUpdateDescriptor[]): CellUpdateDescriptor[] => {
-    const valueUpdated = updates.some(u => u.type === CellUpdateType.VALUE_UPDATED);
-    if (valueUpdated) {
-      const descriptors = this.refreshValueAndGetUpdateDescriptors();
-      if (descriptors.length) {
-        this.onDependencyUpdated(epoch);
-        return descriptors;
-      }
+    const descriptors = this.refreshValueAndGetUpdateDescriptors();
+    if (descriptors.length) {
+      this.onDependencyUpdated(epoch);
+      return descriptors;
     }
     return [];
   }
@@ -162,14 +163,14 @@ export class Cell<T extends Type = Type> extends BaseModel<CellUpdateDescriptor>
     return [{type: CellUpdateType.VALUE_UPDATED}];
   }
 
-  private getDependencyValues = (): DictValue => {
-    const cellValues = _.mapValues(this.dependencies, c => c.value);
-    return ValueUtils.dictOf(cellValues, this.gridId);
+  private getContext = (): Context => {
+    const dependencyValues = _.mapValues(this.dependencies, c => c.value);
+    return new Context(dependencyValues);
   }
 
   private computeValue = (): Value<T> => {
     if (this.formulaExpression.isSet) {
-      return this.formulaExpression.eval(this.getDependencyValues());
+      return this.formulaExpression.eval(this.getContext());
     } else if (this.manualValue !== undefined) {
       return this.manualValue;
     } else {

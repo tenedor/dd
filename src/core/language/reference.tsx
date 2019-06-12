@@ -1,39 +1,90 @@
 import * as _ from 'lodash';
 
-import {Grid} from '@core/models/grid';
+import {BaseModel} from '@core/models/base_model'; // Only a type dependency
+import {Grid} from '@core/models/grid'; // Only a type dependency
 import {RODictionary} from '@utils/types';
 import {DictType, GridType, Identifier, RowType, Type, TypeUtils} from './types';
 import {DictValue, RowValue, Value} from './values';
 
-export interface Reference {
+export type BaseModelWithValue = BaseModel & {value: Value};
+
+export enum ReferenceType {
+  ABSOLUTE = "ABSOLUTE",
+  RELATIVE = "RELATIVE",
+}
+
+interface BaseReference<R extends ReferenceType> {
   readonly id: Identifier;
+  readonly referenceType: R;
 
   getName(resolver: NameResolver): string;
 }
 
-export class ValueReference<T extends Type = Type> implements Reference {
+export interface AbsoluteReference extends BaseReference<ReferenceType.ABSOLUTE> {
+  readonly model: BaseModelWithValue,
+}
+
+export type RelativeReference = BaseReference<ReferenceType.RELATIVE>;
+
+export type Reference = AbsoluteReference | RelativeReference;
+
+abstract class BaseValueReference<T extends Type = Type, R extends ReferenceType = ReferenceType>
+    implements BaseReference<R> {
   public readonly id: Identifier;
+  public readonly referenceType: R;
   public readonly getName: (resolver: NameResolver) => string;
   public readonly type: T;
 
-  constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string) {
+  constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string, referenceType: R) {
     this.id = id;
     this.type = type;
     this.getName = getName;
+    this.referenceType = referenceType;
   }
 
   public eval = (context: Context): Value<T> => {
-    return context.evalValueReference(this);
+    // Apologies to R. Milner...
+    return context.evalValueReference(this as ValueReference<T>);
   }
 }
 
-export interface GridReference<I extends Identifier = Identifier> extends ValueReference<GridType<I>> {
+export class RelativeValueReference<T extends Type = Type> extends BaseValueReference<T, ReferenceType.RELATIVE> implements RelativeReference {
+  constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string) {
+    super(id, type, getName, ReferenceType.RELATIVE);
+  }
+}
+
+export class AbsoluteValueReference<T extends Type = Type> extends BaseValueReference<T, ReferenceType.ABSOLUTE> implements AbsoluteReference {
+  public readonly model: BaseModelWithValue;
+
+  constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string, model: BaseModelWithValue) {
+    super(id, type, getName, ReferenceType.ABSOLUTE);
+    this.model = model;
+  }
+}
+
+export type ValueReference<T extends Type = Type> = RelativeValueReference<T> | AbsoluteValueReference<T>;
+
+export class GridReference<I extends Identifier = Identifier> extends AbsoluteValueReference<GridType<I>> {
+  public readonly id: I;
+
+  constructor(grid: Grid) {
+    const id = grid.id as I;
+    const type = TypeUtils.GridOf(id);
+    const getName = (r: NameResolver) => r.nameForValueId(id);
+    super(id, type, getName, grid);
+  }
+}
+
+export interface GridShimReference<I extends Identifier = Identifier> extends AbsoluteValueReference<GridType<I>> {
   readonly id: I;
 }
 
-export interface ConstructorReference<R extends Type = Type, I extends Identifier = Identifier> extends Reference {
+type GridLikeReference<I extends Identifier = Identifier> = GridReference<I> | GridShimReference<I>;
+
+export interface ConstructorReference<R extends Type = Type, I extends Identifier = Identifier> extends AbsoluteReference {
   readonly returnType: R;
-  readonly gridRef: GridReference<I>;
+  readonly gridRef: GridLikeReference<I>;
 
   eval: (context: Context, asmts: DictValue<I>) => Value<R>;
 }
@@ -46,6 +97,22 @@ export interface CustomFormulaReference<R extends Type = Type, I extends Identif
 }
 
 export type BuiltInFormulaReference<R extends Type = Type> = ConstructorReference<R>;
+
+export class ReferenceUtils {
+
+  // ===========
+  // Type Guards
+  // ===========
+
+  public static isRelativeReference = (r: Reference): r is RelativeReference => {
+    return r.referenceType === ReferenceType.RELATIVE;
+  }
+
+  public static isAbsoluteReference = (r: Reference): r is AbsoluteReference => {
+    return r.referenceType === ReferenceType.ABSOLUTE;
+  }
+
+}
 
 
 interface Namespace<R extends Reference> {
@@ -88,13 +155,13 @@ export class ConstructorNamespace implements Namespace<ConstructorReference> {
 
   private getConstructorForGrid = (grid: Grid): ConstructorReference<RowType> => {
     const {id} = grid;
-    const getName = (r: NameResolver) => r.nameForConstructorId(id);
-    const gridRef = new ValueReference(id, TypeUtils.GridOf(id), getName);
     return {
       id,
+      referenceType: ReferenceType.ABSOLUTE,
+      model: grid,
       returnType: TypeUtils.RowOf(id),
-      gridRef,
-      getName,
+      gridRef: new GridReference(grid),
+      getName: (r: NameResolver) => r.nameForConstructorId(id),
       eval: grid.evalConstructor,
     }
   }
@@ -191,7 +258,7 @@ export class NameResolver {
     });
   }
 
-  public resolverOf = (dict: DictType): NameResolver => {
+  public resolverFor = (dict: DictType): NameResolver => {
     const valueNamespace = this.resolveNamespace(dict.schemaId);
     return new NameResolver(this.namespaceResolver, this.constructorNamespace, valueNamespace);
   }
@@ -212,14 +279,14 @@ export class NameResolver {
 
 
 export class Context {
-  private readonly valueLookupTable: DictValue;
+  private readonly valueLookupTable: RODictionary<Value>;
 
-  constructor(valueLookupTable: DictValue) {
+  constructor(valueLookupTable: RODictionary<Value>) {
     this.valueLookupTable = valueLookupTable;
   }
 
   public evalValueReference = <T extends Type>(ref: ValueReference<T>): Value<T> => {
-    const value = this.valueLookupTable.dict[ref.id];
+    const value = this.valueLookupTable[ref.id];
     if (!value) {
       throw new Error(`No value found for reference ${ref.id}`);
     }
@@ -237,7 +304,7 @@ export class Context {
     throw new Error("not implemented");
   }
 
-  public contextOf = (dict: DictValue): Context => {
+  public contextOf = (dict: RODictionary<Value>): Context => {
     return new Context(dict);
   }
 }

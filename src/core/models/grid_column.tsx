@@ -47,7 +47,7 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
     this.formulaEnvironment = formulaEnvironment;
     const parentExpression = parentGridColumn ? parentGridColumn.formulaExpression : undefined;
     this._formulaExpression = new FormulaExpression(updateManager,
-        {type, formulaEnvironment, parent: parentExpression});
+        {type, nameResolver: formulaEnvironment.resolver, parent: parentExpression});
     this._width = width;
 
     this.column.listenForUpdate(this, this.onColumnUpdated);
@@ -85,7 +85,7 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
   }
 
   public get resolver(): NameResolver {
-    return this.formulaEnvironment.resolver.resolverOf(TypeUtils.GridOf(this.grid.id));
+    return this.formulaEnvironment.resolver.resolverFor(TypeUtils.GridOf(this.grid.id));
   }
 
   public get name(): string {

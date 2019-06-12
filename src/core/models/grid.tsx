@@ -1,15 +1,22 @@
 import * as _ from 'lodash';
 
-import {DictValue, RowValue} from '@core/language/values';
-import {FormulaEnvironment} from '@language/formula_environment';
-import {Context, NameResolver, ValueNamespace, ValueReference} from '@language/reference';
+import {TypeUtils} from '@core/language/types';
+import {DictValue, GridValue, RowValue} from '@core/language/values';
+import {Context, NameResolver, RelativeValueReference, ValueNamespace} from '@language/reference';
 import {BaseModel, ModelType} from './base_model';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {FunctionalKeyedArray} from './functional_keyed_array';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {Row, RowUpdateDescriptor} from './row';
-import {UpdateDescriptor, UpdateManager} from './update_manager';
+import {SimpleUpdateManager, UpdateDescriptor, UpdateManager} from './update_manager';
 import {GridUpdateType} from './update_types';
+
+export interface GridLike {
+  readonly id: string,
+  readonly name: string,
+  readonly value: GridValue,
+  getNamespace: () => ValueNamespace,
+}
 
 export type GridColumns = FunctionalKeyedArray<GridColumn, GridColumnUpdateDescriptor, 'columnId'>;
 export type Rows = FunctionalArrayM<Row, RowUpdateDescriptor>;
@@ -26,22 +33,19 @@ export interface GridData {
 
 export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {}
 
-export class Grid extends BaseModel<GridUpdateDescriptor> {
+export class Grid extends BaseModel<GridUpdateDescriptor> implements GridLike {
   private _name: string;
-  private readonly formulaEnvironment: FormulaEnvironment;
   private readonly parent?: Grid;
   public readonly columns: GridColumns;
   public readonly rows: Rows;
 
   constructor(
     updateManager: UpdateManager,
-    formulaEnvironment: FormulaEnvironment,
     {name, parentGrid}: GridData,
     namespace: ModelType = ModelType.GRID,
   ) {
     super(updateManager, namespace);
     this._name = name;
-    this.formulaEnvironment = formulaEnvironment;
     if (parentGrid) {
       this.parent = parentGrid;
       this.parent.listenForUpdate(this, this.onParentGridUpdated);
@@ -56,8 +60,9 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
     return this._name;
   }
 
-  public get resolver(): NameResolver {
-    return this.formulaEnvironment.resolver;
+  public get value(): GridValue {
+    // TODO fix this
+    return {type: TypeUtils.GridOf(this.id), dict: {}, list: []};
   }
 
   public getNamespace = (): ValueNamespace => {
@@ -68,7 +73,7 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
           return undefined;
         }
         const {columnId: id, type} = column;
-        return new ValueReference(id, type, (r: NameResolver) => column.name);
+        return new RelativeValueReference(id, type, (r: NameResolver) => column.name);
       },
       getNameForReference: (columnId: string) => this.columns.d[columnId] && this.columns.d[columnId].name,
     }
@@ -87,7 +92,7 @@ export class Grid extends BaseModel<GridUpdateDescriptor> {
   }
 
   public evalConstructor = (context: Context, asmts: DictValue): RowValue => {
-    const updateManager = new UpdateManager();
+    const updateManager = new SimpleUpdateManager();
     const cellConstructionData = this.columns.a.map(column => ({column, manualValue: asmts.dict[column.columnId]}));
     const row = new Row(updateManager, {
       gridId: this.id,

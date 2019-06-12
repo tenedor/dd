@@ -4,7 +4,7 @@ import {ConvertibleToValue, JestErrorMatcher, TestUtils} from '@test_utils/test_
 import {FormulaEnvironment} from '../formula_environment';
 import {Parser} from '../parser';
 import {buildNamespace, ConstructorNamespace, Context, NameResolver, NamespaceResolver,
-        ValueNamespace, ValueReference} from '../reference';
+        RelativeValueReference, ValueNamespace} from '../reference';
 import {TypeUtils} from '../types';
 import {ValueUtils} from '../values';
 
@@ -20,7 +20,7 @@ const getNamespace = (): ValueNamespace => {
     getReferenceForName: (name: string) => {
       const id = _.findKey(fakeColumns, c => c.name === name)!;
       const type = fakeColumns[id].type;
-      return new ValueReference(id, type, (r: NameResolver) => name);
+      return new RelativeValueReference(id, type, (r: NameResolver) => name);
     },
     getNameForReference: (columnId: string) => fakeColumns[columnId].name,
   }
@@ -31,12 +31,12 @@ const fakeGrid = {id: fakeGridId, getNamespace};
 const formulaEnvironment = new FormulaEnvironment();
 formulaEnvironment.addObjectWithNamespace(fakeGrid);
 
-const gridColumnResolver = formulaEnvironment.resolver.resolverOf(TypeUtils.GridOf(fakeGridId));
-const gridColumnContext = new Context(ValueUtils.dictOf(_.mapValues(fakeColumns, 'value'), fakeGridId));
+const gridColumnResolver = formulaEnvironment.resolver.resolverFor(TypeUtils.GridOf(fakeGridId));
+const gridColumnContext = new Context(_.mapValues(fakeColumns, 'value'));
 
 const nullNamespaceResolver: NamespaceResolver = {resolveNamespace: () => {throw new Error("unexpected namespace resolution")}};
 const nullResolver = new NameResolver(nullNamespaceResolver, new ConstructorNamespace({}), buildNamespace({}));
-const nullContext = new Context(ValueUtils.dictOf({}, "null-context"));
+const nullContext = new Context({});
 
 
 enum FailureStage {

@@ -359,8 +359,18 @@ class UpdateResolver {
   }
 }
 
-export class UpdateManager {
+export interface UpdateManager {
+  readonly epoch: number;
+  nextEpoch: () => number;
+  announceMutated: <D extends UpdateDescriptor> (id: UpdateGraphNodeId<D>, updates: D[]) => void;
+}
+
+export class SimpleUpdateManager implements UpdateManager {
   private _epoch: number = 0;
+
+  constructor() {
+    //
+  }
 
   public get epoch(): number {
     return this._epoch;

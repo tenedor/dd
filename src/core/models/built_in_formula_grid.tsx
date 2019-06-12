@@ -1,0 +1,30 @@
+import * as _ from 'lodash';
+
+import {ValueNamespace} from '@core/language/reference';
+import {TypeUtils} from '@core/language/types';
+import {GridValue} from '@core/language/values';
+import {ConstantModel} from './constant_model';
+import {GridLike} from './grid';
+
+export class BuiltInFormulaGrid extends ConstantModel implements GridLike {
+  public readonly name: string;
+
+  private readonly namespace: ValueNamespace;
+
+  constructor(name: string, namespace: ValueNamespace) {
+    super();
+    this.name = name;
+    this.namespace = namespace;
+  }
+
+  public get value(): GridValue {
+    // TODO this should throw an error. This can be fixed once grid constructors are
+    // implementd as models and formula references are updated appropariately.
+    // throw new Error("Direct references to formula grids are forbidden.");
+    return {type: TypeUtils.GridOf(this.id), dict: {}, list: []};
+  }
+
+  public getNamespace = (): ValueNamespace  => {
+    return this.namespace;
+  }
+}

@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 
+import {RODictionary} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
 import {Drawing, drawingsAreEqual} from './drawing_value';
 import {DictType, DrawingType, GridType, Identifier, LambdaType, ListType, PrimitiveType,
@@ -32,7 +33,7 @@ export interface ListValue<T extends Type = Type> extends BaseValue<ListType<T>>
 }
 
 export interface DictValue<I extends Identifier = Identifier> extends BaseValue<DictType<I>> {
-  dict: {[id: string]: Value},
+  dict: RODictionary<Value>,
 }
 
 export type RowValue<I extends Identifier = Identifier> = DictValue<SchemaIdentifier<I>>;
@@ -40,7 +41,7 @@ export type RowValue<I extends Identifier = Identifier> = DictValue<SchemaIdenti
 export interface GridValue<I extends Identifier = Identifier>
     extends BaseValue<GridType<I>>, ListValue<RowType<I>>, DictValue<I> {
   type: GridType<I>,
-  dict: {[id: string]: ListValue},
+  dict: RODictionary<ListValue>,
   list: Array<RowValue<I>>,
 }
 
@@ -113,7 +114,7 @@ export class ValueUtils {
     return {list, type: TypeUtils.ListOf(itemType)};
   }
 
-  public static dictOf = <I extends Identifier> (dict: {[id: string]: Value}, id: I): DictValue<I> => {
+  public static dictOf = <I extends Identifier> (dict: RODictionary<Value>, id: I): DictValue<I> => {
     return {dict, type: TypeUtils.DictOf(id)};
   }
 
