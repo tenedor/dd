@@ -4,13 +4,13 @@ import {ExpressionRes} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver} from '@language/reference';
 import {Type, TypeUtils} from '@language/types';
+import {ModelType} from '../core/model';
+import {Mutable} from '../core/mutable';
+import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {ColumnUpdateType, FormulaExpressionUpdateType, GridColumnUpdateType} from '../core/update_types';
 import {Column, ColumnUpdateDescriptor} from './column';
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 import {Grid} from './grid';
-import {ModelType} from './model';
-import {Mutable} from './mutable';
-import {UpdateDescriptor, UpdateManager} from './update_manager';
-import {ColumnUpdateType, FormulaExpressionUpdateType, GridColumnUpdateType} from './update_types';
 
 interface GridColumnData<T extends Type, C extends Type, P extends Type = Type> {
   column: Column<C>;

@@ -5,12 +5,12 @@ import {Parser} from '@language/parser';
 import {NameResolver} from '@language/reference';
 import {Type, TypeUtils} from '@language/types';
 import {ValueUtils} from '@language/values';
-import {Column} from '@models/column';
-import {Document} from '@models/document';
-import {Grid} from '@models/grid';
-import {GridColumn} from '@models/grid_column';
-import {Row} from '@models/row';
-import {UpdateManager} from '@models/update_manager';
+import {UpdateManager} from '@models/core/update_manager';
+import {Column} from '@models/domain_specific/column';
+import {Document} from '@models/domain_specific/document';
+import {Grid} from '@models/domain_specific/grid';
+import {GridColumn} from '@models/domain_specific/grid_column';
+import {Row} from '@models/domain_specific/row';
 
 // Draw a regular n-pointed star with density m and the specified side length.
 // See https://en.wikipedia.org/wiki/Regular_polygon#Regular_star_polygons.

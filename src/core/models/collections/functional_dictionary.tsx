@@ -2,10 +2,10 @@ import * as _ from 'lodash';
 
 import {Dictionary, JSPrimitive, RODictionary} from '@utils/types';
 import {assert} from '@utils/utils';
-import {ModelType} from './model';
-import {Mutable} from './mutable';
-import {UndefinedUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
-import {DictionaryUpdateType} from './update_types';
+import {ModelType} from '../core/model';
+import {Mutable} from '../core/mutable';
+import {UndefinedUpdateDescriptor, UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {DictionaryUpdateType} from '../core/update_types';
 
 export interface DictionaryUpdateDescriptor<ED extends UpdateDescriptor>
     extends UpdateDescriptor<DictionaryUpdateType> {

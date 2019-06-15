@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
 
-import {ValueNamespace} from '@core/language/reference';
-import {TypeUtils} from '@core/language/types';
-import {GridValue} from '@core/language/values';
-import {Constant} from './constant';
+import {ValueNamespace} from '@language/reference';
+import {TypeUtils} from '@language/types';
+import {GridValue} from '@language/values';
+import {Constant} from '../core/constant';
 import {GridLike} from './grid';
 
 export class BuiltInFormulaGrid extends Constant implements GridLike {

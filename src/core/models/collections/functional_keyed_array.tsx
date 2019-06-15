@@ -2,9 +2,9 @@ import * as _ from 'lodash';
 
 import {Dictionary, ROArray, RODictionary} from '@utils/types';
 import {assert} from '@utils/utils';
+import {Mutable} from '../core/mutable';
+import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {FunctionalArrayM} from './functional_array';
-import {Mutable} from './mutable';
-import {UpdateDescriptor, UpdateManager} from './update_manager';
 
 export class FunctionalKeyedArray<
   T extends Mutable<TD> & {[KK in K]: string},

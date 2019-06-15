@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 
-import {Grid} from '@core/models/grid'; // Only a type dependency
-import {Model} from '@core/models/model'; // Only a type dependency
+import {Model} from '@models/core/model'; // Only a type dependency
+import {Grid} from '@models/domain_specific/grid'; // Only a type dependency
 import {RODictionary} from '@utils/types';
 import {DictType, GridType, Identifier, RowType, Type, TypeUtils} from './types';
 import {DictValue, RowValue, Value} from './values';

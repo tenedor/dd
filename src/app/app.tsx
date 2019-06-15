@@ -1,11 +1,11 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
-import {ModelType} from '@core/models/model';
-import {Mutable} from '@core/models/mutable';
-import {SimpleUpdateManager, UpdateDescriptor} from '@core/models/update_manager';
-import {AppUpdateType} from '@core/models/update_types';
-import {Document, DocumentUpdateDescriptor} from '@models/document';
+import {ModelType} from '@models/core/model';
+import {Mutable} from '@models/core/mutable';
+import {SimpleUpdateManager, UpdateDescriptor} from '@models/core/update_manager';
+import {AppUpdateType} from '@models/core/update_types';
+import {Document, DocumentUpdateDescriptor} from '@models/domain_specific/document';
 import {DocumentView} from '@views/document_view';
 
 export interface AppUpdateDescriptor extends UpdateDescriptor<AppUpdateType> {}

@@ -1,9 +1,9 @@
 import {JSPrimitive, ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
-import {ModelType} from './model';
-import {Mutable} from './mutable';
-import {UndefinedUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
-import {ArrayUpdateType} from './update_types';
+import {ModelType} from '../core/model';
+import {Mutable} from '../core/mutable';
+import {UndefinedUpdateDescriptor, UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {ArrayUpdateType} from '../core/update_types';
 
 export interface ArrayUpdateDescriptor<ED extends UpdateDescriptor> extends UpdateDescriptor<ArrayUpdateType> {
   index: number;

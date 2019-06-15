@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
-import {Mutable} from '@core/models/mutable';
+import {Mutable} from '@models/core/mutable';
 import {keysEqual, shallowEqual} from '@utils/utils';
 
 export interface BaseProps {

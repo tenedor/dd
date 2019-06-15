@@ -2,9 +2,9 @@ import * as _ from 'lodash';
 import * as React from 'react';
 
 import {ValueUtils} from '@language/values';
-import {Cell} from '@models/cell';
-import {CellIndex, Grid} from '@models/grid';
-import {Row} from '@models/row';
+import {Cell} from '@models/domain_specific/cell';
+import {CellIndex, Grid} from '@models/domain_specific/grid';
+import {Row} from '@models/domain_specific/row';
 import {KeyCode} from '@utils/keycode';
 import {BaseComponent, BaseProps} from './base_component';
 import {CellEditorView} from './cell_editor_view';

@@ -1,10 +1,10 @@
 import * as _ from 'lodash';
 
 import {Type} from '@language/types';
-import {ModelType} from './model';
-import {Mutable} from './mutable';
-import {UpdateDescriptor, UpdateManager} from './update_manager';
-import {ColumnUpdateType} from './update_types';
+import {ModelType} from '../core/model';
+import {Mutable} from '../core/mutable';
+import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {ColumnUpdateType} from '../core/update_types';
 
 interface ColumnData<T extends Type> {
   name: string;

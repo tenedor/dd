@@ -1,16 +1,16 @@
 import * as _ from 'lodash';
 
-import {TypeUtils} from '@core/language/types';
-import {DictValue, GridValue, RowValue} from '@core/language/values';
 import {Context, NameResolver, RelativeValueReference, ValueNamespace} from '@language/reference';
-import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
-import {FunctionalKeyedArray} from './functional_keyed_array';
+import {TypeUtils} from '@language/types';
+import {DictValue, GridValue, RowValue} from '@language/values';
+import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from '../collections/functional_array';
+import {FunctionalKeyedArray} from '../collections/functional_keyed_array';
+import {ModelType} from '../core/model';
+import {Mutable} from '../core/mutable';
+import {SimpleUpdateManager, UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {GridUpdateType} from '../core/update_types';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
-import {ModelType} from './model';
-import {Mutable} from './mutable';
 import {Row, RowUpdateDescriptor} from './row';
-import {SimpleUpdateManager, UpdateDescriptor, UpdateManager} from './update_manager';
-import {GridUpdateType} from './update_types';
 
 export interface GridLike {
   readonly id: string,

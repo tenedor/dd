@@ -1,5 +1,5 @@
-import {Parser} from "@core/language/parser";
-import {ListValue, Value, ValueUtils} from '@core/language/values';
+import {Parser} from "@language/parser";
+import {ListValue, Value, ValueUtils} from '@language/values';
 import {ohmGrammar} from './grammar';
 
 export type JestErrorMatcher = string | jest.Constructable | RegExp | Error;

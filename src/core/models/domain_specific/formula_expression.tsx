@@ -3,10 +3,10 @@ import {Context, NameResolver, Reference} from '@language/reference';
 import {Type, TypeUtils} from '@language/types';
 import {Value} from '@language/values';
 import {ROArray} from '@utils/types';
-import {ModelType} from './model';
-import {Mutable} from './mutable';
-import {DependencyGraphPartitionIndex, UpdateDescriptor, UpdateManager} from './update_manager';
-import {FormulaExpressionUpdateType} from './update_types';
+import {ModelType} from '../core/model';
+import {Mutable} from '../core/mutable';
+import {DependencyGraphPartitionIndex, UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {FormulaExpressionUpdateType} from '../core/update_types';
 
 interface FormulaExpressionData<T extends Type, P extends Type> {
   type: T;

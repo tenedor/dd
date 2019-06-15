@@ -1,16 +1,16 @@
 import * as _ from 'lodash';
 
-import {Context, ModelWithValue, ReferenceUtils} from '@core/language/reference';
+import {Context, ModelWithValue, ReferenceUtils} from '@language/reference';
 import {Identifier, Type} from '@language/types';
 import {Value, ValueUtils} from '@language/values';
 import {RODictionary} from '@utils/types';
+import {ModelType} from '../core/model';
+import {Mutable} from '../core/mutable';
+import {DependencySetUpdateDescriptor, UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType} from '../core/update_types';
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
-import {ModelType} from './model';
-import {Mutable} from './mutable';
 import {RowContext} from './row';
-import {DependencySetUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
-import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType} from './update_types';
 
 interface CellData<T extends Type> {
   column: GridColumn<T>,

@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
-import {Document} from '@models/document';
-import {Grid} from '@models/grid';
+import {Document} from '@models/domain_specific/document';
+import {Grid} from '@models/domain_specific/grid';
 import {ROArray} from '@utils/types';
 import {BaseComponent, BaseProps} from './base_component';
 import {DrawingView} from './drawing_view';

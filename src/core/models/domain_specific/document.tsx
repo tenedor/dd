@@ -3,12 +3,12 @@ import * as _ from 'lodash';
 import {addBuiltInGrids} from '@core/built_in_grids';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {ROArray} from '@utils/types';
-import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
+import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from '../collections/functional_array';
+import {ModelType} from '../core/model';
+import {Mutable} from '../core/mutable';
+import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {DocumentUpdateType} from '../core/update_types';
 import {Grid, GridData, GridUpdateDescriptor} from './grid';
-import {ModelType} from './model';
-import {Mutable} from './mutable';
-import {UpdateDescriptor, UpdateManager} from './update_manager';
-import {DocumentUpdateType} from './update_types';
 
 export type Grids = FunctionalArrayM<Grid, GridUpdateDescriptor>;
 

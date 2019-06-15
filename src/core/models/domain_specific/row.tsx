@@ -3,13 +3,14 @@ import * as _ from 'lodash';
 import {Identifier} from '@language/types';
 import {RowValue, Value, ValueUtils} from '@language/values';
 import {Dictionary, RODictionary} from '@utils/types';
+import {DictionaryUpdateDescriptor as DictionaryUD, FunctionalDictionaryM}
+        from '../collections/functional_dictionary';
+import {ModelType} from '../core/model';
+import {Mutable} from '../core/mutable';
+import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {RowUpdateType} from '../core/update_types';
 import {Cell, CellUpdateDescriptor} from './cell';
-import {DictionaryUpdateDescriptor as DictionaryUD, FunctionalDictionaryM} from './functional_dictionary';
 import {GridColumn} from './grid_column';
-import {ModelType} from './model';
-import {Mutable} from './mutable';
-import {UpdateDescriptor, UpdateManager} from './update_manager';
-import {RowUpdateType} from './update_types';
 
 export type CellRO = Readonly<Cell>;
 export type Cells = FunctionalDictionaryM<Cell, CellUpdateDescriptor>;

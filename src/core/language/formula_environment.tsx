@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 
-import {BuiltInFormulaGrid} from '@core/models/built_in_formula_grid';
-import {Grid} from '@core/models/grid'; // only a type dependency
+import {BuiltInFormulaGrid} from '@models/domain_specific/built_in_formula_grid';
+import {Grid} from '@models/domain_specific/grid'; // only a type dependency
 import {Dictionary, RODictionary} from '@utils/types';
 import {AbsoluteValueReference, buildNamespace, BuiltInFormulaReference,
         ConstructorNamespace, Context, GridShimReference, NameResolver, ReferenceType,

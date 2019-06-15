@@ -4,9 +4,9 @@ import * as React from 'react';
 import {Parser} from '@language/parser';
 import {TypeUtils} from '@language/types';
 import {PrimitiveValue, ValueUtils} from '@language/values';
-import {Cell} from '@models/cell';
-import {Grid} from '@models/grid'; // only a type dependency
-import {GridColumn} from '@models/grid_column';
+import {Cell} from '@models/domain_specific/cell';
+import {Grid} from '@models/domain_specific/grid'; // only a type dependency
+import {GridColumn} from '@models/domain_specific/grid_column';
 import {KeyCode} from '@utils/keycode';
 import {assert, assertUnreachable, classNames} from '@utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
