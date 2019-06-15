@@ -1,7 +1,7 @@
 import {ROArray, RODictionary} from '@utils/types';
 import {assert} from '@utils/utils';
-import {BaseModel} from './base_model';
 import {FunctionalDictionaryM} from './functional_dictionary';
+import {Mutable} from './mutable';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 
 type InitialValues<T> = ROArray<T> | RODictionary<T>;
@@ -21,7 +21,7 @@ function getDictionaryFromInitialValues<T>(initialValues: InitialValues<T>, key:
 }
 
 export class FunctionalKeyedDictionary<
-  T extends BaseModel<TD> & {[KK in K]: string},
+  T extends Mutable<TD> & {[KK in K]: string},
   TD extends UpdateDescriptor,
   K extends string = 'id'
 > extends FunctionalDictionaryM<T, TD> {

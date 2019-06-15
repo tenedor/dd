@@ -1,39 +1,26 @@
 import {assert, generateUID} from '@utils/utils';
-import {DependencyGraphPartitionIndex, DependencySetUpdateDescriptor,
+import {ModelType} from './model';
+import {DependencyGraphPartitionIndex, DependencyNode, DependencySetUpdateDescriptor,
         DependencySetUpdateListener, DependencyUpdateListener, UpdateDescriptor,
-        UpdateGraphNodeId, UpdateListener, UpdateManager} from './update_manager';
+        UpdateListener, UpdateManager} from './update_manager';
 
-export enum ModelType {
-  ARRAY = 'arr',
-  CELL = 'cell',
-  COLUMN = 'col',
-  CONSTANT = 'const',
-  DICTIONARY = 'dict',
-  DOCUMENT = 'doc',
-  FORMULA_EXPRESSION = 'formula-expr',
-  GRID = 'grid',
-  GRID_COLUMN = 'gridcol',
-  MODEL = 'model',
-  ROW = 'row',
-}
-
-export class BaseModel<D extends UpdateDescriptor = UpdateDescriptor> {
+export class Mutable<D extends UpdateDescriptor = UpdateDescriptor> implements DependencyNode<D> {
   public readonly id: string;
   public readonly dependencyGraphPartitionIndex: DependencyGraphPartitionIndex = DependencyGraphPartitionIndex.DEFAULT;
   public epoch: number;
   protected readonly updateManager: UpdateManager;
   // The UpdateDescriptors in updateListeners (not including D) must match per
   // key-value pair. Can't enforce this with TS.
-  public updateListeners: Map<UpdateGraphNodeId<UpdateDescriptor>,
+  public updateListeners: Map<DependencyNode<UpdateDescriptor>,
     UpdateListener<this, D, UpdateDescriptor>> = new Map();
-  public dependencyUpdateListeners: Map<UpdateGraphNodeId<UpdateDescriptor>,
+  public dependencyUpdateListeners: Map<DependencyNode<UpdateDescriptor>,
     DependencyUpdateListener<this, D>> = new Map();
 
   // Child class properties are not initialized until after calling super() so
-  // the namespace must be overridden by passing it as a constructor parameter.
-  // By contract the base model must initialize the id.
-  constructor(updateManager: UpdateManager, namespace: ModelType = ModelType.MODEL) {
-    this.id = generateUID(namespace);
+  // the model type must be overridden by passing it as a constructor parameter.
+  // By contract Mutable must initialize the id.
+  constructor(updateManager: UpdateManager, modelType: ModelType = ModelType.MODEL) {
+    this.id = generateUID(modelType);
     this.updateManager = updateManager;
     this.epoch = updateManager.epoch;
   }
@@ -43,38 +30,35 @@ export class BaseModel<D extends UpdateDescriptor = UpdateDescriptor> {
   // by `id`. This occurs if the listener's model updates because of this
   // model's updates.
   public listenForUpdate<LD extends UpdateDescriptor>(
-    id: UpdateGraphNodeId<LD>,
+    id: DependencyNode<LD>,
     onUpdate: UpdateListener<this, D, LD>,
   ) {
-    // Require a static partial ordering of dependencies. A model cannot depend
-    // on a model with a higher partition index. (Since only BaseModels can be
-    // dependend on, non-BaseModel objects have partition index infinity.)
-    if (id instanceof BaseModel) {
-      assert(this.dependencyGraphPartitionIndex <= id.dependencyGraphPartitionIndex);
-    }
+    // Require a static partial ordering of dependencies. A node cannot depend
+    // on a node with a higher partition index.
+    assert(this.dependencyGraphPartitionIndex <= id.dependencyGraphPartitionIndex);
+
     // listeners must be unique per id
     this.updateListeners.set(id, onUpdate);
   }
 
   // This follows the same pattern as listenForUpdate.
   public listenForDependencyUpdate<LD extends UpdateDescriptor>(
-    id: UpdateGraphNodeId<LD>,
+    id: DependencyNode<LD>,
     onUpdate: DependencyUpdateListener<this, D>,
   ) {
-    // Require a static partial ordering of dependency dependencies. A model
-    // cannot depend on a model with a higher partition index.
-    if (id instanceof BaseModel) {
-      assert(this.dependencyGraphPartitionIndex < id.dependencyGraphPartitionIndex);
-    }
+    // Require a static partial ordering of dependencies. A node cannot depend
+    // on a node with a higher partition index.
+    assert(this.dependencyGraphPartitionIndex < id.dependencyGraphPartitionIndex);
+
     // listeners must be unique per id
     this.dependencyUpdateListeners.set(id, onUpdate);
   }
 
-  public removeUpdateListener = (id: UpdateGraphNodeId<UpdateDescriptor>) => {
+  public removeUpdateListener = (id: DependencyNode<UpdateDescriptor>) => {
     this.updateListeners.delete(id);
   }
 
-  public removeDependencyUpdateListener = (id: UpdateGraphNodeId<UpdateDescriptor>) => {
+  public removeDependencyUpdateListener = (id: DependencyNode<UpdateDescriptor>) => {
     this.dependencyUpdateListeners.delete(id);
   }
 
@@ -90,7 +74,7 @@ export class BaseModel<D extends UpdateDescriptor = UpdateDescriptor> {
   }
 
   // This method must be called for any model update that occurs during
-  // depenendency update resolution (i.e. in an update listener). This notifies
+  // dependency update resolution (i.e. in an update listener). This notifies
   // downstream dependency listeners of the update.
   protected onDependencyUpdated = (epoch: number) => {
     if (this.epoch < epoch) {

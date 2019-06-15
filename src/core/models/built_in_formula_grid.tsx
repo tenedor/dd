@@ -3,10 +3,10 @@ import * as _ from 'lodash';
 import {ValueNamespace} from '@core/language/reference';
 import {TypeUtils} from '@core/language/types';
 import {GridValue} from '@core/language/values';
-import {ConstantModel} from './constant_model';
+import {Constant} from './constant';
 import {GridLike} from './grid';
 
-export class BuiltInFormulaGrid extends ConstantModel implements GridLike {
+export class BuiltInFormulaGrid extends Constant implements GridLike {
   public readonly name: string;
 
   private readonly namespace: ValueNamespace;

@@ -3,10 +3,11 @@ import * as _ from 'lodash';
 import {Identifier} from '@language/types';
 import {RowValue, Value, ValueUtils} from '@language/values';
 import {Dictionary, RODictionary} from '@utils/types';
-import {BaseModel, ModelType} from './base_model';
 import {Cell, CellUpdateDescriptor} from './cell';
 import {DictionaryUpdateDescriptor as DictionaryUD, FunctionalDictionaryM} from './functional_dictionary';
 import {GridColumn} from './grid_column';
+import {ModelType} from './model';
+import {Mutable} from './mutable';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {RowUpdateType} from './update_types';
 
@@ -42,12 +43,12 @@ export interface RowUpdateDescriptor extends UpdateDescriptor<RowUpdateType> {
   columnIds: string[];
 }
 
-export class Row extends BaseModel<RowUpdateDescriptor> {
+export class Row extends Mutable<RowUpdateDescriptor> {
   private readonly gridId: Identifier;
   public readonly cells: Cells;
 
-  constructor(updateManager: UpdateManager, {cells, gridId}: RowData, namespace: ModelType = ModelType.ROW) {
-    super(updateManager, namespace);
+  constructor(updateManager: UpdateManager, {cells, gridId}: RowData, modelType: ModelType = ModelType.ROW) {
+    super(updateManager, modelType);
     this.cells = new FunctionalDictionaryM(updateManager, {});
     this.gridId = gridId;
     this.constructCells(cells);

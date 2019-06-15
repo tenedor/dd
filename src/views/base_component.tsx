@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
-import {BaseModel} from '@models/base_model';
+import {Mutable} from '@core/models/mutable';
 import {keysEqual, shallowEqual} from '@utils/utils';
 
 export interface BaseProps {
@@ -37,7 +37,7 @@ export class BaseComponent<P extends BaseProps, S = {}> extends React.Component<
         continue;
       }
       const v = nextProps[k];
-      if (v !== this.props[k] || (v instanceof BaseModel && v.epoch > this.lastRenderedEpoch)) {
+      if (v !== this.props[k] || (v instanceof Mutable && v.epoch > this.lastRenderedEpoch)) {
         return true;
       }
     }

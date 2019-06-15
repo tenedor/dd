@@ -3,10 +3,11 @@ import * as _ from 'lodash';
 import {TypeUtils} from '@core/language/types';
 import {DictValue, GridValue, RowValue} from '@core/language/values';
 import {Context, NameResolver, RelativeValueReference, ValueNamespace} from '@language/reference';
-import {BaseModel, ModelType} from './base_model';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {FunctionalKeyedArray} from './functional_keyed_array';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
+import {ModelType} from './model';
+import {Mutable} from './mutable';
 import {Row, RowUpdateDescriptor} from './row';
 import {SimpleUpdateManager, UpdateDescriptor, UpdateManager} from './update_manager';
 import {GridUpdateType} from './update_types';
@@ -33,7 +34,7 @@ export interface GridData {
 
 export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {}
 
-export class Grid extends BaseModel<GridUpdateDescriptor> implements GridLike {
+export class Grid extends Mutable<GridUpdateDescriptor> implements GridLike {
   private _name: string;
   private readonly parent?: Grid;
   public readonly columns: GridColumns;
@@ -42,9 +43,9 @@ export class Grid extends BaseModel<GridUpdateDescriptor> implements GridLike {
   constructor(
     updateManager: UpdateManager,
     {name, parentGrid}: GridData,
-    namespace: ModelType = ModelType.GRID,
+    modelType: ModelType = ModelType.GRID,
   ) {
-    super(updateManager, namespace);
+    super(updateManager, modelType);
     this._name = name;
     if (parentGrid) {
       this.parent = parentGrid;

@@ -1,12 +1,12 @@
 import * as _ from 'lodash';
 
-import {BaseModel} from '@core/models/base_model'; // Only a type dependency
 import {Grid} from '@core/models/grid'; // Only a type dependency
+import {Model} from '@core/models/model'; // Only a type dependency
 import {RODictionary} from '@utils/types';
 import {DictType, GridType, Identifier, RowType, Type, TypeUtils} from './types';
 import {DictValue, RowValue, Value} from './values';
 
-export type BaseModelWithValue = BaseModel & {value: Value};
+export type ModelWithValue = Model & {value: Value};
 
 export enum ReferenceType {
   ABSOLUTE = "ABSOLUTE",
@@ -21,7 +21,7 @@ interface BaseReference<R extends ReferenceType> {
 }
 
 export interface AbsoluteReference extends BaseReference<ReferenceType.ABSOLUTE> {
-  readonly model: BaseModelWithValue,
+  readonly model: ModelWithValue,
 }
 
 export type RelativeReference = BaseReference<ReferenceType.RELATIVE>;
@@ -55,9 +55,9 @@ export class RelativeValueReference<T extends Type = Type> extends BaseValueRefe
 }
 
 export class AbsoluteValueReference<T extends Type = Type> extends BaseValueReference<T, ReferenceType.ABSOLUTE> implements AbsoluteReference {
-  public readonly model: BaseModelWithValue;
+  public readonly model: ModelWithValue;
 
-  constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string, model: BaseModelWithValue) {
+  constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string, model: ModelWithValue) {
     super(id, type, getName, ReferenceType.ABSOLUTE);
     this.model = model;
   }

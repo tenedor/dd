@@ -2,16 +2,11 @@ import * as _ from 'lodash';
 
 import {ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
-import {BaseModel} from './base_model';
 import {DependencySetUpdateType, UndefinedUpdateType, UpdateType} from './update_types';
 
-export enum DependencyGraphPartitionIndex {
-  FORMULA = 0,
-  DEFAULT = 1,
-  // Nothing may depend on a node in the terminal partition. This partition
-  // contains all non-BaseModel objects.
-  TERMINAL = Infinity,
-}
+// ===============
+// Dependency Node
+// ===============
 
 export interface UpdateDescriptor<T = UpdateType> {
   type: T;
@@ -23,50 +18,102 @@ export interface DependencySetUpdateDescriptor extends UpdateDescriptor<Dependen
 // This listener is called for updates TD[] to a model T. It may return void or,
 // if it is associated with a model `S extends BaseModel<SD>`, may return a list
 // of resulting updates SD[] to S.
-export type UpdateListener<T extends BaseModel<TD>, TD extends UpdateDescriptor, SD extends UpdateDescriptor> =
+export type UpdateListener<T extends DependencyNode<TD>, TD extends UpdateDescriptor, SD extends UpdateDescriptor> =
     (epoch: number, updateDescriptors: TD[], dependency: T, updatesRemain: boolean) => SD[] | void;
 
 // This listener is called for dependency set updates to a model `S extends
 // BaseModel<SD>` and must return a list of resulting updates SD[] to S.
-export type DependencySetUpdateListener<S extends BaseModel<SD>, SD extends UpdateDescriptor> =
+export type DependencySetUpdateListener<S extends DependencyNode<SD>, SD extends UpdateDescriptor> =
     (epoch: number, updateDescriptors: DependencySetUpdateDescriptor[], dependency: S, updatesRemain: boolean) => SD[];
 
 // This listener is called for updates TD[] to a model T. It may return void or,
 // if it is associated with a model `S extends BaseModel<SD>`, may return a list
 // of resulting dependency set updates to S.
-export type DependencyUpdateListener<T extends BaseModel<TD>, TD extends UpdateDescriptor> =
+export type DependencyUpdateListener<T extends DependencyNode<TD>, TD extends UpdateDescriptor> =
     (updateDescriptors: TD[], dependency: T, dependencyUpdatesRemain: boolean) =>
     DependencySetUpdateDescriptor[] | void;
 
-type CurriedUpdateListener<SD extends UpdateDescriptor> = (updatesRemain: boolean) => SD[] | void;
+export interface DependencyNode<D extends UpdateDescriptor = UpdateDescriptor> {
+  readonly id: string;
+  readonly dependencyGraphPartitionIndex: DependencyGraphPartitionIndex;
+  readonly epoch: number;
+  // The UpdateDescriptors in updateListeners (not including D) must match per
+  // key-value pair. Can't enforce this with TS.
+  readonly updateListeners: Map<DependencyNode<UpdateDescriptor>,
+    UpdateListener<this, D, UpdateDescriptor>>;
+  readonly dependencyUpdateListeners: Map<DependencyNode<UpdateDescriptor>,
+    DependencyUpdateListener<this, D>>;
 
-export type UpdateGraphNodeId<D extends UpdateDescriptor> = BaseModel<D> | string;
+  // LD is the listener's descriptor, if one exists - namely, if onUpdate
+  // returns a list of descriptors they must describe changes to the model given
+  // by `id`. This occurs if the listener's model updates because of this
+  // model's updates.
+  listenForUpdate: <LD extends UpdateDescriptor>(
+    id: DependencyNode<LD>,
+    onUpdate: UpdateListener<this, D, LD>,
+  ) => void;
+
+  // This follows the same pattern as listenForUpdate.
+  listenForDependencyUpdate: <LD extends UpdateDescriptor>(
+    id: DependencyNode<LD>,
+    onUpdate: DependencyUpdateListener<this, D>,
+  ) => void;
+
+  removeUpdateListener: (id: DependencyNode<UpdateDescriptor>) => void;
+
+  removeDependencyUpdateListener: (id: DependencyNode<UpdateDescriptor>) => void;
+
+  // Override this method in a child to listen to resolution-time updates to the
+  // child's dependency set.
+  onDependencySetUpdated: DependencySetUpdateListener<this, D>;
+
+  // Optionally override this to process all update descriptors this model
+  // generated in a resolution cycle before they are sent to dependents. This
+  // may be useful for performance optimizations.
+  aggregateUpdateDescriptors: (descriptors: D[]) => D[];
+}
+
+
+// =================
+// Update Resolution
+// =================
+
+type CurriedUpdateListener<SD extends UpdateDescriptor> = (updatesRemain: boolean) => SD[] | void;
 
 interface UpdateGraphNode<D extends UpdateDescriptor> {
   numUnresolvedDependencies: number;
   readonly preresolvedUpdateDescriptors: ROArray<D>;
   readonly updates: Array<CurriedUpdateListener<D>>;
-  readonly dependentsInPartition: ROArray<UpdateGraphNodeId<UpdateDescriptor>>;
+  readonly dependentsInPartition: ROArray<DependencyNode<UpdateDescriptor>>;
 }
 
 // Each curried listener is a DependencyUpdateListener.
-type CurriedDependencyUpdatesMap = Map<UpdateGraphNodeId<UpdateDescriptor>,
+type CurriedDependencyUpdatesMap = Map<DependencyNode<UpdateDescriptor>,
     Array<CurriedUpdateListener<DependencySetUpdateDescriptor>>>;
 
 // Each curried listener is an UpdateListener or DependencySetUpdateListener.
 // These UpdateDescriptors must match per key-value pair. Can't enforce this
 // with TS.
-type CurriedUpdatesMap = Map<UpdateGraphNodeId<UpdateDescriptor>, Array<CurriedUpdateListener<UpdateDescriptor>>>;
+type CurriedUpdatesMap = Map<DependencyNode<UpdateDescriptor>, Array<CurriedUpdateListener<UpdateDescriptor>>>;
 
 // These UpdateDescriptors must match per key-value pair.
-type ResolvedUpdatesMap = ReadonlyMap<UpdateGraphNodeId<UpdateDescriptor>, UpdateDescriptor[]>;
+type ResolvedUpdatesMap = ReadonlyMap<DependencyNode<UpdateDescriptor>, UpdateDescriptor[]>;
 
 // Resolved updates should generally be immutable, but a mutable version is
 // useful when building the map.
-type MutableResolvedUpdatesMap = Map<UpdateGraphNodeId<UpdateDescriptor>, UpdateDescriptor[]>;
+type MutableResolvedUpdatesMap = Map<DependencyNode<UpdateDescriptor>, UpdateDescriptor[]>;
 
 // These UpdateDescriptors must match per key-value pair.
-type PartitionUpdateGraph = Map<UpdateGraphNodeId<UpdateDescriptor>, UpdateGraphNode<UpdateDescriptor>>;
+type PartitionUpdateGraph = Map<DependencyNode<UpdateDescriptor>, UpdateGraphNode<UpdateDescriptor>>;
+
+export enum DependencyGraphPartitionIndex {
+  CONSTANT = 0,
+  FORMULA = 1,
+  DEFAULT = 2,
+  // Nothing may depend on a node in the terminal partition. This partition
+  // contains all non-BaseModel objects.
+  TERMINAL = Infinity,
+}
 
 interface PartitionData {
   readonly partitionIndex: DependencyGraphPartitionIndex;
@@ -117,20 +164,20 @@ class UpdateResolver {
     this.unresolvedPartitions.splice(insertIndex, 0, partitionIndex);
   }
 
-  private static getPartitionIndex = (nodeId: UpdateGraphNodeId<UpdateDescriptor>): DependencyGraphPartitionIndex => {
-    return nodeId instanceof BaseModel ? nodeId.dependencyGraphPartitionIndex : DependencyGraphPartitionIndex.TERMINAL;
+  private static getPartitionIndex = (nodeId: DependencyNode<UpdateDescriptor>): DependencyGraphPartitionIndex => {
+    return nodeId.dependencyGraphPartitionIndex;
   }
 
-  private static getDependents = (id: UpdateGraphNodeId<UpdateDescriptor>) => {
-    return id instanceof BaseModel ? Array.from(id.updateListeners.keys()) : [];
+  private static getDependents = (nodeId: DependencyNode<UpdateDescriptor>) => {
+    return Array.from(nodeId.updateListeners.keys());
   }
 
-  private static getDependencyDependents = (id: UpdateGraphNodeId<UpdateDescriptor>) => {
-    return id instanceof BaseModel ? Array.from(id.dependencyUpdateListeners.keys()) : [];
+  private static getDependencyDependents = (nodeId: DependencyNode<UpdateDescriptor>) => {
+    return Array.from(nodeId.dependencyUpdateListeners.keys());
   }
 
   private static getDependentsInPartition = (
-    id: UpdateGraphNodeId<UpdateDescriptor>,
+    id: DependencyNode<UpdateDescriptor>,
     partitionIndex: DependencyGraphPartitionIndex,
   ) => {
     return UpdateResolver.getDependents(id).filter(depId => UpdateResolver.getPartitionIndex(depId) === partitionIndex);
@@ -142,18 +189,13 @@ class UpdateResolver {
   ) => {
     dependencyUpdates.forEach(<ND extends UpdateDescriptor> (
       dependencySetUpdates: Array<CurriedUpdateListener<DependencySetUpdateDescriptor>>,
-      nodeId: UpdateGraphNodeId<ND>,
+      nodeId: DependencyNode<ND>,
     ) => {
       const numUpdates = dependencySetUpdates.length;
       const updateDescriptorsList: DependencySetUpdateDescriptor[][] =
         dependencySetUpdates.map((updateFn, i) => updateFn(i < numUpdates - 1) || []);
       const updateDescriptors = _.flatten(updateDescriptorsList);
       if (updateDescriptors.length) {
-        if (!(nodeId instanceof BaseModel)) {
-          // Only BaseModels have callbacks to handle these update descriptors.
-          throw new Error("Returning update descriptors from an update " +
-              "listener of a non-BaseModel object is not supported.");
-        }
         if (!seedUpdates.has(nodeId)) {
           seedUpdates.set(nodeId, []);
         }
@@ -168,7 +210,7 @@ class UpdateResolver {
     {partitionIndex, seedResolvedUpdates, seedUpdates}: PartitionData,
   ): PartitionUpdateGraph => {
     const partitionUpdateGraph: PartitionUpdateGraph = new Map();
-    let dependentsToAdd: Array<UpdateGraphNodeId<UpdateDescriptor>> = [];
+    let dependentsToAdd: Array<DependencyNode<UpdateDescriptor>> = [];
 
     // Build the seed update nodes.
     const seedUpdateIds = _.uniq(Array.from(seedResolvedUpdates.keys()).concat(Array.from(seedUpdates.keys())));
@@ -214,7 +256,7 @@ class UpdateResolver {
   }
 
   private static propagateNodeResolutionWithinPartition = <ND extends UpdateDescriptor> (
-    nodeId: UpdateGraphNodeId<ND>,
+    nodeId: DependencyNode<ND>,
     updateDescriptors: ND[],
     updateGraph: PartitionUpdateGraph,
     epoch: number,
@@ -223,12 +265,8 @@ class UpdateResolver {
 
     // Add an update callback to each dependent node.
     if (updateDescriptors.length) {
-      if (!(nodeId instanceof BaseModel)) {
-        throw new Error("Returning update descriptors from an update " +
-            "listener of a non-BaseModel object is not supported.");
-      }
-      node.dependentsInPartition.forEach(<DD extends UpdateDescriptor>(depId: UpdateGraphNodeId<DD>) => {
-        const updateListener = nodeId.updateListeners.get(depId) as UpdateListener<BaseModel<ND>, ND, DD>;
+      node.dependentsInPartition.forEach(<DD extends UpdateDescriptor>(depId: DependencyNode<DD>) => {
+        const updateListener = nodeId.updateListeners.get(depId) as UpdateListener<DependencyNode<ND>, ND, DD>;
         const update = (updatesRemain: boolean) => updateListener(epoch, updateDescriptors, nodeId, updatesRemain);
         const dep = updateGraph.get(depId) as UpdateGraphNode<DD>;
         dep.updates.push(update);
@@ -242,23 +280,19 @@ class UpdateResolver {
   }
 
   private propagateNodeResolutionToOtherPartitions = <ND extends UpdateDescriptor> (
-    nodeId: UpdateGraphNodeId<ND>,
+    nodeId: DependencyNode<ND>,
     updateDescriptors: ND[],
     epoch: number,
   ) => {
     if (!updateDescriptors.length) {
       return;
     }
-    if (!(nodeId instanceof BaseModel)) {
-      throw new Error("Returning update descriptors from an update " +
-          "listener of a non-BaseModel object is not supported.");
-    }
 
     const nodePartitionIndex = UpdateResolver.getPartitionIndex(nodeId);
 
     // Add update callbacks to nodes with dependency dependencies.
     UpdateResolver.getDependencyDependents(nodeId)
-      .forEach(<DD extends UpdateDescriptor>(depId: UpdateGraphNodeId<DD>) => {
+      .forEach(<DD extends UpdateDescriptor>(depId: DependencyNode<DD>) => {
         const depPartitionIndex = UpdateResolver.getPartitionIndex(depId);
         assert(depPartitionIndex > nodePartitionIndex, "Violated dependency ordering.");
 
@@ -273,7 +307,7 @@ class UpdateResolver {
         const depDependencyUpdates = dependencyUpdates.get(depId)!;
 
         // Add update callback to dependent node.
-        const updateListener = nodeId.dependencyUpdateListeners.get(depId) as DependencyUpdateListener<BaseModel<ND>, ND>;
+        const updateListener = nodeId.dependencyUpdateListeners.get(depId) as DependencyUpdateListener<DependencyNode<ND>, ND>;
         const update = (updatesRemain: boolean) => updateListener(updateDescriptors, nodeId, updatesRemain);
         depDependencyUpdates.push(update);
       });
@@ -281,7 +315,7 @@ class UpdateResolver {
     // Add update callbacks to nodes with regular dependencies.
     UpdateResolver.getDependents(nodeId)
       .filter(depId => UpdateResolver.getPartitionIndex(depId) !== nodePartitionIndex)
-      .forEach(<DD extends UpdateDescriptor>(depId: UpdateGraphNodeId<DD>) => {
+      .forEach(<DD extends UpdateDescriptor>(depId: DependencyNode<DD>) => {
         const depPartitionIndex = UpdateResolver.getPartitionIndex(depId);
         assert(depPartitionIndex > nodePartitionIndex, "Violated dependency ordering.");
 
@@ -296,22 +330,20 @@ class UpdateResolver {
         const depSeedUpdates = seedUpdates.get(depId)!;
 
         // Add update callback to dependent node.
-        const updateListener = nodeId.updateListeners.get(depId) as UpdateListener<BaseModel<ND>, ND, DD>;
+        const updateListener = nodeId.updateListeners.get(depId) as UpdateListener<DependencyNode<ND>, ND, DD>;
         const update = (updatesRemain: boolean) => updateListener(epoch, updateDescriptors, nodeId, updatesRemain);
         depSeedUpdates.push(update);
       });
   }
 
   private propagateNodeResolution = <ND extends UpdateDescriptor> (
-    nodeId: UpdateGraphNodeId<ND>,
+    nodeId: DependencyNode<ND>,
     updateDescriptors: ND[],
     updateGraph: PartitionUpdateGraph,
     epoch: number,
   ) => {
     // Compress descriptors since they may be redundant across updates to the node.
-    const aggregatedDescriptors = nodeId instanceof BaseModel ?
-      nodeId.aggregateUpdateDescriptors(updateDescriptors) :
-      updateDescriptors;
+    const aggregatedDescriptors = nodeId.aggregateUpdateDescriptors(updateDescriptors);
 
     UpdateResolver.propagateNodeResolutionWithinPartition(nodeId, aggregatedDescriptors, updateGraph, epoch);
     this.propagateNodeResolutionToOtherPartitions(nodeId, aggregatedDescriptors, epoch);
@@ -359,10 +391,15 @@ class UpdateResolver {
   }
 }
 
+
+// ==============
+// Update Manager
+// ==============
+
 export interface UpdateManager {
   readonly epoch: number;
   nextEpoch: () => number;
-  announceMutated: <D extends UpdateDescriptor> (id: UpdateGraphNodeId<D>, updates: D[]) => void;
+  announceMutated: <D extends UpdateDescriptor> (id: DependencyNode<D>, updates: D[]) => void;
 }
 
 export class SimpleUpdateManager implements UpdateManager {
@@ -381,7 +418,7 @@ export class SimpleUpdateManager implements UpdateManager {
     return this._epoch;
   };
 
-  public announceMutated = <D extends UpdateDescriptor> (id: UpdateGraphNodeId<D>, updates: D[]) => {
+  public announceMutated = <D extends UpdateDescriptor> (id: DependencyNode<D>, updates: D[]) => {
     const seedUpdates = new Map([[id, updates]])
     const updateResolver = new UpdateResolver(seedUpdates);
     updateResolver.resolveAll(this.epoch);

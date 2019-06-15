@@ -3,7 +3,8 @@ import {Context, NameResolver, Reference} from '@language/reference';
 import {Type, TypeUtils} from '@language/types';
 import {Value} from '@language/values';
 import {ROArray} from '@utils/types';
-import {BaseModel, ModelType} from './base_model';
+import {ModelType} from './model';
+import {Mutable} from './mutable';
 import {DependencyGraphPartitionIndex, UpdateDescriptor, UpdateManager} from './update_manager';
 import {FormulaExpressionUpdateType} from './update_types';
 
@@ -15,7 +16,7 @@ interface FormulaExpressionData<T extends Type, P extends Type> {
 
 export interface FormulaExpressionUpdateDescriptor extends UpdateDescriptor<FormulaExpressionUpdateType> {}
 
-export class FormulaExpression<T extends Type = Type, P extends Type = Type> extends BaseModel<FormulaExpressionUpdateDescriptor> {
+export class FormulaExpression<T extends Type = Type, P extends Type = Type> extends Mutable<FormulaExpressionUpdateDescriptor> {
   public readonly dependencyGraphPartitionIndex = DependencyGraphPartitionIndex.FORMULA;
   private readonly type: T;
   private readonly nameResolver: NameResolver;
@@ -25,9 +26,9 @@ export class FormulaExpression<T extends Type = Type, P extends Type = Type> ext
   constructor(
     updateManager: UpdateManager,
     {type, nameResolver, parent}: FormulaExpressionData<T, P>,
-    namespace: ModelType = ModelType.FORMULA_EXPRESSION,
+    modelType: ModelType = ModelType.FORMULA_EXPRESSION,
   ) {
-    super(updateManager, namespace);
+    super(updateManager, modelType);
     this.type = type;
     this.nameResolver = nameResolver;
     this.parent = parent;

@@ -2,7 +2,8 @@ import * as _ from 'lodash';
 
 import {Dictionary, JSPrimitive, RODictionary} from '@utils/types';
 import {assert} from '@utils/utils';
-import {BaseModel, ModelType} from './base_model';
+import {ModelType} from './model';
+import {Mutable} from './mutable';
 import {UndefinedUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
 import {DictionaryUpdateType} from './update_types';
 
@@ -13,17 +14,17 @@ export interface DictionaryUpdateDescriptor<ED extends UpdateDescriptor>
 }
 
 class BaseFunctionalDictionary<
-    T extends JSPrimitive | BaseModel<TD>,
+    T extends JSPrimitive | Mutable<TD>,
     TD extends UpdateDescriptor,
-    > extends BaseModel<DictionaryUpdateDescriptor<TD>> {
+    > extends Mutable<DictionaryUpdateDescriptor<TD>> {
   protected dictionary: Dictionary<T>;
 
   constructor(
     updateManager: UpdateManager,
     dictionary: RODictionary<T> = {},
-    namespace: ModelType = ModelType.DICTIONARY,
+    modelType: ModelType = ModelType.DICTIONARY,
   ) {
-    super(updateManager, namespace);
+    super(updateManager, modelType);
     this.dictionary = Object.assign({}, dictionary);
   }
 
@@ -99,7 +100,7 @@ export class FunctionalDictionaryP extends BaseFunctionalDictionary<JSPrimitive,
 
 // For dictionaries of functional models
 export class FunctionalDictionaryM<
-    T extends BaseModel<TD>,
+    T extends Mutable<TD>,
     TD extends UpdateDescriptor,
     > extends BaseFunctionalDictionary<T, TD> {
   constructor(updateManager: UpdateManager, dictionary: RODictionary<T> = {}) {

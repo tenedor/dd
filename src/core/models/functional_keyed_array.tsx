@@ -2,12 +2,12 @@ import * as _ from 'lodash';
 
 import {Dictionary, ROArray, RODictionary} from '@utils/types';
 import {assert} from '@utils/utils';
-import {BaseModel} from './base_model';
 import {FunctionalArrayM} from './functional_array';
+import {Mutable} from './mutable';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 
 export class FunctionalKeyedArray<
-  T extends BaseModel<TD> & {[KK in K]: string},
+  T extends Mutable<TD> & {[KK in K]: string},
   TD extends UpdateDescriptor,
   K extends string = 'id'
 > extends FunctionalArrayM<T, TD> {

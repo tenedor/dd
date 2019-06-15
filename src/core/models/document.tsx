@@ -3,24 +3,25 @@ import * as _ from 'lodash';
 import {addBuiltInGrids} from '@core/built_in_grids';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {ROArray} from '@utils/types';
-import {BaseModel, ModelType} from './base_model';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from './functional_array';
 import {Grid, GridData, GridUpdateDescriptor} from './grid';
-import {SimpleUpdateManager, UpdateDescriptor} from './update_manager';
+import {ModelType} from './model';
+import {Mutable} from './mutable';
+import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {DocumentUpdateType} from './update_types';
 
 export type Grids = FunctionalArrayM<Grid, GridUpdateDescriptor>;
 
 export interface DocumentUpdateDescriptor extends UpdateDescriptor<DocumentUpdateType> {}
 
-export class Document extends BaseModel<DocumentUpdateDescriptor> {
+export class Document extends Mutable<DocumentUpdateDescriptor> {
   private readonly formulaEnvironment: FormulaEnvironment;
   public readonly grids: Grids;
 
-  constructor(namespace: ModelType = ModelType.DOCUMENT) {
+  constructor(updateManager: UpdateManager, modelType: ModelType = ModelType.DOCUMENT) {
     // Unlike other models, Document creates its own UpdateManager. There is one
     // update manager per document and all other models receive this singleton.
-    super(new SimpleUpdateManager(), namespace);
+    super(updateManager, modelType);
 
     this.formulaEnvironment = new FormulaEnvironment();
     this.grids = new FunctionalArrayM(this.updateManager, []);

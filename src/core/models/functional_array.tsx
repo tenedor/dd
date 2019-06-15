@@ -1,6 +1,7 @@
 import {JSPrimitive, ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
-import {BaseModel, ModelType} from './base_model';
+import {ModelType} from './model';
+import {Mutable} from './mutable';
 import {UndefinedUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
 import {ArrayUpdateType} from './update_types';
 
@@ -10,13 +11,13 @@ export interface ArrayUpdateDescriptor<ED extends UpdateDescriptor> extends Upda
 }
 
 class BaseFunctionalArray<
-    T extends JSPrimitive | BaseModel<TD>,
+    T extends JSPrimitive | Mutable<TD>,
     TD extends UpdateDescriptor,
-    > extends BaseModel<ArrayUpdateDescriptor<TD>> {
+    > extends Mutable<ArrayUpdateDescriptor<TD>> {
   protected array: T[];
 
-  constructor(updateManager: UpdateManager, array: ROArray<T> = [], namespace: ModelType = ModelType.ARRAY) {
-    super(updateManager, namespace);
+  constructor(updateManager: UpdateManager, array: ROArray<T> = [], modelType: ModelType = ModelType.ARRAY) {
+    super(updateManager, modelType);
     this.array = array.slice();
   }
 
@@ -98,7 +99,7 @@ export class FunctionalArrayP extends BaseFunctionalArray<JSPrimitive, Undefined
 
 // For arrays of functional models
 export class FunctionalArrayM<
-    T extends BaseModel<TD>,
+    T extends Mutable<TD>,
     TD extends UpdateDescriptor,
     > extends BaseFunctionalArray<T, TD> {
   constructor(updateManager: UpdateManager, array: ROArray<T> = []) {

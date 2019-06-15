@@ -1,0 +1,19 @@
+import {Constant} from './constant';
+import {Mutable} from './mutable';
+
+export enum ModelType {
+  APP = 'app',
+  ARRAY = 'arr',
+  CELL = 'cell',
+  COLUMN = 'col',
+  CONSTANT = 'const',
+  DICTIONARY = 'dict',
+  DOCUMENT = 'doc',
+  FORMULA_EXPRESSION = 'formula-expr',
+  GRID = 'grid',
+  GRID_COLUMN = 'gridcol',
+  MODEL = 'model',
+  ROW = 'row',
+}
+
+export type Model = Constant | Mutable;

@@ -1,30 +1,34 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
-import {Document} from '@models/document';
-import {generateUID} from '@utils/utils';
+import {ModelType} from '@core/models/model';
+import {Mutable} from '@core/models/mutable';
+import {SimpleUpdateManager, UpdateDescriptor} from '@core/models/update_manager';
+import {AppUpdateType} from '@core/models/update_types';
+import {Document, DocumentUpdateDescriptor} from '@models/document';
 import {DocumentView} from '@views/document_view';
 
-export class App {
-  public readonly id: string;
-  private epoch: number;
+export interface AppUpdateDescriptor extends UpdateDescriptor<AppUpdateType> {}
+
+export class App extends Mutable {
   private document: Document;
   private documentRef?: DocumentView;
 
-  constructor() {
-    this.id = generateUID('app');
-    this.document = new Document();
-    this.epoch = this.document.epoch;
-    this.document.listenForUpdate(this.id, this.onEpochUpdated);
+  constructor(modelType: ModelType = ModelType.APP) {
+    super(new SimpleUpdateManager(), modelType);
+    this.document = new Document(this.updateManager);
+    this.document.listenForUpdate(this, this.onDocumentUpdated);
     this.document.loadBuiltInFormulas();
     this.document.addBuiltInGrids();
   }
 
-  private onEpochUpdated = (epoch: number) => {
-    this.epoch = epoch;
+  private onDocumentUpdated = (epoch: number, updates: DocumentUpdateDescriptor[]) => {
     if (this.documentRef) {
       this.documentRef.forceUpdate();
     }
+
+    this.onDependencyUpdated(epoch);
+    return [{type: AppUpdateType.DOCUMENT_UPDATED}];
   }
 
   public renderApplication = () => {

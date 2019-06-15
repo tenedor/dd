@@ -1,15 +1,16 @@
 import * as _ from 'lodash';
 
-import {BaseModelWithValue, Context, ReferenceUtils} from '@core/language/reference';
+import {Context, ModelWithValue, ReferenceUtils} from '@core/language/reference';
 import {Identifier, Type} from '@language/types';
 import {Value, ValueUtils} from '@language/values';
 import {RODictionary} from '@utils/types';
-import {BaseModel, ModelType} from './base_model';
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
+import {ModelType} from './model';
+import {Mutable} from './mutable';
 import {RowContext} from './row';
 import {DependencySetUpdateDescriptor, UpdateDescriptor, UpdateManager} from './update_manager';
-import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType, GridUpdateType} from './update_types';
+import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType} from './update_types';
 
 interface CellData<T extends Type> {
   column: GridColumn<T>,
@@ -20,20 +21,20 @@ interface CellData<T extends Type> {
 
 export interface CellUpdateDescriptor extends UpdateDescriptor<CellUpdateType> {}
 
-export class Cell<T extends Type = Type> extends BaseModel<CellUpdateDescriptor> {
+export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   private readonly column: GridColumn<T>;
   private readonly getRowContext: () => RowContext;
   private readonly gridId: Identifier;
-  private dependencies: RODictionary<BaseModelWithValue>;
+  private dependencies: RODictionary<ModelWithValue>;
   private manualValue?: Value<T>;
   private _value: Value<T>;
 
   constructor(
     updateManager: UpdateManager,
     {column, getRowContext, gridId, manualValue}: CellData<T>,
-    namespace: ModelType = ModelType.CELL,
+    modelType: ModelType = ModelType.CELL,
   ) {
-    super(updateManager, namespace);
+    super(updateManager, modelType);
     this.column = column;
     this.getRowContext = getRowContext;
     this.gridId = gridId;
@@ -77,8 +78,8 @@ export class Cell<T extends Type = Type> extends BaseModel<CellUpdateDescriptor>
   }
 
   private getDependenciesDiff(
-    oldDependencies: RODictionary<BaseModelWithValue>,
-    newDependencies: RODictionary<BaseModelWithValue>,
+    oldDependencies: RODictionary<ModelWithValue>,
+    newDependencies: RODictionary<ModelWithValue>,
   ): {removedIds: string[], addedIds: string[]} {
     const oldKeys = Object.keys(oldDependencies);
     const newKeys = Object.keys(newDependencies);
@@ -87,7 +88,7 @@ export class Cell<T extends Type = Type> extends BaseModel<CellUpdateDescriptor>
     return {removedIds, addedIds};
   }
 
-  private resolveDependencies = (): RODictionary<BaseModelWithValue> => {
+  private resolveDependencies = (): RODictionary<ModelWithValue> => {
     const absoluteReferences = this.formulaExpression.dependencies.filter(ReferenceUtils.isAbsoluteReference);
     const relativeReferences = this.formulaExpression.dependencies.filter(ReferenceUtils.isRelativeReference);
     const absoluteDependenciesList = absoluteReferences.map(r => r.model);

@@ -4,10 +4,11 @@ import {ExpressionRes} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver} from '@language/reference';
 import {Type, TypeUtils} from '@language/types';
-import {BaseModel, ModelType} from './base_model';
 import {Column, ColumnUpdateDescriptor} from './column';
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 import {Grid} from './grid';
+import {ModelType} from './model';
+import {Mutable} from './mutable';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {ColumnUpdateType, FormulaExpressionUpdateType, GridColumnUpdateType} from './update_types';
 
@@ -25,7 +26,7 @@ interface GridColumnData<T extends Type, C extends Type, P extends Type = Type> 
 export interface GridColumnUpdateDescriptor extends UpdateDescriptor<GridColumnUpdateType> {}
 
 export class GridColumn<T extends Type = Type, C extends Type = Type, P extends Type = Type>
-    extends BaseModel<GridColumnUpdateDescriptor> {
+    extends Mutable<GridColumnUpdateDescriptor> {
   private readonly column: Column<C>;
   private readonly grid: Grid;
   private readonly parentGridColumn?: GridColumn<P, C>;
@@ -37,9 +38,9 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
   constructor(
     updateManager: UpdateManager,
     {column, formulaEnvironment, grid, parentGridColumn, type, width}: GridColumnData<T, C, P>,
-    namespace: ModelType = ModelType.GRID_COLUMN,
+    modelType: ModelType = ModelType.GRID_COLUMN,
   ) {
-    super(updateManager, namespace);
+    super(updateManager, modelType);
     this.column = column;
     this.grid = grid;
     this.parentGridColumn = parentGridColumn;

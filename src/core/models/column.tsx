@@ -1,7 +1,8 @@
 import * as _ from 'lodash';
 
 import {Type} from '@language/types';
-import {BaseModel, ModelType} from './base_model';
+import {ModelType} from './model';
+import {Mutable} from './mutable';
 import {UpdateDescriptor, UpdateManager} from './update_manager';
 import {ColumnUpdateType} from './update_types';
 
@@ -12,12 +13,12 @@ interface ColumnData<T extends Type> {
 
 export interface ColumnUpdateDescriptor extends UpdateDescriptor<ColumnUpdateType> {}
 
-export class Column<T extends Type = Type> extends BaseModel<ColumnUpdateDescriptor> {
+export class Column<T extends Type = Type> extends Mutable<ColumnUpdateDescriptor> {
   private _name: string;
   private _type: T;
 
-  constructor(updateManager: UpdateManager, {name, type}: ColumnData<T>, namespace: ModelType = ModelType.COLUMN) {
-    super(updateManager, namespace);
+  constructor(updateManager: UpdateManager, {name, type}: ColumnData<T>, modelType: ModelType = ModelType.COLUMN) {
+    super(updateManager, modelType);
     this._name = name;
     this._type = type;
   }
