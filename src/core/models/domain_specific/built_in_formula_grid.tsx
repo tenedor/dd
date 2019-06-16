@@ -9,7 +9,7 @@ import {GridLike} from './grid';
 export class BuiltInFormulaGrid extends Constant implements GridLike {
   public readonly name: string;
 
-  private readonly namespace: ValueNamespace;
+  public readonly namespace: ValueNamespace;
 
   constructor(name: string, namespace: ValueNamespace) {
     super();
@@ -22,9 +22,5 @@ export class BuiltInFormulaGrid extends Constant implements GridLike {
     // implementd as models and formula references are updated appropariately.
     // throw new Error("Direct references to formula grids are forbidden.");
     return {type: TypeUtils.GridOf(this.id), dict: {}, list: []};
-  }
-
-  public getNamespace = (): ValueNamespace  => {
-    return this.namespace;
   }
 }

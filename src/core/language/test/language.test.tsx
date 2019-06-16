@@ -15,18 +15,16 @@ const fakeColumns = {
   'fake-column-2': {type: TypeUtils.ListOf(TypeUtils.Boolean), name: 'True and False', value: TestUtils.asValue([true, false])},
 };
 
-const getNamespace = (): ValueNamespace => {
-  return {
-    getReferenceForName: (name: string) => {
-      const id = _.findKey(fakeColumns, c => c.name === name)!;
-      const type = fakeColumns[id].type;
-      return new RelativeValueReference(id, type, (r: NameResolver) => name);
-    },
-    getNameForReference: (columnId: string) => fakeColumns[columnId].name,
-  }
-}
+const fakeGridNamespace = {
+  getReferenceForName: (name: string) => {
+    const id = _.findKey(fakeColumns, c => c.name === name)!;
+    const type = fakeColumns[id].type;
+    return new RelativeValueReference(id, type, (r: NameResolver) => name);
+  },
+  getNameForReference: (columnId: string) => fakeColumns[columnId].name,
+};
 
-const fakeGrid = {id: fakeGridId, getNamespace};
+const fakeGrid = {id: fakeGridId, namespace: fakeGridNamespace};
 
 const formulaEnvironment = new FormulaEnvironment();
 formulaEnvironment.addObjectWithNamespace(fakeGrid);

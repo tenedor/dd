@@ -448,7 +448,7 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
   constructor(constructorRef: ConstructorReference<R, I>, asmts: AssignmentsRes<I>, type: R) {
     super(asmts);
     this.type = type;
-    this.externalDependencies = asmts.externalDependencies.concat([constructorRef.gridRef]);
+    this.externalDependencies = asmts.externalDependencies.concat([constructorRef]);
     this.constructorRef = constructorRef;
   }
 
@@ -495,7 +495,7 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
   }
 
   public resolveForConstructor = (resolver: NameResolver, constructorRef: ConstructorReference) => {
-    const type = constructorRef.gridRef.type.itemType;
+    const type = constructorRef.assignmentsType;
     const nameResolver = resolver.resolverFor(type);
     const namesResolved = _.mapKeys(this.asmts, (_e, name) => nameResolver.resolveValueReference(name).id);
     const asmtsR = _.mapValues(namesResolved, e => e.resolve(resolver));

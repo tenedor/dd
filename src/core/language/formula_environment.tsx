@@ -3,16 +3,16 @@ import * as _ from 'lodash';
 import {BuiltInFormulaGrid} from '@models/domain_specific/built_in_formula_grid';
 import {Grid} from '@models/domain_specific/grid'; // only a type dependency
 import {Dictionary, RODictionary} from '@utils/types';
-import {AbsoluteValueReference, buildNamespace, BuiltInFormulaReference,
-        ConstructorNamespace, Context, GridShimReference, NameResolver, ReferenceType,
-        RelativeValueReference, ValueNamespace} from './reference';
+import {buildNamespace, BuiltInFormulaReference, ConstructorNamespace, Context,
+        NameResolver, ReferenceType, RelativeValueReference, ValueNamespace}
+        from './reference';
 import {BuiltInFormula, getBuiltInFormulas} from './standard_library';
 import {Identifier, Type, TypeUtils} from './types';
 import {DictValue, Value} from './values';
 
 interface ObjectWithNamespace {
   id: string,
-  getNamespace: () => ValueNamespace,
+  namespace: ValueNamespace,
 }
 
 export class FormulaEnvironment {
@@ -59,7 +59,7 @@ export class FormulaEnvironment {
 
   private resolveNamespace = (objectId: Identifier): ValueNamespace | undefined => {
     const object = this.getObject(objectId);
-    return object && object.getNamespace();
+    return object && object.namespace;
   }
 
   private getReferenceForFormula = <R extends Type> (
@@ -67,30 +67,19 @@ export class FormulaEnvironment {
     formulaGrid: BuiltInFormulaGrid,
   ): BuiltInFormulaReference<R> => {
     const {id, returnType, name} = formula;
-    const gridRef = this.getReferenceForBuiltInFormulaGrid(formulaGrid);
+    const {id: gridId, namespace} = formulaGrid;
     return {
       id,
       referenceType: ReferenceType.ABSOLUTE_CONSTRUCTOR,
+      model: formulaGrid,
       returnType,
-      gridRef,
-      model: gridRef.model,
+      namespace,
+      assignmentsType: TypeUtils.DictOf(gridId),
       getName: () => name,
       eval: (context: Context, asmts: DictValue): Value<R> => {
         return formula.eval(asmts);
       },
     }
-  }
-
-  private getReferenceForBuiltInFormulaGrid = (grid: BuiltInFormulaGrid): GridShimReference => {
-    const {id} = grid;
-    const getName = (r: NameResolver) => {
-      throw new Error("A formula grid should never be displayed to the user");
-    };
-    return new AbsoluteValueReference(id, TypeUtils.GridOf(id), getName, grid);
-  }
-
-  private getFormulaGridId = (formulaId: Identifier): Identifier => {
-    return `grid-${formulaId}`;
   }
 
   public addGrid = (grid: Grid): void => {

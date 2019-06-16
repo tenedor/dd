@@ -87,16 +87,11 @@ export class GridReference<I extends Identifier = Identifier> extends AbsoluteVa
   }
 }
 
-export interface GridShimReference<I extends Identifier = Identifier> extends AbsoluteValueReference<GridType<I>> {
-  readonly id: I;
-}
-
-type GridLikeReference<I extends Identifier = Identifier> = GridReference<I> | GridShimReference<I>;
-
 export interface ConstructorReference<R extends Type = Type, I extends Identifier = Identifier>
     extends AbsoluteReference<ReferenceType.ABSOLUTE_CONSTRUCTOR> {
   readonly returnType: R;
-  readonly gridRef: GridLikeReference<I>;
+  readonly namespace: ValueNamespace;
+  readonly assignmentsType: DictType;
 
   eval: (context: Context, asmts: DictValue<I>) => Value<R>;
 }
@@ -170,13 +165,14 @@ export class ConstructorNamespace implements Namespace<ConstructorReference> {
   }
 
   private getConstructorForGrid = (grid: Grid): ConstructorReference<RowType> => {
-    const {id} = grid;
+    const {id, namespace} = grid;
     return {
       id,
       referenceType: ReferenceType.ABSOLUTE_CONSTRUCTOR,
       model: grid,
       returnType: TypeUtils.RowOf(id),
-      gridRef: new GridReference(grid),
+      namespace,
+      assignmentsType: TypeUtils.DictOf(id),
       getName: (r: NameResolver) => r.nameForConstructorId(id),
       eval: grid.evalConstructor,
     }
@@ -240,8 +236,7 @@ export class NameResolver {
   }
 
   public nameForIdInConstructor = (id: Identifier, constructor: ConstructorReference): string => {
-    const namespace = this.resolveNamespace(constructor.gridRef.id);
-    const name = namespace.getNameForReference(id);
+    const name = constructor.namespace.getNameForReference(id);
     return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
   }
 
@@ -257,13 +252,12 @@ export class NameResolver {
 
   public validateConstructorAssignments =
       (constructor: ConstructorReference, asmtTypesById: RODictionary<Type>): void => {
-    const namespace = this.resolveNamespace(constructor.gridRef.id);
     Object.keys(asmtTypesById).forEach(id => {
-      const name = namespace.getNameForReference(id);
+      const name = constructor.namespace.getNameForReference(id);
       if (!name) {
         throw new TypeError(`Assignment to \`${id}\` does not match constructor \`${constructor.id}\``);
       }
-      const ref = namespace.getReferenceForName(name);
+      const ref = constructor.namespace.getReferenceForName(name);
       if (!ref) {
         throw new TypeError(`Assignment to \`${id}\` does not match constructor \`${constructor.id}\``);
       } else {

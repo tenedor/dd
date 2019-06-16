@@ -16,7 +16,7 @@ export interface GridLike {
   readonly id: string,
   readonly name: string,
   readonly value: GridValue,
-  getNamespace: () => ValueNamespace,
+  namespace: ValueNamespace,
 }
 
 export type GridColumns = FunctionalKeyedArray<GridColumn, GridColumnUpdateDescriptor, 'columnId'>;
@@ -39,6 +39,7 @@ export class Grid extends Mutable<GridUpdateDescriptor> implements GridLike {
   private readonly parent?: Grid;
   public readonly columns: GridColumns;
   public readonly rows: Rows;
+  public readonly namespace: ValueNamespace;
 
   constructor(
     updateManager: UpdateManager,
@@ -55,6 +56,7 @@ export class Grid extends Mutable<GridUpdateDescriptor> implements GridLike {
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
     this.rows = new FunctionalArrayM(updateManager, []);
     this.rows.listenForUpdate(this, this.onRowsUpdated);
+    this.namespace = Grid.buildNamespace(this);
   }
 
   public get name(): string {
@@ -64,20 +66,6 @@ export class Grid extends Mutable<GridUpdateDescriptor> implements GridLike {
   public get value(): GridValue {
     // TODO fix this
     return {type: TypeUtils.GridOf(this.id), dict: {}, list: []};
-  }
-
-  public getNamespace = (): ValueNamespace => {
-    return {
-      getReferenceForName: (name: string) => {
-        const column = this.getColumnByName(name);
-        if (!column) {
-          return undefined;
-        }
-        const {columnId: id, type} = column;
-        return new RelativeValueReference(id, type, (r: NameResolver) => column.name);
-      },
-      getNameForReference: (columnId: string) => this.columns.d[columnId] && this.columns.d[columnId].name,
-    }
   }
 
   private getColumnByName = (name: string): GridColumn | undefined => {
@@ -124,5 +112,19 @@ export class Grid extends Mutable<GridUpdateDescriptor> implements GridLike {
   private onParentGridUpdated = (epoch: number, updates: GridUpdateDescriptor[]): GridUpdateDescriptor[] => {
     // for now do nothing
     return [];
+  }
+
+  private static buildNamespace = (grid: Grid): ValueNamespace => {
+    return {
+      getReferenceForName: (name: string) => {
+        const column = grid.getColumnByName(name);
+        if (!column) {
+          return undefined;
+        }
+        const {columnId: id, type} = column;
+        return new RelativeValueReference(id, type, (r: NameResolver) => column.name);
+      },
+      getNameForReference: (columnId: string) => grid.columns.d[columnId] && grid.columns.d[columnId].name,
+    }
   }
 }
