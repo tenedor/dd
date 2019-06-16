@@ -1,14 +1,12 @@
 import * as _ from 'lodash';
 
-import {BuiltInFormulaGrid} from '@models/domain_specific/built_in_formula_grid';
+import {Constructor} from '@models/domain_specific/constructor'; // only a type dependency
 import {Grid} from '@models/domain_specific/grid'; // only a type dependency
 import {Dictionary, RODictionary} from '@utils/types';
-import {buildNamespace, BuiltInFormulaReference, ConstructorNamespace, Context,
-        NameResolver, ReferenceType, RelativeValueReference, ValueNamespace}
-        from './reference';
-import {BuiltInFormula, getBuiltInFormulas} from './standard_library';
-import {Identifier, Type, TypeUtils} from './types';
-import {DictValue, Value} from './values';
+import {buildNamespace, ConstructorNamespace, NameResolver, ReferenceUtils,
+        ValueNamespace} from './reference';
+import {getBuiltInFormulas} from './standard_library';
+import {Identifier} from './types';
 
 interface ObjectWithNamespace {
   id: string,
@@ -23,63 +21,25 @@ export class FormulaEnvironment {
 
   constructor() {
     const builtInFormulas = getBuiltInFormulas();
-    const formulaGrids = this.constructBuiltInFormulaGrids(builtInFormulas);
     this.valueNamespace = buildNamespace({});
-    this.constructorNamespace = this.buildConstructorNamespace(builtInFormulas, formulaGrids);
-    this._resolver = this.constructResolver();
-    this.documentScopedObjects = _.mapKeys(formulaGrids, g => g.id);
+    this.constructorNamespace = FormulaEnvironment.buildConstructorNamespace(builtInFormulas);
+    this.documentScopedObjects = _.mapKeys(builtInFormulas, g => g.id);
+    this._resolver = this.buildResolver();
   }
 
-  private buildConstructorNamespace = (
-    builtInFormulas: RODictionary<BuiltInFormula>,
-    formulaGrids: RODictionary<BuiltInFormulaGrid>,
-  ): ConstructorNamespace => {
-    const builtInFormulaReferences = _.mapValues(builtInFormulas, (formula, name) => {
-      return this.getReferenceForFormula(formula, formulaGrids[name]);
-    });
+  private static buildConstructorNamespace = (constructors: RODictionary<Constructor>): ConstructorNamespace => {
+    const builtInFormulaReferences = _.mapValues(constructors, ReferenceUtils.buildReferenceForConstructor);
     return new ConstructorNamespace(builtInFormulaReferences);
   }
 
-  private constructResolver = (): NameResolver => {
+  private buildResolver = (): NameResolver => {
     const namespaceResolver = {resolveNamespace: this.resolveNamespace};
     return new NameResolver(namespaceResolver, this.constructorNamespace, this.valueNamespace);
-  }
-
-  private constructBuiltInFormulaGrids = (builtInFormulas: RODictionary<BuiltInFormula>):
-      RODictionary<BuiltInFormulaGrid> => {
-    return _.mapValues(builtInFormulas, formula => {
-      const nameToParameterMap = _.mapKeys(formula.parameters, 'name');
-      const nameToReferenceMap = _.mapValues(nameToParameterMap, p => {
-        return new RelativeValueReference(p.id, p.type, () => p.name);
-      });
-      const namespace = buildNamespace(nameToReferenceMap);
-      return new BuiltInFormulaGrid(formula.name, namespace);
-    });
   }
 
   private resolveNamespace = (objectId: Identifier): ValueNamespace | undefined => {
     const object = this.getObject(objectId);
     return object && object.namespace;
-  }
-
-  private getReferenceForFormula = <R extends Type> (
-    formula: BuiltInFormula<R>,
-    formulaGrid: BuiltInFormulaGrid,
-  ): BuiltInFormulaReference<R> => {
-    const {id, returnType, name} = formula;
-    const {id: gridId, namespace} = formulaGrid;
-    return {
-      id,
-      referenceType: ReferenceType.ABSOLUTE_CONSTRUCTOR,
-      model: formulaGrid,
-      returnType,
-      namespace,
-      assignmentsType: TypeUtils.DictOf(gridId),
-      getName: () => name,
-      eval: (context: Context, asmts: DictValue): Value<R> => {
-        return formula.eval(asmts);
-      },
-    }
   }
 
   public addGrid = (grid: Grid): void => {

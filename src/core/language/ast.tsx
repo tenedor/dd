@@ -431,7 +431,7 @@ export class CallUnres extends CallAST<AssignmentsUnres> implements UnresolvedAS
   public resolve = (resolver: NameResolver) => {
     const constructorR = resolver.resolveConstructorReference(this.name);
     const asmtsR = this.asmts.resolveForConstructor(resolver, constructorR);
-    return new CallRes(constructorR, asmtsR, constructorR.returnType);
+    return new CallRes(constructorR, asmtsR, constructorR.model.returnType);
   }
 
   public toText = (resolver: NameResolver): string => {
@@ -454,7 +454,7 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
 
   public eval = (context: Context): Value<R> => {
     const asmtsV = this.asmts.eval(context);
-    return this.constructorRef.eval(context, asmtsV);
+    return this.constructorRef.model.eval(context, asmtsV);
   }
 
   public toText = (resolver: NameResolver): string => {
@@ -495,7 +495,7 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
   }
 
   public resolveForConstructor = (resolver: NameResolver, constructorRef: ConstructorReference) => {
-    const type = constructorRef.assignmentsType;
+    const type = constructorRef.model.assignmentsType;
     const nameResolver = resolver.resolverFor(type);
     const namesResolved = _.mapKeys(this.asmts, (_e, name) => nameResolver.resolveValueReference(name).id);
     const asmtsR = _.mapValues(namesResolved, e => e.resolve(resolver));

@@ -11,11 +11,6 @@ export const DependencySetUpdateType = {
 };
 export type DependencySetUpdateType = (typeof DependencySetUpdateType)[keyof typeof DependencySetUpdateType];
 
-export const AppUpdateType = {
-  DOCUMENT_UPDATED: "DOCUMENT_UPDATED" as "DOCUMENT_UPDATED",
-};
-export type AppUpdateType = (typeof AppUpdateType)[keyof typeof AppUpdateType];
-
 export const ArrayUpdateType = {
   ELEMENT_DELETED: "ELEMENT_DELETED" as "ELEMENT_DELETED",
   ELEMENT_INSERTED: "ELEMENT_INSERTED" as "ELEMENT_INSERTED",
@@ -58,8 +53,14 @@ export const RowUpdateType = {
 };
 export type RowUpdateType = (typeof RowUpdateType)[keyof typeof RowUpdateType];
 
+export const ConstructorUpdateType = {
+  SCHEMA_UPDATED: "SCHEMA_UPDATED" as "SCHEMA_UPDATED",
+};
+export type ConstructorUpdateType = (typeof ConstructorUpdateType)[keyof typeof ConstructorUpdateType];
+
 export const GridUpdateType = {
   COLUMN_UPDATED: "COLUMN_UPDATED" as "COLUMN_UPDATED",
+  CONSTRUCTOR_UPDATED: "CONSTRUCTOR_UPDATED" as "CONSTRUCTOR_UPDATED",
   DEFAULT_VALUES_UPDATED: "DEFAULT_VALUES_UPDATED" as "DEFAULT_VALUES_UPDATED",
   FIRST_ROW_UPDATED: "FIRST_ROW_UPDATED" as "FIRST_ROW_UPDATED",
   NAME_UPDATED: "NAME_UPDATED" as "NAME_UPDATED",
@@ -72,11 +73,15 @@ export const DocumentUpdateType = {
 };
 export type DocumentUpdateType = (typeof DocumentUpdateType)[keyof typeof DocumentUpdateType];
 
+export const AppUpdateType = {
+  DOCUMENT_UPDATED: "DOCUMENT_UPDATED" as "DOCUMENT_UPDATED",
+};
+export type AppUpdateType = (typeof AppUpdateType)[keyof typeof AppUpdateType];
+
 
 export type UpdateType =
   UndefinedUpdateType |
   DependencySetUpdateType |
-  AppUpdateType |
   ArrayUpdateType |
   DictionaryUpdateType |
   FormulaExpressionUpdateType |
@@ -84,5 +89,7 @@ export type UpdateType =
   GridColumnUpdateType |
   CellUpdateType |
   RowUpdateType |
+  ConstructorUpdateType |
   GridUpdateType |
-  DocumentUpdateType;
+  DocumentUpdateType |
+  AppUpdateType;

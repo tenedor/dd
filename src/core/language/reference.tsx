@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 
 import {Model} from '@models/core/model'; // Only a type dependency
+import {Constructor} from '@models/domain_specific/constructor'; // Only a type dependency
 import {Grid} from '@models/domain_specific/grid'; // Only a type dependency
 import {RODictionary} from '@utils/types';
 import {DictType, GridType, Identifier, RowType, Type, TypeUtils} from './types';
@@ -89,23 +90,27 @@ export class GridReference<I extends Identifier = Identifier> extends AbsoluteVa
 
 export interface ConstructorReference<R extends Type = Type, I extends Identifier = Identifier>
     extends AbsoluteReference<ReferenceType.ABSOLUTE_CONSTRUCTOR> {
-  readonly returnType: R;
-  readonly namespace: ValueNamespace;
-  readonly assignmentsType: DictType;
-
-  eval: (context: Context, asmts: DictValue<I>) => Value<R>;
+  readonly model: Constructor<R, I>,
 }
-
-export type GridConstructorReference<I extends Identifier = Identifier> = ConstructorReference<RowType<I>, I>;
-
-export interface CustomFormulaReference<R extends Type = Type, I extends Identifier = Identifier>
-    extends ConstructorReference<R, I> {
-  readonly projectionRef: ValueReference<R>;
-}
-
-export type BuiltInFormulaReference<R extends Type = Type> = ConstructorReference<R>;
 
 export class ReferenceUtils {
+
+  // ============
+  // Constructors
+  // ============
+
+  public static buildReferenceForConstructor = <R extends Type, I extends Identifier> (
+    constructor: Constructor<R, I>,
+  ): ConstructorReference<R, I> => {
+    const {id} = constructor;
+    return {
+      id,
+      referenceType: ReferenceType.ABSOLUTE_CONSTRUCTOR,
+      model: constructor,
+      getName: (resolver: NameResolver) => constructor.name,
+    }
+  }
+
 
   // ===========
   // Type Guards
@@ -122,7 +127,6 @@ export class ReferenceUtils {
   public static isValueReference = (r: Reference): r is ValueReference => {
     return [ReferenceType.ABSOLUTE_VALUE, ReferenceType.RELATIVE_VALUE].includes(r.referenceType);
   }
-
 }
 
 
@@ -148,7 +152,7 @@ export class ConstructorNamespace implements Namespace<ConstructorReference> {
 
   public getReferenceForName = (name: string): ConstructorReference => {
     const grid = Object.values(this.grids).find(g => g.name === name);
-    return grid ? this.getConstructorForGrid(grid) : this.nameToReferenceMap[name];
+    return grid ? ReferenceUtils.buildReferenceForConstructor(grid.gridConstructor) : this.nameToReferenceMap[name];
   }
 
   public getNameForReference = (refId: Identifier): string => {
@@ -162,20 +166,6 @@ export class ConstructorNamespace implements Namespace<ConstructorReference> {
 
   public removeGrid = (gridId: string) => {
     delete this.grids[gridId];
-  }
-
-  private getConstructorForGrid = (grid: Grid): ConstructorReference<RowType> => {
-    const {id, namespace} = grid;
-    return {
-      id,
-      referenceType: ReferenceType.ABSOLUTE_CONSTRUCTOR,
-      model: grid,
-      returnType: TypeUtils.RowOf(id),
-      namespace,
-      assignmentsType: TypeUtils.DictOf(id),
-      getName: (r: NameResolver) => r.nameForConstructorId(id),
-      eval: grid.evalConstructor,
-    }
   }
 }
 
@@ -236,7 +226,8 @@ export class NameResolver {
   }
 
   public nameForIdInConstructor = (id: Identifier, constructor: ConstructorReference): string => {
-    const name = constructor.namespace.getNameForReference(id);
+    const {namespace} = constructor.model;
+    const name = namespace.getNameForReference(id);
     return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
   }
 
@@ -252,12 +243,13 @@ export class NameResolver {
 
   public validateConstructorAssignments =
       (constructor: ConstructorReference, asmtTypesById: RODictionary<Type>): void => {
+    const {namespace} = constructor.model;
     Object.keys(asmtTypesById).forEach(id => {
-      const name = constructor.namespace.getNameForReference(id);
+      const name = namespace.getNameForReference(id);
       if (!name) {
         throw new TypeError(`Assignment to \`${id}\` does not match constructor \`${constructor.id}\``);
       }
-      const ref = constructor.namespace.getReferenceForName(name);
+      const ref = namespace.getReferenceForName(name);
       if (!ref) {
         throw new TypeError(`Assignment to \`${id}\` does not match constructor \`${constructor.id}\``);
       } else {
@@ -303,10 +295,6 @@ export class Context {
     TypeUtils.validateIsAssignableTo(value.type, ref.type,
       `Reference of type ${ref.type} resolved to a value with incompatible type ${value.type}`);
     return value as Value<T>;
-  }
-
-  public evalFormula = <R extends Type>(formulaRef: BuiltInFormulaReference<R>): Value<R> => {
-    throw new Error("not implemented");
   }
 
   public constructRow = <I extends Identifier>(ref: GridReference<I>, asmts: DictValue<I>): RowValue<I> => {

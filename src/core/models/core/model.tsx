@@ -7,6 +7,7 @@ export enum ModelType {
   CELL = 'cell',
   COLUMN = 'col',
   CONSTANT = 'const',
+  CONSTRUCTOR = 'ctor',
   DICTIONARY = 'dict',
   DOCUMENT = 'doc',
   FORMULA_EXPRESSION = 'formula-expr',

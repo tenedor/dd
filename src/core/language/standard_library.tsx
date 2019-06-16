@@ -1,11 +1,12 @@
 import * as _ from 'lodash';
 
+import {BuiltInFormula} from '@models/domain_specific/constructor';
 import {RODictionary} from '@utils/types';
 import {DrawingVariant} from './drawing_value';
 import {Identifier, PrimitiveType, Type, TypeUtils} from './types';
 import {DictValue, DrawingValue, PrimitiveValue, Value, ValueUtils} from './values';
 
-type BuiltInEval<I extends Identifier = Identifier, R extends Type = Type> = (parameters: DictValue<I>) => Value<R>;
+type BuiltInEval<R extends Type = Type, I extends Identifier = Identifier> = (parameters: DictValue<I>) => Value<R>;
 
 export interface Parameter<T extends Type = Type> {
   readonly id: Identifier,
@@ -14,12 +15,12 @@ export interface Parameter<T extends Type = Type> {
   readonly defaultValue: Value<T>,
 }
 
-export interface BuiltInFormula<R extends Type = Type, I extends Identifier = Identifier> {
+export interface BuiltInFormulaSpec<R extends Type = Type, I extends Identifier = Identifier> {
   readonly id: I,
   readonly name: string,
   readonly returnType: R,
   readonly parameters: Readonly<{[id: string]: Parameter}>,
-  readonly eval: BuiltInEval<I, R>,
+  readonly eval: BuiltInEval<R, I>,
 }
 
 type Primitive = number | boolean | string;
@@ -101,7 +102,7 @@ const dematerializeEval = <R extends Type = Type> (
   materializedEval: MaterializedEval,
   parameterDefs: {[id: string]: Parameter},
   returnType: R,
-): BuiltInEval<Identifier, R> => {
+): BuiltInEval<R> => {
   return (parameters: DictValue): Value<R> => {
     const defaultParametersByName = _.mapValues(parameterDefs, p => p.defaultValue);
     const parametersWithDefaults = _.extend({}, defaultParametersByName, parameters.dict);
@@ -114,7 +115,7 @@ const dematerializeEval = <R extends Type = Type> (
   }
 }
 
-const generateFormula = (formulaDef: FormulaGenerator, name: string): BuiltInFormula => {
+const generateFormulaSpec = (formulaDef: FormulaGenerator, name: string): BuiltInFormulaSpec => {
   const {returnType} = formulaDef;
   const id = getUID(name);
   const parameters = generateParameters(id, formulaDef.parameters);
@@ -185,6 +186,9 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
   },
 };
 
-const builtInFormulas: RODictionary<BuiltInFormula> = _.mapValues(formulaDefs, generateFormula);
+const builtInFormulas: RODictionary<BuiltInFormula> = _.mapValues(formulaDefs, (def, name) => {
+  const spec = generateFormulaSpec(def, name);
+  return new BuiltInFormula(spec);
+});
 
 export const getBuiltInFormulas = () => builtInFormulas;

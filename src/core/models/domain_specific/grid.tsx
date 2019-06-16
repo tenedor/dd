@@ -9,15 +9,9 @@ import {ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
 import {SimpleUpdateManager, UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {GridUpdateType} from '../core/update_types';
+import {ConstructorUpdateDescriptor, GridConstructor} from './constructor';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {Row, RowUpdateDescriptor} from './row';
-
-export interface GridLike {
-  readonly id: string,
-  readonly name: string,
-  readonly value: GridValue,
-  namespace: ValueNamespace,
-}
 
 export type GridColumns = FunctionalKeyedArray<GridColumn, GridColumnUpdateDescriptor, 'columnId'>;
 export type Rows = FunctionalArrayM<Row, RowUpdateDescriptor>;
@@ -34,12 +28,13 @@ export interface GridData {
 
 export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {}
 
-export class Grid extends Mutable<GridUpdateDescriptor> implements GridLike {
+export class Grid extends Mutable<GridUpdateDescriptor> {
   private _name: string;
   private readonly parent?: Grid;
   public readonly columns: GridColumns;
   public readonly rows: Rows;
   public readonly namespace: ValueNamespace;
+  public readonly gridConstructor: GridConstructor;
 
   constructor(
     updateManager: UpdateManager,
@@ -56,7 +51,36 @@ export class Grid extends Mutable<GridUpdateDescriptor> implements GridLike {
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
     this.rows = new FunctionalArrayM(updateManager, []);
     this.rows.listenForUpdate(this, this.onRowsUpdated);
-    this.namespace = Grid.buildNamespace(this);
+    this.namespace = Grid.buildNamespace(this.getColumnByName, this.getColumnById);
+    this.gridConstructor = this.buildConstructor();
+    this.gridConstructor.listenForUpdate(this, this.onGridConstructorUpdated);
+  }
+
+  private static buildNamespace = (
+    getColumnByName: (name: string) => GridColumn | undefined,
+    getColumnById: (columnId: string) => GridColumn | undefined,
+  ): ValueNamespace => {
+    return {
+      getReferenceForName: (name: string): RelativeValueReference | undefined => {
+        const column = getColumnByName(name);
+        if (!column) {
+          return undefined;
+        }
+        const {columnId: id, type} = column;
+        return new RelativeValueReference(id, type, (r: NameResolver) => column.name);
+      },
+      getNameForReference: (columnId: string): string | undefined => {
+        const column = getColumnById(columnId);
+        return column && column.name;
+      },
+    }
+  }
+
+  private buildConstructor = (): GridConstructor => {
+    const {id: gridId, columns, namespace} = this;
+    // TODO create a Primitive mutable model and make this.name a Primitive
+    const getName = () => this.name;
+    return new GridConstructor(this.updateManager, {gridId, columns, getName, namespace});
   }
 
   public get name(): string {
@@ -70,6 +94,10 @@ export class Grid extends Mutable<GridUpdateDescriptor> implements GridLike {
 
   private getColumnByName = (name: string): GridColumn | undefined => {
     return this.columns.a.find(c => c.name === name);
+  }
+
+  private getColumnById = (columnId: string): GridColumn | undefined =>  {
+      return this.columns.d[columnId];
   }
 
   public addColumns = (columns: GridColumn[]) => {
@@ -92,7 +120,7 @@ export class Grid extends Mutable<GridUpdateDescriptor> implements GridLike {
 
   private onColumnsUpdated = (
     epoch: number,
-    updates?: Array<ArrayUD<GridColumnUpdateDescriptor>>,
+    updates: Array<ArrayUD<GridColumnUpdateDescriptor>>,
   ): GridUpdateDescriptor[] => {
     this.onDependencyUpdated(epoch);
     const descriptor = {type: GridUpdateType.COLUMN_UPDATED};
@@ -109,22 +137,17 @@ export class Grid extends Mutable<GridUpdateDescriptor> implements GridLike {
     return descriptors;
   }
 
+  private onGridConstructorUpdated = (
+    epoch: number,
+    updates: ConstructorUpdateDescriptor[],
+  ): GridUpdateDescriptor[] => {
+    this.onDependencyUpdated(epoch);
+    const descriptor = {type: GridUpdateType.CONSTRUCTOR_UPDATED};
+    return [descriptor];
+  }
+
   private onParentGridUpdated = (epoch: number, updates: GridUpdateDescriptor[]): GridUpdateDescriptor[] => {
     // for now do nothing
     return [];
-  }
-
-  private static buildNamespace = (grid: Grid): ValueNamespace => {
-    return {
-      getReferenceForName: (name: string) => {
-        const column = grid.getColumnByName(name);
-        if (!column) {
-          return undefined;
-        }
-        const {columnId: id, type} = column;
-        return new RelativeValueReference(id, type, (r: NameResolver) => column.name);
-      },
-      getNameForReference: (columnId: string) => grid.columns.d[columnId] && grid.columns.d[columnId].name,
-    }
   }
 }
