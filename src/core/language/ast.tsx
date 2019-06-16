@@ -495,7 +495,7 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
   }
 
   public resolveForConstructor = (resolver: NameResolver, constructorRef: ConstructorReference) => {
-    const {type} = constructorRef.gridRef;
+    const type = constructorRef.gridRef.type.itemType;
     const nameResolver = resolver.resolverFor(type);
     const namesResolved = _.mapKeys(this.asmts, (_e, name) => nameResolver.resolveValueReference(name).id);
     const asmtsR = _.mapValues(namesResolved, e => e.resolve(resolver));

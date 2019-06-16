@@ -9,9 +9,14 @@ import {DictValue, RowValue, Value} from './values';
 export type ModelWithValue = Model & {value: Value};
 
 export enum ReferenceType {
-  ABSOLUTE = "ABSOLUTE",
-  RELATIVE = "RELATIVE",
+  ABSOLUTE_CONSTRUCTOR = "ABSOLUTE_CONSTRUCTOR",
+  ABSOLUTE_VALUE = "ABSOLUTE_VALUE",
+  RELATIVE_VALUE = "RELATIVE_VALUE",
 }
+
+type AbsoluteReferenceType = ReferenceType.ABSOLUTE_CONSTRUCTOR | ReferenceType.ABSOLUTE_VALUE;
+type RelativeReferenceType = ReferenceType.RELATIVE_VALUE;
+type ValueReferenceType = ReferenceType.ABSOLUTE_VALUE | ReferenceType.RELATIVE_VALUE;
 
 interface BaseReference<R extends ReferenceType> {
   readonly id: Identifier;
@@ -20,15 +25,15 @@ interface BaseReference<R extends ReferenceType> {
   getName(resolver: NameResolver): string;
 }
 
-export interface AbsoluteReference extends BaseReference<ReferenceType.ABSOLUTE> {
-  readonly model: ModelWithValue,
+export interface AbsoluteReference<R extends AbsoluteReferenceType = AbsoluteReferenceType> extends BaseReference<R> {
+  readonly model: Model,
 }
 
-export type RelativeReference = BaseReference<ReferenceType.RELATIVE>;
+export type RelativeReference = BaseReference<RelativeReferenceType>;
 
 export type Reference = AbsoluteReference | RelativeReference;
 
-abstract class BaseValueReference<T extends Type = Type, R extends ReferenceType = ReferenceType>
+abstract class BaseValueReference<T extends Type = Type, R extends ValueReferenceType = ValueReferenceType>
     implements BaseReference<R> {
   public readonly id: Identifier;
   public readonly referenceType: R;
@@ -48,17 +53,23 @@ abstract class BaseValueReference<T extends Type = Type, R extends ReferenceType
   }
 }
 
-export class RelativeValueReference<T extends Type = Type> extends BaseValueReference<T, ReferenceType.RELATIVE> implements RelativeReference {
+export class RelativeValueReference<T extends Type = Type>
+    extends BaseValueReference<T, ReferenceType.RELATIVE_VALUE>
+    implements RelativeReference {
+
   constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string) {
-    super(id, type, getName, ReferenceType.RELATIVE);
+    super(id, type, getName, ReferenceType.RELATIVE_VALUE);
   }
 }
 
-export class AbsoluteValueReference<T extends Type = Type> extends BaseValueReference<T, ReferenceType.ABSOLUTE> implements AbsoluteReference {
+export class AbsoluteValueReference<T extends Type = Type>
+    extends BaseValueReference<T, ReferenceType.ABSOLUTE_VALUE>
+    implements AbsoluteReference<ReferenceType.ABSOLUTE_VALUE> {
+
   public readonly model: ModelWithValue;
 
   constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string, model: ModelWithValue) {
-    super(id, type, getName, ReferenceType.ABSOLUTE);
+    super(id, type, getName, ReferenceType.ABSOLUTE_VALUE);
     this.model = model;
   }
 }
@@ -82,7 +93,8 @@ export interface GridShimReference<I extends Identifier = Identifier> extends Ab
 
 type GridLikeReference<I extends Identifier = Identifier> = GridReference<I> | GridShimReference<I>;
 
-export interface ConstructorReference<R extends Type = Type, I extends Identifier = Identifier> extends AbsoluteReference {
+export interface ConstructorReference<R extends Type = Type, I extends Identifier = Identifier>
+    extends AbsoluteReference<ReferenceType.ABSOLUTE_CONSTRUCTOR> {
   readonly returnType: R;
   readonly gridRef: GridLikeReference<I>;
 
@@ -105,11 +117,15 @@ export class ReferenceUtils {
   // ===========
 
   public static isRelativeReference = (r: Reference): r is RelativeReference => {
-    return r.referenceType === ReferenceType.RELATIVE;
+    return r.referenceType === ReferenceType.RELATIVE_VALUE;
   }
 
   public static isAbsoluteReference = (r: Reference): r is AbsoluteReference => {
-    return r.referenceType === ReferenceType.ABSOLUTE;
+    return [ReferenceType.ABSOLUTE_CONSTRUCTOR, ReferenceType.ABSOLUTE_VALUE].includes(r.referenceType);
+  }
+
+  public static isValueReference = (r: Reference): r is ValueReference => {
+    return [ReferenceType.ABSOLUTE_VALUE, ReferenceType.RELATIVE_VALUE].includes(r.referenceType);
   }
 
 }
@@ -157,7 +173,7 @@ export class ConstructorNamespace implements Namespace<ConstructorReference> {
     const {id} = grid;
     return {
       id,
-      referenceType: ReferenceType.ABSOLUTE,
+      referenceType: ReferenceType.ABSOLUTE_CONSTRUCTOR,
       model: grid,
       returnType: TypeUtils.RowOf(id),
       gridRef: new GridReference(grid),

@@ -70,7 +70,7 @@ export class FormulaEnvironment {
     const gridRef = this.getReferenceForBuiltInFormulaGrid(formulaGrid);
     return {
       id,
-      referenceType: ReferenceType.ABSOLUTE,
+      referenceType: ReferenceType.ABSOLUTE_CONSTRUCTOR,
       returnType,
       gridRef,
       model: gridRef.model,

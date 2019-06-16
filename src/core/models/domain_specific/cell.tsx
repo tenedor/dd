@@ -1,10 +1,11 @@
 import * as _ from 'lodash';
 
-import {Context, ModelWithValue, ReferenceUtils} from '@language/reference';
+import {AbsoluteValueReference, Context, ModelWithValue, Reference, ReferenceUtils,
+        ValueReference} from '@language/reference';
 import {Identifier, Type} from '@language/types';
 import {Value, ValueUtils} from '@language/values';
 import {RODictionary} from '@utils/types';
-import {ModelType} from '../core/model';
+import {Model, ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
 import {DependencySetUpdateDescriptor, UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType} from '../core/update_types';
@@ -25,7 +26,8 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   private readonly column: GridColumn<T>;
   private readonly getRowContext: () => RowContext;
   private readonly gridId: Identifier;
-  private dependencies: RODictionary<ModelWithValue>;
+  private dependencies: RODictionary<Model>;
+  private valueDependencies: RODictionary<ModelWithValue>;
   private manualValue?: Value<T>;
   private _value: Value<T>;
 
@@ -78,8 +80,8 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   private getDependenciesDiff(
-    oldDependencies: RODictionary<ModelWithValue>,
-    newDependencies: RODictionary<ModelWithValue>,
+    oldDependencies: RODictionary<Model>,
+    newDependencies: RODictionary<Model>,
   ): {removedIds: string[], addedIds: string[]} {
     const oldKeys = Object.keys(oldDependencies);
     const newKeys = Object.keys(newDependencies);
@@ -88,9 +90,19 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return {removedIds, addedIds};
   }
 
-  private resolveDependencies = (): RODictionary<ModelWithValue> => {
-    const absoluteReferences = this.formulaExpression.dependencies.filter(ReferenceUtils.isAbsoluteReference);
-    const relativeReferences = this.formulaExpression.dependencies.filter(ReferenceUtils.isRelativeReference);
+  private resolveDependencies = (dependencyRefs: readonly Reference[]): RODictionary<Model> => {
+    const absoluteReferences = dependencyRefs.filter(ReferenceUtils.isAbsoluteReference);
+    const relativeReferences = dependencyRefs.filter(ReferenceUtils.isRelativeReference);
+    const absoluteDependenciesList = absoluteReferences.map(r => r.model);
+    const absoluteDependencies = _.mapKeys(absoluteDependenciesList, d => d.id);
+    const relativeDependencies = _.pick(this.getRowContext(), relativeReferences.map(r => r.id));
+    return _.extend({}, absoluteDependencies, relativeDependencies);
+  }
+
+  // Duplicate functionality of resolveDependencies in order to get stricter typing
+  private resolveValueDependencies = (dependencyRefs: readonly ValueReference[]): RODictionary<ModelWithValue> => {
+    const absoluteReferences = dependencyRefs.filter(ReferenceUtils.isAbsoluteReference) as AbsoluteValueReference[];
+    const relativeReferences = dependencyRefs.filter(ReferenceUtils.isRelativeReference);
     const absoluteDependenciesList = absoluteReferences.map(r => r.model);
     const absoluteDependencies = _.mapKeys(absoluteDependenciesList, d => d.id);
     const relativeDependencies = _.pick(this.getRowContext(), relativeReferences.map(r => r.id));
@@ -99,7 +111,10 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
   private updateDependencies = (): DependencySetUpdateDescriptor[] => {
     const oldDependencies = this.dependencies;
-    this.dependencies = this.resolveDependencies();
+    const dependencyRefs = this.formulaExpression.dependencies;
+    const valueDependencyRefs = dependencyRefs.filter(ReferenceUtils.isValueReference);
+    this.dependencies = this.resolveDependencies(dependencyRefs);
+    this.valueDependencies = this.resolveValueDependencies(valueDependencyRefs);
     const {removedIds, addedIds} = this.getDependenciesDiff(oldDependencies, this.dependencies);
     if (removedIds.length || addedIds.length) {
       removedIds.forEach(id => oldDependencies[id].removeUpdateListener(this));
@@ -165,7 +180,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   private getContext = (): Context => {
-    const dependencyValues = _.mapValues(this.dependencies, c => c.value);
+    const dependencyValues = _.mapValues(this.valueDependencies, r => r.value);
     return new Context(dependencyValues);
   }
 
