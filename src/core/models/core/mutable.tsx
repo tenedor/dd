@@ -6,7 +6,7 @@ import {DependencyGraphPartitionIndex, DependencyNode, DependencySetUpdateDescri
 
 export class Mutable<D extends UpdateDescriptor = UpdateDescriptor> implements DependencyNode<D> {
   public readonly id: string;
-  public readonly dependencyGraphPartitionIndex: DependencyGraphPartitionIndex = DependencyGraphPartitionIndex.DEFAULT;
+  public readonly dependencyGraphPartitionIndex: DependencyGraphPartitionIndex = DependencyGraphPartitionIndex.VALUE;
   public epoch: number;
   protected readonly updateManager: UpdateManager;
   // The UpdateDescriptors in updateListeners (not including D) must match per

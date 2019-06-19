@@ -108,11 +108,8 @@ type PartitionUpdateGraph = Map<DependencyNode<UpdateDescriptor>, UpdateGraphNod
 
 export enum DependencyGraphPartitionIndex {
   CONSTANT = 0,
-  FORMULA = 1,
-  DEFAULT = 2,
-  // Nothing may depend on a node in the terminal partition. This partition
-  // contains all non-BaseModel objects.
-  TERMINAL = Infinity,
+  SCHEMA = 1,
+  VALUE = 2,
 }
 
 interface PartitionData {

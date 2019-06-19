@@ -19,7 +19,7 @@ interface FormulaExpressionData<T extends Type, P extends Type> {
 export interface FormulaExpressionUpdateDescriptor extends UpdateDescriptor<FormulaExpressionUpdateType> {}
 
 export class FormulaExpression<T extends Type = Type, P extends Type = Type> extends Mutable<FormulaExpressionUpdateDescriptor> {
-  public readonly dependencyGraphPartitionIndex = DependencyGraphPartitionIndex.FORMULA;
+  public readonly dependencyGraphPartitionIndex = DependencyGraphPartitionIndex.SCHEMA;
   private readonly type: T;
   private readonly nameResolver: NameResolver;
   private _expression?: ExpressionRes<T>;
