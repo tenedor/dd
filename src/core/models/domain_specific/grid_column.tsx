@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 
 import {ExpressionRes} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
-import {NameResolver} from '@language/reference';
+import {NameResolver} from '@language/name_resolver';
 import {Type, TypeUtils} from '@language/types';
 import {ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
@@ -46,9 +46,10 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
     this.parentGridColumn = parentGridColumn;
     this._type = type;
     this.formulaEnvironment = formulaEnvironment;
+    const {nameResolver} = formulaEnvironment;
     const parentExpression = parentGridColumn ? parentGridColumn.formulaExpression : undefined;
     this._formulaExpression = new FormulaExpression(updateManager,
-        {type, nameResolver: formulaEnvironment.resolver, parent: parentExpression});
+        {type, nameResolver, parent: parentExpression});
     this._width = width;
 
     this.column.listenForUpdate(this, this.onColumnUpdated);
@@ -85,8 +86,8 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
     return this._formulaExpression;
   }
 
-  public get resolver(): NameResolver {
-    return this.formulaEnvironment.resolver.resolverFor(TypeUtils.GridOf(this.grid.id));
+  public get nameResolver(): NameResolver {
+    return this.formulaEnvironment.nameResolver.resolverFor(TypeUtils.GridOf(this.grid.id));
   }
 
   public get name(): string {

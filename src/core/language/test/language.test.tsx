@@ -2,10 +2,12 @@ import * as _ from 'lodash';
 
 import {ConvertibleToValue, JestErrorMatcher, TestUtils} from '@test_utils/test_utils';
 import {FormulaEnvironment} from '../formula_environment';
+import {buildNamespace, ConstructorNamespace, NameResolver, NamespaceResolver}
+        from '../name_resolver';
 import {Parser} from '../parser';
-import {buildNamespace, ConstructorNamespace, Context, NameResolver, NamespaceResolver,
-        RelativeValueReference, ValueNamespace} from '../reference';
+import {RelativeValueReference} from '../reference';
 import {TypeUtils} from '../types';
+import {ValueResolver} from '../value_resolver';
 import {ValueUtils} from '../values';
 
 const fakeGridId = 'fake-grid-id';
@@ -29,12 +31,12 @@ const fakeGrid = {id: fakeGridId, namespace: fakeGridNamespace};
 const formulaEnvironment = new FormulaEnvironment();
 formulaEnvironment.addObjectWithNamespace(fakeGrid);
 
-const gridColumnResolver = formulaEnvironment.resolver.resolverFor(TypeUtils.GridOf(fakeGridId));
-const gridColumnContext = new Context(_.mapValues(fakeColumns, 'value'));
+const gridColumnNameResolver = formulaEnvironment.nameResolver.resolverFor(TypeUtils.GridOf(fakeGridId));
+const gridColumnValueResolver = new ValueResolver(_.mapValues(fakeColumns, 'value'));
 
 const nullNamespaceResolver: NamespaceResolver = {resolveNamespace: () => {throw new Error("unexpected namespace resolution")}};
-const nullResolver = new NameResolver(nullNamespaceResolver, new ConstructorNamespace({}), buildNamespace({}));
-const nullContext = new Context({});
+const nullNameResolver = new NameResolver(nullNamespaceResolver, new ConstructorNamespace({}), buildNamespace({}));
+const nullValueResolver = new ValueResolver({});
 
 
 enum FailureStage {
@@ -53,14 +55,14 @@ interface FormulaTestInput {
 
 interface FormulaTestConfig {
   failureStage?: FailureStage,
-  resolver?: NameResolver,
-  context?: Context,
+  nameResolver?: NameResolver,
+  valueResolver?: ValueResolver,
 }
 
 const testFormulas = (name: string, formulas: FormulaTestInput[], {
   failureStage = FailureStage.SUCCEEDS,
-  resolver = nullResolver,
-  context = nullContext,
+  nameResolver = nullNameResolver,
+  valueResolver = nullValueResolver,
 }: FormulaTestConfig = {}) => {
   it(name, () => {
     formulas.forEach(({formula, result: expectedResult, error: expectedError, asText: expectedText}) => {
@@ -75,7 +77,7 @@ const testFormulas = (name: string, formulas: FormulaTestInput[], {
       if (parseResult.succeeded) {
         // resolve
         const {ast} = parseResult;
-        const resolve = () => ast.resolve(resolver);
+        const resolve = () => ast.resolve(nameResolver);
         if (failureStage === FailureStage.FAILS_RESOLUTION) {
           expect(resolve).toThrow(expectedError);
           return;
@@ -84,12 +86,12 @@ const testFormulas = (name: string, formulas: FormulaTestInput[], {
 
         // to text
         if (expectedText !== undefined) {
-          const actualText = astR.toText(resolver);
+          const actualText = astR.toText(nameResolver);
           expect(actualText).toBe(expectedText);
         }
 
         // evaluate
-        const evaluate = () => astR.eval(context);
+        const evaluate = () => astR.eval(valueResolver);
         if (failureStage === FailureStage.FAILS_EVALUATION) {
           expect(evaluate).toThrow(expectedError);
           return;
@@ -114,48 +116,48 @@ const expectParseErrors = (name: string, formulas: string[]) => {
 export const expectResolutionErrors = (
   name: string,
   formulas: string[],
-  resolver: NameResolver = nullResolver,
+  nameResolver: NameResolver = nullNameResolver,
 ) => {
   const tests = formulas.map(formula => ({formula}));
-  testFormulas(`static error - ${name}`, tests, {failureStage: FailureStage.FAILS_RESOLUTION, resolver});
+  testFormulas(`static error - ${name}`, tests, {failureStage: FailureStage.FAILS_RESOLUTION, nameResolver});
 }
 
 export const expectEvaluationErrors = (
   name: string,
   formulas: string[],
-  resolver: NameResolver = nullResolver,
-  context: Context = nullContext,
+  nameResolver: NameResolver = nullNameResolver,
+  valueResolver: ValueResolver = nullValueResolver,
 ) => {
   const tests = formulas.map(formula => ({formula}));
-  testFormulas(`runtime error - ${name}`, tests, {failureStage: FailureStage.FAILS_EVALUATION, resolver, context});
+  testFormulas(`runtime error - ${name}`, tests, {failureStage: FailureStage.FAILS_EVALUATION, nameResolver, valueResolver});
 }
 
 export const expectResults = (
   name: string,
   formulas: Array<{formula: string, result: ConvertibleToValue}>,
-  resolver: NameResolver = nullResolver,
-  context: Context = nullContext,
+  nameResolver: NameResolver = nullNameResolver,
+  valueResolver: ValueResolver = nullValueResolver,
 ) => {
-  testFormulas(name, formulas, {failureStage: FailureStage.SUCCEEDS, resolver, context});
+  testFormulas(name, formulas, {failureStage: FailureStage.SUCCEEDS, nameResolver, valueResolver});
 }
 
 const expectToTextIrregular = (
   name: string,
   formulas: Array<{formula: string, asText: string}>,
-  resolver: NameResolver = nullResolver,
-  context: Context = nullContext,
+  nameResolver: NameResolver = nullNameResolver,
+  valueResolver: ValueResolver = nullValueResolver,
 ) => {
-  testFormulas(name, formulas, {failureStage: FailureStage.SUCCEEDS, resolver, context});
+  testFormulas(name, formulas, {failureStage: FailureStage.SUCCEEDS, nameResolver, valueResolver});
 }
 
 const expectToText = (
   name: string,
   formulas: string[],
-  resolver: NameResolver = nullResolver,
-  context: Context = nullContext,
+  nameResolver: NameResolver = nullNameResolver,
+  valueResolver: ValueResolver = nullValueResolver,
 ) => {
   const tests = formulas.map(formula => ({formula, asText: formula}));
-  testFormulas(name, tests, {failureStage: FailureStage.SUCCEEDS, resolver, context});
+  testFormulas(name, tests, {failureStage: FailureStage.SUCCEEDS, nameResolver, valueResolver});
 }
 
 
@@ -313,7 +315,7 @@ describe('Language', () => {
     expectResults('function calls', [
       {formula: "One", result: 1},
       {formula: "'True and False'", result: [true, false]},
-    ], gridColumnResolver, gridColumnContext);
+    ], gridColumnNameResolver, gridColumnValueResolver);
   });
 
 
@@ -401,7 +403,7 @@ describe('Language', () => {
       {formula: "Power(Exponent = 4)", result: 16},
       {formula: "Power(Base = 5, Exponent = 4)", result: 625},
       {formula: "Power(Exponent = Power(Base = 0))", result: 1},
-    ], formulaEnvironment.resolver);
+    ], formulaEnvironment.nameResolver);
   });
 
 
@@ -420,7 +422,7 @@ describe('Language', () => {
       {formula: "false | 3 < 2", result: false},
       {formula: "10 + Power(Exponent = 6 % 4) * 3", result: 22},
       {formula: "'True and False'[2] | false", result: false},
-    ], gridColumnResolver, gridColumnContext);
+    ], gridColumnNameResolver, gridColumnValueResolver);
   });
 
 
@@ -432,7 +434,7 @@ describe('Language', () => {
       "((0.123) + 45.67 - -(--1)) / -(2 % 3)",
       "Power(Base = 1, Exponent = 6 % 4) + One",
       "'True and False'[2] | false",
-    ], gridColumnResolver, gridColumnContext);
+    ], gridColumnNameResolver, gridColumnValueResolver);
 
     expectToTextIrregular('whitespace is canonicalized', [
       {formula: "  1 ", asText: "1"},

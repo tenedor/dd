@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 
 import {FormulaEnvironment} from '@language/formula_environment';
+import {NameResolver} from '@language/name_resolver';
 import {Parser} from '@language/parser';
-import {NameResolver} from '@language/reference';
 import {Type, TypeUtils} from '@language/types';
 import {ValueUtils} from '@language/values';
 import {UpdateManager} from '@models/core/update_manager';
@@ -114,7 +114,7 @@ export function addArithmeticGrid(
   updateManager: UpdateManager,
   formulaEnvironment: FormulaEnvironment,
 ) {
-  const {resolver} = formulaEnvironment;
+  const {nameResolver} = formulaEnvironment;
 
   const grid = document.createGrid({name: "Radius Calculator"});
 
@@ -129,7 +129,7 @@ export function addArithmeticGrid(
   ];
   const gridColumns = generateGridColumns(updateManager, formulaEnvironment, grid, gridColumnsData);
   grid.addColumns(gridColumns);
-  setColumnExpressions(grid, gridColumnsData, resolver.resolverFor(TypeUtils.GridOf(grid.id)));
+  setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
 
   const gridRows = [
     new Row(updateManager, {
@@ -148,7 +148,7 @@ export function addShapeGrids(
   updateManager: UpdateManager,
   formulaEnvironment: FormulaEnvironment,
 ) {
-  const {resolver} = formulaEnvironment;
+  const {nameResolver} = formulaEnvironment;
 
   const columnsDataMap = {
     X: {name: 'X', type: TypeUtils.Number},
@@ -171,7 +171,7 @@ export function addShapeGrids(
   const grid1 = document.createGrid({name: "Shapes"});
   const grid1Columns = generateGridColumns(updateManager, formulaEnvironment, grid1, grid1ColumnsData);
   grid1.addColumns(grid1Columns);
-  setColumnExpressions(grid1, grid1ColumnsData, resolver.resolverFor(TypeUtils.GridOf(grid1.id)));
+  setColumnExpressions(grid1, grid1ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid1.id)));
   const grid1Rows = generateRows(updateManager, grid1, grid1Columns, false);
   grid1.addRows(grid1Rows);
 
@@ -184,7 +184,7 @@ export function addShapeGrids(
   const grid2 = document.createGrid({name: "More Shapes", parentGrid: grid1});
   const grid2Columns = generateGridColumns(updateManager, formulaEnvironment, grid2, grid2ColumnsData);
   grid2.addColumns(grid2Columns);
-  setColumnExpressions(grid2, grid2ColumnsData, resolver.resolverFor(TypeUtils.GridOf(grid2.id)));
+  setColumnExpressions(grid2, grid2ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid2.id)));
   const grid2Rows = generateRows(updateManager, grid2, grid2Columns, true);
   grid2.addRows(grid2Rows);
 }

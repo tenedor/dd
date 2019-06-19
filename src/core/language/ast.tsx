@@ -2,11 +2,13 @@ import * as _ from 'lodash';
 
 import {ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
+import {NameResolver} from './name_resolver';
 import {Parser} from './parser';
-import {ConstructorReference, Context, NameResolver, Reference, ValueReference} from './reference';
+import {ConstructorReference, Reference, ValueReference} from './reference';
 import {DictType, GridType, Identifier, LambdaType, ListType, PrimitiveType, RowType,
         Type, TypeUtils} from './types';
 import {UnaryOp, UnaryOpUtils} from './unary_op';
+import {ValueResolver} from './value_resolver';
 import {DictValue, ListValue, Value, ValueUtils} from './values';
 
 enum ASTNodeType {
@@ -38,7 +40,7 @@ export interface UnresolvedAST<N extends ASTNodeType = ASTNodeType> extends AST<
 export interface ResolvedAST<R extends Type = Type, N extends ASTNodeType = ASTNodeType> extends AST<N> {
   readonly type: R;
   readonly externalDependencies: ROArray<Reference>;
-  eval: (context: Context) => Value<R>;
+  eval: (valueResolver: ValueResolver) => Value<R>;
 }
 
 
@@ -122,8 +124,8 @@ export class ExpressionRes<R extends Type = Type> extends ExpressionAST<Resolved
     this.externalDependencies = e.externalDependencies;
   }
 
-  public eval = (context: Context): Value<R> => {
-    return this.e.eval(context);
+  public eval = (valueResolver: ValueResolver): Value<R> => {
+    return this.e.eval(valueResolver);
   }
 }
 
@@ -170,7 +172,7 @@ export class LambdaRes<RI extends Type = Type, RO extends Type = Type>
     this.externalDependencies = e.externalDependencies;
   }
 
-  public eval = (context: Context): LambdaValue<RI, RO> => {
+  public eval = (valueResolver: ValueResolver): LambdaValue<RI, RO> => {
     // TODO
     throw new Error("not implemented");
   }
@@ -222,9 +224,9 @@ export class BinaryOpRes<T1 extends Type = Type, T2 extends Type = Type, R exten
     this.externalDependencies = ResolvedASTUtils.mergeDeps(e1, e2);
   }
 
-  public eval = (context: Context): Value<R> => {
-    const eV1Thunk = () => this.e1.eval(context);
-    const eV2Thunk = () => this.e2.eval(context);
+  public eval = (valueResolver: ValueResolver): Value<R> => {
+    const eV1Thunk = () => this.e1.eval(valueResolver);
+    const eV2Thunk = () => this.e2.eval(valueResolver);
     return BinaryOpUtils.evalOp(this.op, eV1Thunk, eV2Thunk) as Value<R>;
   }
 }
@@ -267,8 +269,8 @@ export class UnaryOpRes<R extends Type = Type> extends UnaryOpAST<ResolvedAST<R>
     this.externalDependencies = e.externalDependencies;
   }
 
-  public eval = (context: Context): Value<R> => {
-    const eV = this.e.eval(context);
+  public eval = (valueResolver: ValueResolver): Value<R> => {
+    const eV = this.e.eval(valueResolver);
     return UnaryOpUtils.evalOp(this.op, eV) as Value<R>;
   }
 }
@@ -319,9 +321,9 @@ export class IndexRes<R extends Type = Type>
     this.externalDependencies = ResolvedASTUtils.mergeDeps(list, idx);
   }
 
-  public eval = (context: Context): Value<R> => {
-    const listV = this.list.eval(context);
-    const idxV = this.idx.eval(context);
+  public eval = (valueResolver: ValueResolver): Value<R> => {
+    const listV = this.list.eval(valueResolver);
+    const idxV = this.idx.eval(valueResolver);
     if (!ValueUtils.isList(listV)) {
       throw new TypeError("Can only index into lists and grids");
     } else if (!ValueUtils.isNumber(idxV)) {
@@ -388,12 +390,12 @@ export class ProjectRes<R extends Type = Type> extends ProjectAST<ResolvedAST<Di
     this.ref = ref;
   }
 
-  public eval = (context: Context): Value<R> => {
-    const dictV = this.dict.eval(context);
+  public eval = (valueResolver: ValueResolver): Value<R> => {
+    const dictV = this.dict.eval(valueResolver);
     if (!ValueUtils.isDict(dictV)) {
       throw new TypeError("Can only project values from grids and rows");
     }
-    const refV = this.ref.eval(context.contextOf(dictV.dict));
+    const refV = this.ref.eval(valueResolver.contextOf(dictV.dict));
     return refV;
   }
 
@@ -452,9 +454,9 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
     this.constructorRef = constructorRef;
   }
 
-  public eval = (context: Context): Value<R> => {
-    const asmtsV = this.asmts.eval(context);
-    return this.constructorRef.model.eval(context, asmtsV);
+  public eval = (valueResolver: ValueResolver): Value<R> => {
+    const asmtsV = this.asmts.eval(valueResolver);
+    return this.constructorRef.model.eval(valueResolver, asmtsV);
   }
 
   public toText = (resolver: NameResolver): string => {
@@ -522,8 +524,8 @@ export class AssignmentsRes<I extends Identifier = Identifier>
     this.externalDependencies = ResolvedASTUtils.mergeDeps(...Object.values(asmts));
   }
 
-  public eval = (context: Context): DictValue<I> => {
-    const asmtsV = _.mapValues(this.asmts, e => e.eval(context));
+  public eval = (valueResolver: ValueResolver): DictValue<I> => {
+    const asmtsV = _.mapValues(this.asmts, e => e.eval(valueResolver));
     return ValueUtils.dictOf(asmtsV, this.type.schemaId);
   }
 
@@ -575,8 +577,8 @@ export class IdentifierRes<R extends Type = Type> extends IdentifierAST
     this.ref = ref;
   }
 
-  public eval = (context: Context): Value<R> => {
-    return this.ref.eval(context);
+  public eval = (valueResolver: ValueResolver): Value<R> => {
+    return this.ref.eval(valueResolver);
   }
 
   public toText = (resolver: NameResolver): string => {
@@ -624,8 +626,8 @@ export class ParenthesesRes<R extends Type = Type> extends ParenthesesAST<Resolv
     this.externalDependencies = e.externalDependencies;
   }
 
-  public eval = (context: Context): Value<R> => {
-    return this.e.eval(context);
+  public eval = (valueResolver: ValueResolver): Value<R> => {
+    return this.e.eval(valueResolver);
   }
 }
 
@@ -668,8 +670,8 @@ export class ListRes<T extends Type = Type> extends ListAST<ResolvedAST<T>>
     this.externalDependencies = ResolvedASTUtils.mergeDeps(...es);
   }
 
-  public eval = (context: Context): ListValue<T> => {
-    const esV = this.es.map(e => e.eval(context));
+  public eval = (valueResolver: ValueResolver): ListValue<T> => {
+    const esV = this.es.map(e => e.eval(valueResolver));
     return ValueUtils.listOf(esV, this.type.itemType);
   }
 }
@@ -711,7 +713,7 @@ export class PrimitiveRes<T extends PrimitiveType = PrimitiveType> extends Primi
     implements ResolvedAST<T, ASTNodeType.PRIMITIVE> {
   public readonly externalDependencies: ROArray<Reference> = [];
 
-  public eval = (context: Context): Value<T> => {
+  public eval = (valueResolver: ValueResolver): Value<T> => {
     return ValueUtils.primitiveOf(this.value, this.type);
   }
 }

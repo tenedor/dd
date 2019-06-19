@@ -143,7 +143,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
       const unparsedExpression = value[0] === '=' ? value.substr(1) : value;
       const parseResult = Parser.parse(unparsedExpression);
       if (parseResult.succeeded) {
-        const ast = parseResult.ast.resolve(column.resolver);
+        const ast = parseResult.ast.resolve(column.nameResolver);
         if (!TypeUtils.isAssignableTo(ast.type, column.type)) {
           // TODO: inform the user of the type issue
           return false;

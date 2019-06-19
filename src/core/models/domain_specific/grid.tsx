@@ -1,7 +1,9 @@
 import * as _ from 'lodash';
 
-import {Context, NameResolver, RelativeValueReference, ValueNamespace} from '@language/reference';
+import {NameResolver, ValueNamespace} from '@language/name_resolver';
+import {RelativeValueReference} from '@language/reference';
 import {TypeUtils} from '@language/types';
+import {ValueResolver} from '@language/value_resolver';
 import {DictValue, GridValue, RowValue} from '@language/values';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from '../collections/functional_array';
 import {FunctionalKeyedArray} from '../collections/functional_keyed_array';
@@ -108,7 +110,7 @@ export class Grid extends Mutable<GridUpdateDescriptor> {
     this.rows.pushAll(rows);
   }
 
-  public evalConstructor = (context: Context, asmts: DictValue): RowValue => {
+  public evalConstructor = (valueResolver: ValueResolver, asmts: DictValue): RowValue => {
     const updateManager = new SimpleUpdateManager();
     const cellConstructionData = this.columns.a.map(column => ({column, manualValue: asmts.dict[column.columnId]}));
     const row = new Row(updateManager, {

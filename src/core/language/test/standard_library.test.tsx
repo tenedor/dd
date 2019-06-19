@@ -10,7 +10,7 @@ export const expectResults = (
   name: string,
   formulas: Array<{formula: string, result: ConvertibleToValue}>,
 ) => {
-  _expectResults(name, formulas, formulaEnvironment.resolver);
+  _expectResults(name, formulas, formulaEnvironment.nameResolver);
 }
 
 describe('Standard Library', () => {

@@ -1,8 +1,9 @@
 import * as _ from 'lodash';
 
-import {AbsoluteValueReference, Context, ModelWithValue, Reference, ReferenceUtils,
+import {AbsoluteValueReference, ModelWithValue, Reference, ReferenceUtils,
         ValueReference} from '@language/reference';
 import {Identifier, Type} from '@language/types';
+import {ValueResolver} from '@language/value_resolver';
 import {Value, ValueUtils} from '@language/values';
 import {RODictionary} from '@utils/types';
 import {Model, ModelType} from '../core/model';
@@ -118,7 +119,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     const {removedIds, addedIds} = this.getDependenciesDiff(oldDependencies, this.dependencies);
     if (removedIds.length || addedIds.length) {
       removedIds.forEach(id => oldDependencies[id].removeUpdateListener(this));
-      addedIds.forEach(id => this.dependencies[id].listenForUpdate(this, this.onContextDependencyUpdated));
+      addedIds.forEach(id => this.dependencies[id].listenForUpdate(this, this.onValueDependencyUpdated));
       return [{type: DependencySetUpdateType.DEPENDENCY_SET_UPDATED}];
     }
     return [];
@@ -161,7 +162,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return [];
   }
 
-  private onContextDependencyUpdated = (epoch: number, updates: CellUpdateDescriptor[]): CellUpdateDescriptor[] => {
+  private onValueDependencyUpdated = (epoch: number, updates: CellUpdateDescriptor[]): CellUpdateDescriptor[] => {
     const descriptors = this.refreshValueAndGetUpdateDescriptors();
     if (descriptors.length) {
       this.onDependencyUpdated(epoch);
@@ -179,14 +180,14 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return [{type: CellUpdateType.VALUE_UPDATED}];
   }
 
-  private getContext = (): Context => {
+  private getValueResolver = (): ValueResolver => {
     const dependencyValues = _.mapValues(this.valueDependencies, r => r.value);
-    return new Context(dependencyValues);
+    return new ValueResolver(dependencyValues);
   }
 
   private computeValue = (): Value<T> => {
     if (this.formulaExpression.isSet) {
-      return this.formulaExpression.eval(this.getContext());
+      return this.formulaExpression.eval(this.getValueResolver());
     } else if (this.manualValue !== undefined) {
       return this.manualValue;
     } else {

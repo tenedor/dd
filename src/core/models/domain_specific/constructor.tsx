@@ -1,9 +1,10 @@
 import * as _ from 'lodash';
 
-import {buildNamespace, Context, RelativeValueReference, ValueNamespace}
-        from '@language/reference';
+import {buildNamespace, ValueNamespace} from '@language/name_resolver';
+import {RelativeValueReference} from '@language/reference';
 import {BuiltInFormulaSpec} from '@language/standard_library';
 import {DictType, Identifier, RowType, Type, TypeUtils} from '@language/types';
+import {ValueResolver} from '@language/value_resolver';
 import {DictValue, RowValue, Value} from '@language/values';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
 import {Constant} from '../core/constant';
@@ -21,7 +22,7 @@ interface BaseConstructor<R extends Type, I extends Identifier = Identifier> {
   returnType: R,
   namespace: ValueNamespace,
   assignmentsType: DictType<I>,
-  eval: (context: Context, asmts: DictValue<I>) => Value<R>;
+  eval: (valueResolver: ValueResolver, asmts: DictValue<I>) => Value<R>;
 }
 
 export type Constructor<R extends Type = Type, I extends Identifier = Identifier> = BaseConstructor<R, I> & Model;
@@ -64,7 +65,7 @@ export class GridConstructor<I extends Identifier = Identifier>
     return this.getName();
   }
 
-  public eval = (context: Context, asmts: DictValue<I>): RowValue<I> => {
+  public eval = (valueResolver: ValueResolver, asmts: DictValue<I>): RowValue<I> => {
     const updateManager = new SimpleUpdateManager();
     const cellConstructionData = this.columns.a.map(column => ({column, manualValue: asmts.dict[column.columnId]}));
     const row = new Row(updateManager, {
@@ -109,7 +110,7 @@ export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identi
   public readonly returnType: R;
   public readonly namespace: ValueNamespace;
   public readonly assignmentsType: DictType<I>;
-  public readonly eval: (context: Context, asmts: DictValue<I>) => Value<R>;
+  public readonly eval: (valueResolver: ValueResolver, asmts: DictValue<I>) => Value<R>;
 
   constructor(formula: BuiltInFormulaSpec<R, I>) {
     super(formula.id);
@@ -117,7 +118,7 @@ export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identi
     this.returnType = formula.returnType;
     this.namespace = BuiltInFormula.buildNamespace(formula);
     this.assignmentsType = TypeUtils.DictOf(formula.id);
-    this.eval = (context: Context, asmts: DictValue<I>) => formula.eval(asmts);
+    this.eval = (valueResolver: ValueResolver, asmts: DictValue<I>) => formula.eval(asmts);
   }
 
   private static buildNamespace = (formula: BuiltInFormulaSpec): ValueNamespace => {

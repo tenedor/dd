@@ -1,6 +1,8 @@
 import {ExpressionRes} from '@language/ast';
-import {Context, NameResolver, Reference} from '@language/reference';
+import {NameResolver} from '@language/name_resolver';
+import {Reference} from '@language/reference';
 import {Type, TypeUtils} from '@language/types';
+import {ValueResolver} from '@language/value_resolver';
 import {Value} from '@language/values';
 import {ROArray} from '@utils/types';
 import {ModelType} from '../core/model';
@@ -59,10 +61,10 @@ export class FormulaExpression<T extends Type = Type, P extends Type = Type> ext
     return this.expression === undefined ? [] : this.expression.externalDependencies;
   }
 
-  public eval = (context: Context): Value<T> => {
+  public eval = (valueResolver: ValueResolver): Value<T> => {
     const expr = this.expression;
     if (expr) {
-      return expr.eval(context);
+      return expr.eval(valueResolver);
     }
     throw new Error("Tried to evaluate a formula expression that was not set.");
   }

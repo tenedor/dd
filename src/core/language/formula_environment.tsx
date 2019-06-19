@@ -3,8 +3,8 @@ import * as _ from 'lodash';
 import {Constructor} from '@models/domain_specific/constructor'; // only a type dependency
 import {Grid} from '@models/domain_specific/grid'; // only a type dependency
 import {Dictionary, RODictionary} from '@utils/types';
-import {buildNamespace, ConstructorNamespace, NameResolver, ReferenceUtils,
-        ValueNamespace} from './reference';
+import {buildNamespace, ConstructorNamespace, NameResolver, ValueNamespace} from './name_resolver';
+import {ReferenceUtils} from './reference';
 import {getBuiltInFormulas} from './standard_library';
 import {Identifier} from './types';
 
@@ -17,14 +17,14 @@ export class FormulaEnvironment {
   private readonly documentScopedObjects: Dictionary<ObjectWithNamespace>;
   private readonly valueNamespace: ValueNamespace;
   private readonly constructorNamespace: ConstructorNamespace;
-  private readonly _resolver: NameResolver;
+  private readonly _nameResolver: NameResolver;
 
   constructor() {
     const builtInFormulas = getBuiltInFormulas();
     this.valueNamespace = buildNamespace({});
     this.constructorNamespace = FormulaEnvironment.buildConstructorNamespace(builtInFormulas);
     this.documentScopedObjects = _.mapKeys(builtInFormulas, g => g.id);
-    this._resolver = this.buildResolver();
+    this._nameResolver = this.buildNameResolver();
   }
 
   private static buildConstructorNamespace = (constructors: RODictionary<Constructor>): ConstructorNamespace => {
@@ -32,7 +32,7 @@ export class FormulaEnvironment {
     return new ConstructorNamespace(builtInFormulaReferences);
   }
 
-  private buildResolver = (): NameResolver => {
+  private buildNameResolver = (): NameResolver => {
     const namespaceResolver = {resolveNamespace: this.resolveNamespace};
     return new NameResolver(namespaceResolver, this.constructorNamespace, this.valueNamespace);
   }
@@ -60,8 +60,8 @@ export class FormulaEnvironment {
     delete this.documentScopedObjects[objectId];
   }
 
-  public get resolver(): NameResolver {
-    return this._resolver;
+  public get nameResolver(): NameResolver {
+    return this._nameResolver;
   }
 
   private getObject = (objectId: Identifier): ObjectWithNamespace | undefined => {
