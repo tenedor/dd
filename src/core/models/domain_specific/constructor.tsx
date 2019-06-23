@@ -66,11 +66,13 @@ export class GridConstructor<I extends Identifier = Identifier>
   }
 
   public eval = (valueResolver: ValueResolver, asmts: DictValue<I>): RowValue<I> => {
+    const {columns, gridId} = this;
     const updateManager = new SimpleUpdateManager();
-    const cellConstructionData = this.columns.a.map(column => ({column, manualValue: asmts.dict[column.columnId]}));
+    const manualValues = _.extend({}, asmts.dict);
     const row = new Row(updateManager, {
-      gridId: this.gridId,
-      cells: cellConstructionData,
+      columns,
+      gridId,
+      manualValues,
     });
     return row.asValue();
   }

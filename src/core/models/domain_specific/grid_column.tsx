@@ -12,6 +12,8 @@ import {Column, ColumnUpdateDescriptor} from './column';
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 import {Grid} from './grid';
 
+export const DEFAULT_COLUMN_WIDTH = 100;
+
 interface GridColumnData<T extends Type, C extends Type, P extends Type = Type> {
   column: Column<C>;
   formulaEnvironment: FormulaEnvironment;

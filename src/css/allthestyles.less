@@ -42,6 +42,13 @@ input, textarea, select, button {
 }
 
 .table-view {
+  display: inline-grid;
+  grid-template-areas: "content addColumn" "addRow addColumn";
+  grid-template-columns: auto 26px;
+  grid-template-rows: auto 26px;
+}
+
+.table-view-content {
   border: 1px solid #cccccc;
   display: grid;
   position: relative;
@@ -55,8 +62,49 @@ input, textarea, select, button {
   }
 }
 
+.add-row-or-column {
+  background-color: #eeeeee;
+  border: 1px solid #dddddd;
+  color: #666666;
+  cursor: pointer;
+  position: relative;
+
+  &:hover {
+    background-color: #dddddd;
+  }
+
+  &:after {
+    content: '+';
+    display: inline-block;
+    font-weight: bold;
+    line-height: 18px;
+    padding: 4px 0;
+    text-align: center;
+  }
+}
+
+.add-column {
+  .add-row-or-column();
+  grid-area: addColumn;
+
+  &:after {
+    width: 100%;
+  }
+}
+
+.add-row {
+  .add-row-or-column();
+  grid-area: addRow;
+
+  &:after {
+    padding: 4px 8px;
+    margin-top: -2px;
+  }
+}
+
 .cell-view {
   border: 1px solid #cccccc;
+  cursor: default;
   padding: 4px 0;
 
   &.header {
@@ -89,6 +137,7 @@ input, textarea, select, button {
   border: 2px solid deepskyblue;
   bottom: -1px;
   caret-color: transparent;
+  cursor: default;
   left: -1px;
   overflow: hidden;
   padding: 4px 0;
@@ -98,6 +147,11 @@ input, textarea, select, button {
 
   &.editing {
     caret-color: auto;
+    cursor: text;
+
+    textarea {
+      cursor: text;
+    }
   }
 
   &.header {
@@ -106,6 +160,7 @@ input, textarea, select, button {
 
   textarea {
     border: none;
+    cursor: default;
     height: 100%;
     // let overflow text extend into horizontal padding but not vertical padding
     padding: 0 6px;

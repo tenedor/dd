@@ -22,21 +22,30 @@ export function deepEqual(a: any, b: any) {
   return _deepEqual(a, b, {strict: true});
 }
 
-// O(n log n) for n keys on the object with fewer keys
-export function keysEqual(object1: object, object2: object): boolean {
+export function keysEqual(object1: Readonly<object>, object2: Readonly<object>): boolean {
   const keys1 = Object.keys(object1);
   const keys2 = Object.keys(object2);
   if (keys1.length !== keys2.length) {
     return false;
   }
-  keys1.sort();
-  keys2.sort();
-  for (let i = 0; i < keys1.length; i++) {
-    if (keys1[i] !== keys2[i]) {
+  const s1 = new Set(keys1);
+  for (const k of keys2) {
+    if (!s1.has(k)) {
       return false;
     }
   }
   return true;
+}
+
+export function keysDiff(
+  oldObj: Readonly<object>,
+  newObj: Readonly<object>,
+): {removedIds: string[], addedIds: string[]} {
+  const oldKeys = Object.keys(oldObj);
+  const newKeys = Object.keys(newObj);
+  const removedIds = _.difference(oldKeys, newKeys);
+  const addedIds = _.difference(newKeys, oldKeys);
+  return {removedIds, addedIds};
 }
 
 export function generateUID(namespace?: string): string {
@@ -80,6 +89,10 @@ export function unescape(str: string, escapeChar: string): string {
 export function escapeAndQuote(str: string, quoteChar: string): string {
   const escapedStr = escape(str, '\\', [quoteChar]);
   return `${quoteChar}${escapedStr}${quoteChar}`;
+}
+
+export function capitalizeFirstLetter(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 export function classNames(...args: Array<string | ClassNameMap>): string {

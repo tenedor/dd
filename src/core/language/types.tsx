@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {assertUnreachable} from '@utils/utils';
+import {assertUnreachable, capitalizeFirstLetter} from '@utils/utils';
 
 export enum PrimitiveType {
   NUMBER = "NUMBER",
@@ -236,5 +236,11 @@ export class TypeUtils {
   // Utilities
   // =========
 
-  public static toString = (t: Type): string => `${t}` // TODO
+  public static toString = (t: Type): string => {
+    if (TypeUtils.isAtomic(t)) {
+      return capitalizeFirstLetter(t.toLowerCase());
+    }
+    // TODO
+    return `${t}`;
+  }
 }

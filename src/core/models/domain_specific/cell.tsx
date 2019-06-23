@@ -6,6 +6,7 @@ import {Identifier, Type} from '@language/types';
 import {ValueResolver} from '@language/value_resolver';
 import {Value, ValueUtils} from '@language/values';
 import {RODictionary} from '@utils/types';
+import {keysDiff} from '@utils/utils';
 import {Model, ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
 import {DependencySetUpdateDescriptor, UpdateDescriptor, UpdateManager} from '../core/update_manager';
@@ -116,7 +117,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     const valueDependencyRefs = dependencyRefs.filter(ReferenceUtils.isValueReference);
     this.dependencies = this.resolveDependencies(dependencyRefs);
     this.valueDependencies = this.resolveValueDependencies(valueDependencyRefs);
-    const {removedIds, addedIds} = this.getDependenciesDiff(oldDependencies, this.dependencies);
+    const {removedIds, addedIds} = keysDiff(oldDependencies, this.dependencies);
     if (removedIds.length || addedIds.length) {
       removedIds.forEach(id => oldDependencies[id].removeUpdateListener(this));
       addedIds.forEach(id => this.dependencies[id].listenForUpdate(this, this.onValueDependencyUpdated));

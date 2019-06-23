@@ -99,14 +99,17 @@ function generateRows(
   const rowCount = hasParent ? 3 : 6;
   const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
   const sideLength = (i: number) => 15 * (0.5 + i / 4);
-  return _.range(rowCount).map(i => new Row(updateManager, {gridId, cells: [
-    {column: columns[0], manualValue: ValueUtils.numberOf(hasParent ? 100 - i * 20 : i * 10)},
-    {column: columns[1], manualValue: ValueUtils.numberOf(i * i * 3)},
-    {column: columns[2], manualValue: ValueUtils.numberOf((i + 1) * (i + 1) * 2)},
-    {column: columns[3], manualValue: ValueUtils.stringOf(colors[i + (hasParent ? 2 : 0)])},
-    {column: columns[4], manualValue: ValueUtils.stringOf(getStarPath(5 + 2*i, 2+2*i, sideLength(i)))},
-    {column: columns[5]},
-  ]}));
+  return _.range(rowCount).map(i => new Row(updateManager, {
+    columns: grid.columns,
+    gridId,
+    manualValues: {
+      [columns[0].columnId]: ValueUtils.numberOf(hasParent ? 100 - i * 20 : i * 10),
+      [columns[1].columnId]: ValueUtils.numberOf(i * i * 3),
+      [columns[2].columnId]: ValueUtils.numberOf((i + 1) * (i + 1) * 2),
+      [columns[3].columnId]: ValueUtils.stringOf(colors[i + (hasParent ? 2 : 0)]),
+      [columns[4].columnId]: ValueUtils.stringOf(getStarPath(5 + 2 * i, 2 + 2 * i, sideLength(i))),
+    },
+  }));
 }
 
 export function addArithmeticGrid(
@@ -116,7 +119,7 @@ export function addArithmeticGrid(
 ) {
   const {nameResolver} = formulaEnvironment;
 
-  const grid = document.createGrid({name: "Radius Calculator"});
+  const grid = document.createGrid({name: "Radius Calculator", formulaEnvironment});
 
   const columnsDataMap = {
     In: {name: 'In', type: TypeUtils.Number},
@@ -133,11 +136,9 @@ export function addArithmeticGrid(
 
   const gridRows = [
     new Row(updateManager, {
+      columns: grid.columns,
       gridId: grid.id,
-      cells: [
-        {column: gridColumns[0], manualValue: ValueUtils.numberOf(5)},
-        {column: gridColumns[1]},
-      ],
+      manualValues: {[gridColumns[0].columnId]: ValueUtils.numberOf(5)},
     }),
   ];
   grid.addRows(gridRows);
@@ -168,7 +169,7 @@ export function addShapeGrids(
     {column: columns.Path, width: 100},
     {column: columns.DrawShape, width: 150, expressionString: 'DrawPath(Path=Path,X=X,Y=Y,Fill=Fill)'},
   ];
-  const grid1 = document.createGrid({name: "Shapes"});
+  const grid1 = document.createGrid({name: "Shapes", formulaEnvironment});
   const grid1Columns = generateGridColumns(updateManager, formulaEnvironment, grid1, grid1ColumnsData);
   grid1.addColumns(grid1Columns);
   setColumnExpressions(grid1, grid1ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid1.id)));
@@ -181,7 +182,7 @@ export function addShapeGrids(
     }
     return {parentGridColumn}
   });
-  const grid2 = document.createGrid({name: "More Shapes", parentGrid: grid1});
+  const grid2 = document.createGrid({name: "More Shapes", parentGrid: grid1, formulaEnvironment});
   const grid2Columns = generateGridColumns(updateManager, formulaEnvironment, grid2, grid2ColumnsData);
   grid2.addColumns(grid2Columns);
   setColumnExpressions(grid2, grid2ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid2.id)));

@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
+import {Type, TypeUtils} from '@language/types';
 import {ValueUtils} from '@language/values';
 import {Cell} from '@models/domain_specific/cell';
 import {CellIndex, Grid} from '@models/domain_specific/grid';
@@ -50,11 +51,15 @@ export class TableView extends BaseComponent<Props, State> {
     const cellEditor = this.renderCellEditor(selectedCell);
 
     return (
-      <div className="table-view" style={tableStyles} tabIndex={0} onKeyDown={this.onKeyDown}
+      <div className="table-view">
+      <div className="table-view-content" style={tableStyles} tabIndex={0} onKeyDown={this.onKeyDown}
           onMouseDown={this.onMouseDown}>
         {columnHeaders}
         {renderedRows}
         {cellEditor}
+      </div>
+      <div className="add-column" onClick={this.onClickAddColumn}/>
+      <div className="add-row" onClick={this.onClickAddRow}/>
       </div>
     );
   }
@@ -122,6 +127,18 @@ export class TableView extends BaseComponent<Props, State> {
         return;
     }
     e.preventDefault();
+  }
+
+  private onClickAddColumn = (e: React.MouseEvent) => {
+    this.onClickAddColumnOfType(TypeUtils.Number, e);
+  }
+
+  private onClickAddColumnOfType = (type: Type, e: React.MouseEvent) => {
+    this.props.grid.addNewColumn(type);
+  }
+
+  private onClickAddRow = (e: React.MouseEvent) => {
+    this.props.grid.addNewRow();
   }
 
   private stringEncodeCellIndex = ({columnId, rowIndex}: CellIndex): string => {

@@ -1,18 +1,19 @@
 import * as _ from 'lodash';
 
+import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver, ValueNamespace} from '@language/name_resolver';
 import {RelativeValueReference} from '@language/reference';
-import {TypeUtils} from '@language/types';
-import {ValueResolver} from '@language/value_resolver';
-import {DictValue, GridValue, RowValue} from '@language/values';
+import {Type, TypeUtils} from '@language/types';
+import {GridValue} from '@language/values';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from '../collections/functional_array';
 import {FunctionalKeyedArray} from '../collections/functional_keyed_array';
 import {ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
-import {SimpleUpdateManager, UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {GridUpdateType} from '../core/update_types';
+import {Column} from './column';
 import {ConstructorUpdateDescriptor, GridConstructor} from './constructor';
-import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
+import {DEFAULT_COLUMN_WIDTH, GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {Row, RowUpdateDescriptor} from './row';
 
 export type GridColumns = FunctionalKeyedArray<GridColumn, GridColumnUpdateDescriptor, 'columnId'>;
@@ -24,6 +25,7 @@ export interface CellIndex {
 }
 
 export interface GridData {
+  formulaEnvironment: FormulaEnvironment;
   name: string,
   parentGrid?: Grid,
 }
@@ -32,6 +34,7 @@ export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {
 
 export class Grid extends Mutable<GridUpdateDescriptor> {
   private _name: string;
+  private readonly formulaEnvironment: FormulaEnvironment;
   private readonly parent?: Grid;
   public readonly columns: GridColumns;
   public readonly rows: Rows;
@@ -40,11 +43,12 @@ export class Grid extends Mutable<GridUpdateDescriptor> {
 
   constructor(
     updateManager: UpdateManager,
-    {name, parentGrid}: GridData,
+    {formulaEnvironment, name, parentGrid}: GridData,
     modelType: ModelType = ModelType.GRID,
   ) {
     super(updateManager, modelType);
     this._name = name;
+    this.formulaEnvironment = formulaEnvironment;
     if (parentGrid) {
       this.parent = parentGrid;
       this.parent.listenForUpdate(this, this.onParentGridUpdated);
@@ -106,18 +110,44 @@ export class Grid extends Mutable<GridUpdateDescriptor> {
     this.columns.pushAll(columns);
   }
 
+  public addNewColumn = (type: Type) => {
+    const {formulaEnvironment, updateManager} = this;
+    const name = this.getDefaultNameForColumnOfType(type);
+    const column = new Column(updateManager, {name, type});
+    const gridColumn = new GridColumn(updateManager, {
+      column,
+      formulaEnvironment,
+      grid: this,
+      type,
+      width: DEFAULT_COLUMN_WIDTH,
+    });
+    this.addColumns([gridColumn]);
+  }
+
+  private getDefaultNameForColumnOfType = (type: Type): string => {
+    const baseName = TypeUtils.toString(type);
+    let i = 1;
+    while (true) {
+      const name = `${baseName} ${i}`;
+      if (this.getColumnByName(name) === undefined) {
+        return name;
+      }
+      i++;
+    }
+  }
+
   public addRows = (rows: Row[]) => {
     this.rows.pushAll(rows);
   }
 
-  public evalConstructor = (valueResolver: ValueResolver, asmts: DictValue): RowValue => {
-    const updateManager = new SimpleUpdateManager();
-    const cellConstructionData = this.columns.a.map(column => ({column, manualValue: asmts.dict[column.columnId]}));
+  public addNewRow = () => {
+    const {columns, id, updateManager} = this;
     const row = new Row(updateManager, {
-      gridId: this.id,
-      cells: cellConstructionData,
+      columns,
+      gridId: id,
+      manualValues: {},
     });
-    return row.asValue();
+    this.addRows([row]);
   }
 
   private onColumnsUpdated = (
