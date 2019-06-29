@@ -108,8 +108,8 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
     this._formulaExpression.setExpression(expression);
   }
 
-  public setName = (name: string): void => {
-    this.column.setName(name);
+  public setName = (name: string): boolean => {
+    return this.column.setName(name);
   }
 
   private onColumnUpdated = (epoch: number, updates: ColumnUpdateDescriptor[]): GridColumnUpdateDescriptor[] => {

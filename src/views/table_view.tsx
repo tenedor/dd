@@ -221,7 +221,7 @@ export class TableView extends BaseComponent<Props, State> {
     const gridArea = this.getGridArea({start: editorIndex, end: editorIndex});
     return (
       <div key="cell-editor" className="cell-editor" style={{gridArea}}>
-        <CellEditorView epoch={epoch} key={key} cell={cell} column={column} grid={grid} />
+        <CellEditorView epoch={epoch} key={key} cell={cell} column={column} />
       </div>
     );
   }

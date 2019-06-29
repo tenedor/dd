@@ -31,9 +31,14 @@ export class Column<T extends Type = Type> extends Mutable<ColumnUpdateDescripto
     return this._type;
   }
 
-  public setName = (name: string): void => {
-    this._name = name;
+  public setName = (name: string): boolean => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return false;
+    }
+    this._name = trimmed;
     const descriptor = {type: ColumnUpdateType.NAME_UPDATED};
     this.onSelfMutated([descriptor]);
+    return true;
   }
 }

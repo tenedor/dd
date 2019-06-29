@@ -73,12 +73,14 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     throw new Error(`Default value is not supported for type ${this.column.type}`);
   }
 
-  public setManualValue(manualValue: Value<T>) {
+  public setManualValue(manualValue: Value<T>): boolean {
     this.manualValue = manualValue;
     const descriptors = this.refreshValueAndGetUpdateDescriptors();
-    if (descriptors.length) {
+    const changed = descriptors.length > 0;
+    if (changed) {
       this.onSelfMutated(descriptors);
     }
+    return changed;
   }
 
   private getDependenciesDiff(

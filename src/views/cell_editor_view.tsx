@@ -5,139 +5,72 @@ import {Parser} from '@language/parser';
 import {TypeUtils} from '@language/types';
 import {PrimitiveValue, ValueUtils} from '@language/values';
 import {Cell} from '@models/domain_specific/cell';
-import {Grid} from '@models/domain_specific/grid'; // only a type dependency
 import {GridColumn} from '@models/domain_specific/grid_column';
 import {KeyCode} from '@utils/keycode';
-import {assert, assertUnreachable, classNames} from '@utils/utils';
+import {assert, classNames} from '@utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
 
 enum EditState {
   NOT_EDITING = 'NOT_EDITING',
-  EDITING_VALUE = 'EDITING_VALUE',
+  EDITING_CELL_VALUE = 'EDITING_CELL_VALUE',
+  EDITING_COLUMN_NAME = 'EDITING_COLUMN_NAME',
   EDITING_FORMULA = 'EDITING_FORMULA',
 }
 
-interface Props extends BaseProps {
-  // not passing a cell model signals that this is a header cell
-  cell?: Cell,
-  column: GridColumn,
-  // pass a grid as context until context can be retrieved from a formula
-  grid: Grid,
-}
+abstract class CellEditorViewModel {
+  public abstract readonly isHeader: boolean;
+  protected readonly column: GridColumn;
+  protected readonly setIsEditing: (isEditing: boolean) => void;
+  private _editState: EditState;
 
-interface State {
-  editState: EditState,
-}
-
-export class CellEditorView extends BaseComponent<Props, State> {
-  private textAreaRef?: HTMLTextAreaElement;
-
-  constructor(props: Props) {
-    super(props);
-
-    this.state = {
-      editState: EditState.NOT_EDITING,
-    };
+  constructor({column, setIsEditing}: {
+    column: GridColumn,
+    setIsEditing: (isEditing: boolean) => void},
+  ) {
+    this.column = column;
+    this.setIsEditing = setIsEditing;
+    this._editState = EditState.NOT_EDITING;
   }
 
-  // may be overridden in subclass so can't use arrow method
-  public componentDidUpdate() {
-    if (!this.isEditing) {
-      this.setDisplayValue(this.makeDisplayValue({isEditing: this.isEditing}));
-    }
+  protected setEditState(editState: EditState) {
+    this._editState = editState;
+    this.setIsEditing(editState !== EditState.NOT_EDITING);
   }
 
-  public render = () => {
-    const value = this.makeDisplayValue({isEditing: this.isEditing});
-    const className = classNames("cell-editor-view", {
-      editing: this.isEditing,
-      header: this.isHeaderCell,
-    });
-    return (
-      <div className={className} tabIndex={0} onKeyDown={this.onKeyDown} onMouseDown={this.onMouseDown} >
-        <textarea autoFocus={true} ref={r => this.textAreaRef = r || undefined} defaultValue={value} />
-      </div>
-    );
+  protected getEditState(): EditState {
+    return this._editState;
   }
 
-  private get isHeaderCell(): boolean {
-    return !this.props.cell;
+  public abstract startEditing(): void;
+
+  public startEditingFormula(): void {
+    this.setEditState(EditState.EDITING_FORMULA);
   }
 
-  private get isEditing(): boolean {
-    return this.state.editState !== EditState.NOT_EDITING;
+  public stopEditing(): void {
+    this.setEditState(EditState.NOT_EDITING);
   }
 
-  private mustEditFormula = (): boolean => {
-    return !this.isHeaderCell && this.props.cell!.formulaExpression.isSet;
+  public isEditingFormula(): boolean {
+    return this.getEditState() === EditState.EDITING_FORMULA;
   }
 
-  // This returns the value that should be displayed for the model state and the given options.
-  private makeDisplayValue = ({isEditing, editFormula, overwrite}: {isEditing: boolean, editFormula?: boolean, overwrite?: boolean}): string => {
-    const {cell, column} = this.props;
-    const getFormulaValue = isEditing && (editFormula || this.mustEditFormula());
-    if (overwrite) {
-      return getFormulaValue ? "=" : "";
-    } else if (getFormulaValue) {
-      return `=${column.formulaExpression.toText()}`;
-    } else if (cell) {
-      return ValueUtils.toString(cell.value);
-    } else {
-      return column.name;
-    }
+  public mustEditFormula(): boolean {
+    return false;
   }
 
-  private setDisplayValue = (value: string) => {
-    this.textAreaRef!.value = value;
+  public makeDisplayValue(): string {
+    return this.isEditingFormula() ?
+      `=${this.column.formulaExpression.toText()}` :
+      this.makeDisplayValueNonFormula();
   }
 
-  private resetDisplayValue = () => {
-    this.setDisplayValue(this.makeDisplayValue({isEditing: false}));
-  }
+  protected abstract makeDisplayValueNonFormula(): string;
 
-  private startEditing = ({editFormula, overwrite}: {editFormula?: boolean, overwrite?: boolean} = {}) => {
-    // Could short-circuit return instead of erroring if it becomes important to
-    // allow redundant calls.
-    assert(this.state.editState === EditState.NOT_EDITING);
+  public abstract setValue(value: string): boolean;
 
-    this.setDisplayValue(this.makeDisplayValue({isEditing: true, editFormula, overwrite}));
-    const editState = editFormula || this.mustEditFormula() ?
-      EditState.EDITING_FORMULA :
-      EditState.EDITING_VALUE;
-    this.setState({editState});
-  }
-
-  private stopEditing = () => {
-    this.setState({editState: EditState.NOT_EDITING});
-  }
-
-  private parseInputValue = (value: string): PrimitiveValue => {
-    // TODO this should use the column type
-    if (value === "true" || value === "false") {
-      return ValueUtils.booleanOf(value === "true");
-    } else if (!isNaN(parseFloat(value))) {
-      return ValueUtils.numberOf(parseFloat(value));
-    } else {
-      return ValueUtils.stringOf(value);
-    }
-  }
-
-  private setManualValue = (value: string): boolean => {
-    const {cell, column} = this.props;
-    if (cell) {
-      cell.setManualValue(this.parseInputValue(value));
-    } else {
-      if (value) {
-        column.setName(value);
-      } else {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  private setFormulaExpression = (value: string): boolean => {
-    const {column} = this.props;
+  protected setFormulaExpression = (value: string): boolean => {
+    const {column} = this;
     if (value) {
       // ignore a leading '='
       const unparsedExpression = value[0] === '=' ? value.substr(1) : value;
@@ -158,24 +91,166 @@ export class CellEditorView extends BaseComponent<Props, State> {
     }
     return true;
   }
+}
+
+class ColumnHeaderEditorViewModel extends CellEditorViewModel {
+  public readonly isHeader = true;
+
+  public startEditing() {
+    this.setEditState(EditState.EDITING_COLUMN_NAME);
+  }
+
+  protected makeDisplayValueNonFormula(): string {
+    return this.column.name;
+  }
+
+  public setValue(value: string): boolean {
+    if (this.isEditingFormula()) {
+      return this.setFormulaExpression(value);
+    } else {
+      return this.column.setName(value);
+    }
+  }
+}
+
+class RowCellEditorViewModel extends CellEditorViewModel {
+  public readonly isHeader = false;
+  private readonly cell: Cell;
+
+  constructor({cell, column, setIsEditing}: {
+    cell: Cell,
+    column: GridColumn,
+    setIsEditing: (isEditing: boolean) => void},
+  ) {
+    super({column, setIsEditing});
+    this.cell = cell;
+  }
+
+  public startEditing() {
+    const editState = this.mustEditFormula() ? EditState.EDITING_FORMULA : EditState.EDITING_CELL_VALUE;
+    this.setEditState(editState);
+  }
+
+  public mustEditFormula(): boolean {
+    return this.cell.formulaExpression.isSet;
+  }
+
+  protected makeDisplayValueNonFormula(): string {
+    return ValueUtils.toString(this.cell.value);
+  }
+
+  public setValue(value: string): boolean {
+    if (this.isEditingFormula() || this.mustEditFormula()) {
+      return this.setFormulaExpression(value);
+    } else {
+      return this.cell.setManualValue(this.parseInputValue(value));
+    }
+  }
+
+  private parseInputValue = (value: string): PrimitiveValue => {
+    // TODO this should use the column type
+    if (value === "true" || value === "false") {
+      return ValueUtils.booleanOf(value === "true");
+    } else if (!isNaN(parseFloat(value))) {
+      return ValueUtils.numberOf(parseFloat(value));
+    } else {
+      return ValueUtils.stringOf(value);
+    }
+  }
+}
+
+interface Props extends BaseProps {
+  // not passing a cell model signals that this is a header cell
+  cell?: Cell,
+  column: GridColumn,
+}
+
+interface State {
+  isEditing: boolean,
+}
+
+export class CellEditorView extends BaseComponent<Props, State> {
+  private textAreaRef?: HTMLTextAreaElement;
+  private viewModel: CellEditorViewModel;
+
+  constructor(props: Props) {
+    super(props);
+
+    this.state = {
+      isEditing: false,
+    };
+
+    this.updateEditorModel();
+  }
+
+  public componentDidUpdate() {
+    if (!this.state.isEditing) {
+      this.updateDisplayValue();
+    }
+  }
+
+  private updateEditorModel = () => {
+    const {cell, column} = this.props;
+    const {setIsEditing} = this;
+    this.viewModel = cell ? new RowCellEditorViewModel({column, cell, setIsEditing}) : new ColumnHeaderEditorViewModel({column, setIsEditing});
+  }
+
+  private setIsEditing = (isEditing: boolean) => {
+    this.setState({isEditing});
+  }
+
+  public render = () => {
+    const value = this.viewModel.makeDisplayValue();
+    const className = classNames("cell-editor-view", {
+      editing: this.state.isEditing,
+      header: this.viewModel.isHeader,
+    });
+    return (
+      <div className={className} tabIndex={0} onKeyDown={this.onKeyDown} onMouseDown={this.onMouseDown} >
+        <textarea autoFocus={true} ref={r => this.textAreaRef = r || undefined} defaultValue={value} />
+      </div>
+    );
+  }
+
+  private mustEditFormula = (): boolean => {
+    return this.viewModel.mustEditFormula();
+  }
+
+  private getOverwriteDisplayValue = (): string => {
+    return this.viewModel.isEditingFormula() ? "=" : "";
+  }
+
+  private updateDisplayValue = ({overwrite}: {overwrite?: boolean} = {}) => {
+    const displayValue = overwrite ? this.getOverwriteDisplayValue() : this.viewModel.makeDisplayValue();
+    this.setDisplayValue(displayValue);
+  }
+
+  private setDisplayValue = (value: string) => {
+    this.textAreaRef!.value = value;
+  }
+
+  private resetDisplayValue = () => {
+    this.updateDisplayValue();
+  }
+
+  private startEditing = ({editFormula, overwrite}: {editFormula?: boolean, overwrite?: boolean} = {}) => {
+    assert(!this.state.isEditing);
+    const {viewModel: editorModel} = this;
+    if (editFormula) {
+      editorModel.startEditingFormula();
+    } else {
+      editorModel.startEditing();
+    }
+    this.updateDisplayValue({overwrite});
+  }
+
+  private stopEditing = () => {
+    this.viewModel.stopEditing();
+  }
 
   // Edit the model. This always shifts the editor to not-editing.
   private setValue(value: string) {
-    const {editState} = this.state;
-    let mutated = false;
-    switch (editState) {
-      case EditState.NOT_EDITING:
-        mutated = this.mustEditFormula() ? this.setFormulaExpression(value) : this.setManualValue(value);
-        break;
-      case EditState.EDITING_VALUE:
-        mutated = this.setManualValue(value);
-        break;
-      case EditState.EDITING_FORMULA:
-        mutated = this.setFormulaExpression(value);
-        break;
-      default:
-        assertUnreachable(editState);
-    }
+    const mutated = this.viewModel.setValue(value);
 
     // If the mutation did not succeed make sure to reset the displayed value.
     if (!mutated) {
@@ -195,7 +270,8 @@ export class CellEditorView extends BaseComponent<Props, State> {
   }
 
   private onMouseDown = (e: React.MouseEvent) => {
-    if (!this.isEditing) {
+    const {isEditing} = this.state;
+    if (!isEditing) {
       this.startEditing();
       e.preventDefault();
     }
@@ -203,19 +279,20 @@ export class CellEditorView extends BaseComponent<Props, State> {
   }
 
   private onKeyDown = (e: React.KeyboardEvent) => {
+    const {isEditing} = this.state;
     const {keyCode} = e;
 
     switch (keyCode) {
       case KeyCode.ENTER:
       case KeyCode.TAB:
-        if (this.isEditing) {
+        if (isEditing) {
           this.persistValue();
         }
         e.preventDefault();
         return;
 
       case KeyCode.ESCAPE:
-        if (this.isEditing) {
+        if (isEditing) {
           this.stopEditing();
           this.resetDisplayValue();
           e.stopPropagation();
@@ -224,7 +301,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
         return;
 
       case KeyCode.SPACE:
-        if (!this.isEditing) {
+        if (!isEditing) {
           this.startEditing();
           e.preventDefault();
         }
@@ -233,7 +310,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
 
       case KeyCode.BACKSPACE:
       case KeyCode.DELETE:
-        if (!this.isEditing) {
+        if (!isEditing) {
           this.clearValue();
           e.preventDefault();
         }
@@ -244,7 +321,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
       case KeyCode.ARROW_UP:
       case KeyCode.ARROW_LEFT:
       case KeyCode.ARROW_RIGHT:
-        if (this.isEditing) {
+        if (isEditing) {
           // let textarea handle it, don't bubble
           e.stopPropagation();
         } else {
@@ -255,7 +332,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
 
       // TODO: fix a bug where typing `+` (i.e. SHIFT-EQUALS) behaves like `=`
       case KeyCode.EQUAL_SIGN:
-        if (!this.isEditing) {
+        if (!isEditing) {
           this.startEditing({editFormula: true});
           e.preventDefault();
         }
@@ -268,7 +345,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
           (KeyCode.NUMPAD_0 <= keyCode && keyCode <= KeyCode.NUMPAD_DIVIDE) ||
           (KeyCode.SEMICOLON <= keyCode && keyCode <= KeyCode.QUOTE)
         ) {
-          if (!this.isEditing) {
+          if (!isEditing) {
             // UI design: Overwrite a manual value with a new value but do not overwrite a formula
             // since the formula will not have been visible. For a formula, either enter edit mode
             // without overwriting or do not enter edit mode at all for non-command characters. For
