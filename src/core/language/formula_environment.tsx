@@ -6,7 +6,7 @@ import {Dictionary, RODictionary} from '@utils/types';
 import {buildNamespace, ConstructorNamespace, NameResolver, ValueNamespace} from './name_resolver';
 import {ReferenceUtils} from './reference';
 import {getBuiltInFormulas} from './standard_library';
-import {Identifier} from './types';
+import {GridType, Identifier, Type, TypeUtils} from './types';
 
 interface ObjectWithNamespace {
   id: string,
@@ -18,6 +18,7 @@ export class FormulaEnvironment {
   private readonly valueNamespace: ValueNamespace;
   private readonly constructorNamespace: ConstructorNamespace;
   private readonly _nameResolver: NameResolver;
+  private readonly customTypes: Dictionary<GridType>;
 
   constructor() {
     const builtInFormulas = getBuiltInFormulas();
@@ -25,6 +26,7 @@ export class FormulaEnvironment {
     this.constructorNamespace = FormulaEnvironment.buildConstructorNamespace(builtInFormulas);
     this.documentScopedObjects = _.mapKeys(builtInFormulas, g => g.id);
     this._nameResolver = this.buildNameResolver();
+    this.customTypes = {};
   }
 
   private static buildConstructorNamespace = (constructors: RODictionary<Constructor>): ConstructorNamespace => {
@@ -45,11 +47,13 @@ export class FormulaEnvironment {
   public addGrid = (grid: Grid): void => {
     this.addObjectWithNamespace(grid);
     this.constructorNamespace.addGrid(grid);
+    this.customTypes[grid.id] = TypeUtils.GridOf(grid.id);
   }
 
   public removeGrid = (gridId: string): void => {
     this.removeObjectWithNamespace(gridId);
     this.constructorNamespace.removeGrid(gridId);
+    delete this.customTypes[gridId];
   }
 
   public addObjectWithNamespace = (object: ObjectWithNamespace): void => {
@@ -66,5 +70,20 @@ export class FormulaEnvironment {
 
   private getObject = (objectId: Identifier): ObjectWithNamespace | undefined => {
     return this.documentScopedObjects[objectId];
+  }
+
+  public getAllowedColumnTypes = (): Type[] => {
+    const instanceTypes = _.values(this.customTypes).map(t => t.itemType);
+    return TypeUtils.atomicTypes.concat(instanceTypes);
+  }
+
+  public getNameForType = (t: Type): string => {
+    if (TypeUtils.isDict(t)) {
+      const name = this.constructorNamespace.getNameForReference(t.schemaId);
+      if (name !== undefined) {
+        return name;
+      }
+    }
+    return TypeUtils.toString(t);
   }
 }

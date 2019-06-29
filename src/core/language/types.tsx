@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 
+import {ROArray} from '@utils/types';
 import {assertUnreachable, capitalizeFirstLetter} from '@utils/utils';
 
 export enum PrimitiveType {
@@ -243,4 +244,11 @@ export class TypeUtils {
     // TODO
     return `${t}`;
   }
+
+  public static readonly atomicTypes: ROArray<Type> = [
+    PrimitiveType.NUMBER,
+    PrimitiveType.BOOLEAN,
+    PrimitiveType.STRING,
+    DrawingType.DRAWING,
+  ];
 }

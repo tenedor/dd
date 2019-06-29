@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
-import {Type, TypeUtils} from '@language/types';
+import {Type} from '@language/types';
 import {ValueUtils} from '@language/values';
 import {Cell} from '@models/domain_specific/cell';
 import {CellIndex, Grid} from '@models/domain_specific/grid';
@@ -10,6 +10,7 @@ import {KeyCode} from '@utils/keycode';
 import {BaseComponent, BaseProps} from './base_component';
 import {CellEditorView} from './cell_editor_view';
 import {CellView} from './cell_view';
+import {PopUpView} from './utilities/pop_up_view';
 
 interface TableIndex {
   row: number,
@@ -27,6 +28,7 @@ interface Props extends BaseProps {
 
 interface State {
   selectedCell: TableIndex,
+  showAddColumnMenu?: {x: number, y: number},
 }
 
 export class TableView extends BaseComponent<Props, State> {
@@ -49,17 +51,21 @@ export class TableView extends BaseComponent<Props, State> {
     const columnHeaders = this.renderColumnHeaders();
     const renderedRows = rows.a.map(this.renderRow);
     const cellEditor = this.renderCellEditor(selectedCell);
+    const addColumnMenu = this.renderAddColumnMenu();
 
     return (
       <div className="table-view">
-      <div className="table-view-content" style={tableStyles} tabIndex={0} onKeyDown={this.onKeyDown}
+        <div className="table-view-content" style={tableStyles} tabIndex={0} onKeyDown={this.onKeyDown}
           onMouseDown={this.onMouseDown}>
-        {columnHeaders}
-        {renderedRows}
-        {cellEditor}
-      </div>
-      <div className="add-column" onClick={this.onClickAddColumn}/>
-      <div className="add-row" onClick={this.onClickAddRow}/>
+          {columnHeaders}
+          {renderedRows}
+          {cellEditor}
+        </div>
+        <div className="add-column">
+          <div className="add-column-click-target" onClick={this.onClickAddColumn} />
+          {addColumnMenu}
+        </div>
+        <div className="add-row" onClick={this.onClickAddRow} />
       </div>
     );
   }
@@ -130,15 +136,33 @@ export class TableView extends BaseComponent<Props, State> {
   }
 
   private onClickAddColumn = (e: React.MouseEvent) => {
-    this.onClickAddColumnOfType(TypeUtils.Number, e);
+    if (this.columnMenuIsOpen()) {
+      this.closeAddColumnMenu();
+    } else {
+      const {offsetX: x, offsetY: y} = e.nativeEvent;
+      this.openAddColumnMenu({x, y});
+    }
   }
 
   private onClickAddColumnOfType = (type: Type, e: React.MouseEvent) => {
     this.props.grid.addNewColumn(type);
+    this.closeAddColumnMenu();
   }
 
   private onClickAddRow = (e: React.MouseEvent) => {
     this.props.grid.addNewRow();
+  }
+
+  private columnMenuIsOpen = () => {
+    return this.state.showAddColumnMenu !== undefined;
+  }
+
+  private openAddColumnMenu = (position: {x: number, y: number}) => {
+    this.setState({showAddColumnMenu: position});
+  }
+
+  private closeAddColumnMenu = () => {
+    this.setState({showAddColumnMenu: undefined});
   }
 
   private stringEncodeCellIndex = ({columnId, rowIndex}: CellIndex): string => {
@@ -168,7 +192,7 @@ export class TableView extends BaseComponent<Props, State> {
   private renderRow = (row: Row, rowIndex: number) => {
     const {grid} = this.props;
     const {cells} = row;
-    return grid.columns.a.map(({columnId, formulaExpression}) => {
+    return grid.columns.a.map(({columnId}) => {
       const cellIndexString = this.stringEncodeCellIndex({columnId, rowIndex});
       const value = ValueUtils.toString(cells.d[columnId].value);
       return <CellView key={cellIndexString} dataCellId={cellIndexString} value={value} />;
@@ -195,8 +219,44 @@ export class TableView extends BaseComponent<Props, State> {
     const column = grid.columns.a[editorIndex.column];
     const key = `editor-${column.columnId}:r-${editorIndex.row}`;
     const gridArea = this.getGridArea({start: editorIndex, end: editorIndex});
-    return <div key="cell-editor" className="cell-editor" style={{gridArea}}>
-      <CellEditorView epoch={epoch} key={key} cell={cell} column={column} grid={grid} />
-    </div>
+    return (
+      <div key="cell-editor" className="cell-editor" style={{gridArea}}>
+        <CellEditorView epoch={epoch} key={key} cell={cell} column={column} grid={grid} />
+      </div>
+    );
+  }
+
+  private renderAddColumnMenu = () => {
+    const {epoch} = this.props;
+    const {showAddColumnMenu} = this.state;
+    if (showAddColumnMenu === undefined) {
+      return;
+    }
+    const pos = showAddColumnMenu;
+    const content = this.renderAddColumnMenuContent();
+    return (
+      <PopUpView epoch={epoch} className="add-column-menu-pop-up" position={pos}>
+        {content}
+      </PopUpView>
+    );
+  }
+
+  private renderAddColumnMenuContent = () => {
+    const {grid} = this.props;
+    const types = grid.getAllowedColumnTypes();
+    const menuItems = types.map(({name, type}) => {
+      return (
+        // Disable linting for now as a placeholder to defer implementing more UI. TODO fix this.
+        // tslint:disable-next-line:jsx-no-lambda
+        <div key={name} className="add-column-menu-item" onClick={e => this.onClickAddColumnOfType(type, e)}>
+          {name}
+        </div>
+      );
+    });
+    return (
+      <div className="add-column-menu">
+        {menuItems}
+      </div>
+    );
   }
 }

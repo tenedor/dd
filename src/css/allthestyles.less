@@ -1,5 +1,7 @@
 // all blame for the monolithic stylesheet goes to my laziness to learn webpack
 
+@z-index-pop-up: 1;
+
 body {
   margin: 0;
 }
@@ -29,6 +31,37 @@ input, textarea, select, button {
   box-sizing: border-box;
   margin: 0;
   resize: none;
+}
+
+.button-static-style() {
+  background-color: #eeeeee;
+  border: 1px solid #dddddd;
+  color: #666666;
+  cursor: pointer;
+}
+
+.button-hover-style() {
+  &:hover {
+    background-color: #dddddd;
+  }
+}
+
+.button-style() {
+  .button-hover-style();
+  .button-static-style();
+}
+
+.pop-up-view-pixel {
+  height: 0px;
+  position: absolute;
+  width: 0px;
+
+  .pop-up-view {
+    left: 0px;
+    position: absolute;
+    top: 0px;
+    z-index: @z-index-pop-up;
+  }
 }
 
 .grid {
@@ -62,18 +95,11 @@ input, textarea, select, button {
   }
 }
 
-.add-row-or-column {
-  background-color: #eeeeee;
-  border: 1px solid #dddddd;
-  color: #666666;
-  cursor: pointer;
+.add-row-or-column() {
+  .button-style();
   position: relative;
 
-  &:hover {
-    background-color: #dddddd;
-  }
-
-  &:after {
+  &::after {
     content: '+';
     display: inline-block;
     font-weight: bold;
@@ -84,11 +110,34 @@ input, textarea, select, button {
 }
 
 .add-column {
-  .add-row-or-column();
   grid-area: addColumn;
+  position: relative;
 
-  &:after {
-    width: 100%;
+  .add-column-click-target {
+    .add-row-or-column();
+    box-sizing: border-box;
+    height: 100%;
+
+    &:after {
+      width: 100%;
+    }
+  }
+
+  .add-column-menu {
+    .button-static-style();
+
+    .add-column-menu-item {
+      .button-hover-style();
+      padding: 3px 6px;
+
+      &:first-child {
+        padding-top: 6px;
+      }
+
+      &:last-child {
+        padding-bottom: 6px;
+      }
+    }
   }
 }
 

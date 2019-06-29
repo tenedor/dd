@@ -95,7 +95,7 @@ export function capitalizeFirstLetter(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export function classNames(...args: Array<string | ClassNameMap>): string {
+export function classNames(...args: Array<string | ClassNameMap | undefined>): string {
   const stringArgs = args.filter(a => typeof a === "string") as string[];
   const stringClasses = stringArgs;
 

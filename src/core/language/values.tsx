@@ -201,7 +201,7 @@ export class ValueUtils {
     if (TypeUtils.isNumber(type)) {
       return ValueUtils.defaultNumber as Value<T>;
     } else if (TypeUtils.isString(type)) {
-      return ValueUtils.defaultNumber as Value<T>;
+      return ValueUtils.defaultString as Value<T>;
     } else if (TypeUtils.isBoolean(type)) {
       return ValueUtils.defaultBoolean as Value<T>;
     } else if (TypeUtils.isList(type)) {

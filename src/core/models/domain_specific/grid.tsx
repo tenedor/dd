@@ -125,7 +125,7 @@ export class Grid extends Mutable<GridUpdateDescriptor> {
   }
 
   private getDefaultNameForColumnOfType = (type: Type): string => {
-    const baseName = TypeUtils.toString(type);
+    const baseName = this.formulaEnvironment.getNameForType(type);
     let i = 1;
     while (true) {
       const name = `${baseName} ${i}`;
@@ -148,6 +148,14 @@ export class Grid extends Mutable<GridUpdateDescriptor> {
       manualValues: {},
     });
     this.addRows([row]);
+  }
+
+  public getAllowedColumnTypes = (): Array<{name: string, type: Type}> => {
+    const types = this.formulaEnvironment.getAllowedColumnTypes().map(type => ({
+      name: this.formulaEnvironment.getNameForType(type),
+      type,
+    }));
+    return types;
   }
 
   private onColumnsUpdated = (
