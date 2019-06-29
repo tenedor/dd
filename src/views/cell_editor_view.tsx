@@ -229,10 +229,6 @@ export class CellEditorView extends BaseComponent<Props, State> {
     this.textAreaRef!.value = value;
   }
 
-  private resetDisplayValue = () => {
-    this.updateDisplayValue();
-  }
-
   private startEditing = ({editFormula, overwrite}: {editFormula?: boolean, overwrite?: boolean} = {}) => {
     assert(!this.state.isEditing);
     const {viewModel: editorModel} = this;
@@ -250,14 +246,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
 
   // Edit the model. This always shifts the editor to not-editing.
   private setValue(value: string) {
-    const mutated = this.viewModel.setValue(value);
-
-    // If the mutation did not succeed make sure to reset the displayed value.
-    if (!mutated) {
-      this.resetDisplayValue();
-    }
-
-    // Always stop editing.
+    this.viewModel.setValue(value);
     this.stopEditing();
   }
 
@@ -294,7 +283,6 @@ export class CellEditorView extends BaseComponent<Props, State> {
       case KeyCode.ESCAPE:
         if (isEditing) {
           this.stopEditing();
-          this.resetDisplayValue();
           e.stopPropagation();
         }
         e.preventDefault();
