@@ -6,7 +6,7 @@ import {DrawingValue} from '@language/values';
 import {Grid} from '@models/domain_specific/grid';
 import {ROArray} from '@utils/types';
 
-export class DrawingController {
+export class DrawingViewModel {
   private grids: ROArray<Grid>;
 
   constructor(grids: ROArray<Grid>) {

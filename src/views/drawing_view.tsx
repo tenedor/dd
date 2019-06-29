@@ -1,23 +1,23 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
-import {DrawingController} from '@controllers/drawing_controller';
 import {DrawingVariant} from '@language/drawing_value';
 import {Grid} from '@models/domain_specific/grid';
 import {ROArray} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
+import {DrawingViewModel} from './drawing_view_model';
 
 interface Props extends BaseProps {
   grids: ROArray<Grid>,
 }
 
 export class DrawingView extends BaseComponent<Props> {
-  private controller: DrawingController;
+  private controller: DrawingViewModel;
 
   constructor(props: Props) {
     super(props);
-    this.controller = new DrawingController(props.grids);
+    this.controller = new DrawingViewModel(props.grids);
   }
 
   public render = () => {
