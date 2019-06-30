@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 
 import {AbsoluteValueReference, ModelWithValue, Reference, ReferenceUtils,
         ValueReference} from '@language/reference';
-import {Identifier, Type} from '@language/types';
+import {Identifier, Type, TypeUtils} from '@language/types';
 import {ValueResolver} from '@language/value_resolver';
 import {Value, ValueUtils} from '@language/values';
 import {RODictionary} from '@utils/types';
@@ -73,14 +73,17 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     throw new Error(`Default value is not supported for type ${this.column.type}`);
   }
 
-  public setManualValue(manualValue: Value<T>): boolean {
-    this.manualValue = manualValue;
+  public setManualValue(value: Value<T> | undefined) {
+    const {type} = this.column;
+    if (value !== undefined && !TypeUtils.isAssignableTo(value.type, type)) {
+      throw new Error(`Cannot set manual value ${ValueUtils.toString(value)} ` +
+        `on cell of type ${TypeUtils.toString(type)}`);
+    }
+    this.manualValue = value;
     const descriptors = this.refreshValueAndGetUpdateDescriptors();
-    const changed = descriptors.length > 0;
-    if (changed) {
+    if (descriptors.length) {
       this.onSelfMutated(descriptors);
     }
-    return changed;
   }
 
   private resolveDependencies = (dependencyRefs: readonly Reference[]): RODictionary<Model> => {

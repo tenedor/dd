@@ -2,40 +2,97 @@ import * as _ from 'lodash';
 import {Namespace} from 'ohm-js';
 
 import {RODictionary} from '@utils/types';
-import {escapeAndQuote, unescape} from '@utils/utils';
+import {assertUnreachable, escapeAndQuote, unescape} from '@utils/utils';
 import {AssignmentsUnres, BinaryOpUnres, CallUnres, ExpressionUnres, IdentifierUnres,
         IndexUnres, LambdaUnres, ListUnres, ParenthesesUnres, PrimitiveUnres,
         ProjectUnres, UnaryOpUnres, UnresolvedAST} from './ast';
 import {BinaryOpUtils} from './binary_op';
 import {Grammar, Node, ohm, Semantics} from './ohm';
-import {TypeUtils} from './types';
+import {Type, TypeUtils} from './types';
 import {UnaryOpUtils} from './unary_op';
+import {Value, ValueUtils} from './values';
 
-interface SuccessfulParseResult {
-  succeeded: true;
-  ast: ExpressionUnres;
+interface SuccessfulValueParseResult {
+  readonly succeeded: true;
+  readonly value: Value;
 }
 
-interface ParseError {
-  succeeded: false;
+interface SuccessfulExpressionParseResult {
+  readonly succeeded: true;
+  readonly ast: ExpressionUnres;
 }
 
-export type ParseResult = SuccessfulParseResult | ParseError;
+interface ParseFailure {
+  readonly succeeded: false;
+}
+
+export type ValueParseResult = SuccessfulValueParseResult | ParseFailure;
+export type ExpressionParseResult = SuccessfulExpressionParseResult | ParseFailure;
 
 export class Parser {
   private static initialized = false;
   private static _grammar: Namespace;
   private static formulaGrammar: Grammar;
   private static formulaSemantics: Semantics;
+  private static readonly failure: ParseFailure = {succeeded: false};
 
-  public static parse = (exp: string): ParseResult => {
+  private static success = (value: Value): SuccessfulValueParseResult => {
+    return {value, succeeded: true};
+  }
+
+  private static expressionSuccess = (ast: ExpressionUnres): SuccessfulExpressionParseResult => {
+    return {ast, succeeded: true};
+  }
+
+  private static parseNumber = (value: string): ValueParseResult => {
+      const v = parseFloat(value);
+      if (isNaN(v)) {
+        return Parser.failure;
+      }
+      return Parser.success(ValueUtils.numberOf(v));
+  }
+
+  private static parseBoolean = (value: string): ValueParseResult => {
+    if (value !== "true" && value !== "false") {
+      return Parser.failure;
+    }
+    const v = value === "true";
+    return Parser.success(ValueUtils.booleanOf(v));
+  }
+
+  private static parseString = (value: string): SuccessfulValueParseResult => {
+    return Parser.success(ValueUtils.stringOf(value));
+  }
+
+  public static parseValue = (value: string, type: Type): ValueParseResult => {
+    if (TypeUtils.isNumber(type)) {
+      return Parser.parseNumber(value);
+    } else if (TypeUtils.isBoolean(type)) {
+      return Parser.parseBoolean(value);
+    } else if (TypeUtils.isString(type)) {
+      return Parser.parseString(value);
+    } else if (
+      TypeUtils.isDrawing(type) ||
+      TypeUtils.isGrid(type) ||
+      TypeUtils.isDict(type) ||
+      TypeUtils.isList(type) ||
+      TypeUtils.isLambda(type) ||
+      TypeUtils.isBoundingType(type)
+    ) {
+      return Parser.failure;
+    } else {
+      return assertUnreachable(type);
+    }
+  }
+
+  public static parseExpression = (exp: string): ExpressionParseResult => {
     Parser.ensureInitialized();
     const match = Parser.formulaGrammar.match(exp);
     if (match.succeeded()) {
       const ast = Parser.formulaSemantics(match).toAST() as ExpressionUnres;
-      return {ast, succeeded: true};
+      return Parser.expressionSuccess(ast);
     }
-    return {succeeded: false};
+    return Parser.failure;
   }
 
   private static isValidUnquotedIdent = (ident: string): boolean => {

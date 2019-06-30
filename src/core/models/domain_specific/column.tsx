@@ -31,14 +31,15 @@ export class Column<T extends Type = Type> extends Mutable<ColumnUpdateDescripto
     return this._type;
   }
 
-  public setName = (name: string): boolean => {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      return false;
+  public setName = (name: string) => {
+    if (!name || name !== name.trim()) {
+      throw new Error(name ? "Column name cannot have trailing whitespace" : "Column name cannot be blank");
     }
-    this._name = trimmed;
+    if (this._name === name) {
+      return;
+    }
+    this._name = name;
     const descriptor = {type: ColumnUpdateType.NAME_UPDATED};
     this.onSelfMutated([descriptor]);
-    return true;
   }
 }

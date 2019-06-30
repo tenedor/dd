@@ -79,7 +79,7 @@ function setColumnExpressions(grid: Grid, gridColumnsData: Array<GridColumnData 
   const columns = grid.columns.a;
   gridColumnsData.map(({expressionString}, i) => {
     if (expressionString) {
-      const parseResult = Parser.parse(expressionString);
+      const parseResult = Parser.parseExpression(expressionString);
       if (!parseResult.succeeded) {
         throw new Error("Bad built-in grid formula");
       }

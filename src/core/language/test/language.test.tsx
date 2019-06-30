@@ -67,7 +67,7 @@ const testFormulas = (name: string, formulas: FormulaTestInput[], {
   it(name, () => {
     formulas.forEach(({formula, result: expectedResult, error: expectedError, asText: expectedText}) => {
       // parse
-      const parseResult = Parser.parse(formula);
+      const parseResult = Parser.parseExpression(formula);
       if (failureStage === FailureStage.FAILS_PARSE) {
         expect(parseResult.succeeded).toBe(false);
         return;

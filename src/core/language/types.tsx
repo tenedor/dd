@@ -117,7 +117,7 @@ export class TypeUtils {
     return TypeUtils.isNumber(t) || TypeUtils.isBoolean(t) || TypeUtils.isString(t);
   }
 
-  private static isBoundingType = (t: Type): t is BoundingType => {
+  public static isBoundingType = (t: Type): t is BoundingType => {
     return TypeUtils.isTop(t) || TypeUtils.isBottom(t);
   }
 

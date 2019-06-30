@@ -28,7 +28,7 @@ export abstract class CellEditorViewModel {
     this._editState = EditState.NOT_EDITING;
   }
 
-  protected setEditState(editState: EditState) {
+  protected setEditState(editState: EditState): void {
     this._editState = editState;
     this.setIsEditing(editState !== EditState.NOT_EDITING);
   }
@@ -63,6 +63,7 @@ export abstract class CellEditorViewModel {
 
   protected abstract makeDisplayValueNonFormula(): string;
 
+  // Returns true if value is a valid value to set given the column and edit mode
   public abstract setValue(value: string): boolean;
 
   protected setFormulaExpression = (value: string): boolean => {
@@ -70,7 +71,7 @@ export abstract class CellEditorViewModel {
     if (value) {
       // ignore a leading '='
       const unparsedExpression = value[0] === '=' ? value.substr(1) : value;
-      const parseResult = Parser.parse(unparsedExpression);
+      const parseResult = Parser.parseExpression(unparsedExpression);
       if (parseResult.succeeded) {
         const ast = parseResult.ast.resolve(column.nameResolver);
         if (!TypeUtils.isAssignableTo(ast.type, column.type)) {
@@ -104,7 +105,12 @@ export class ColumnHeaderEditorViewModel extends CellEditorViewModel {
     if (this.isEditingFormula()) {
       return this.setFormulaExpression(value);
     } else {
-      return this.column.setName(value);
+      const name = value.trim();
+      if (!name) {
+        return false;
+      }
+      this.column.setName(name);
+      return true;
     }
   }
 }
@@ -139,18 +145,17 @@ export class RowCellEditorViewModel extends CellEditorViewModel {
     if (this.isEditingFormula() || this.mustEditFormula()) {
       return this.setFormulaExpression(value);
     } else {
-      return this.cell.setManualValue(this.parseInputValue(value));
-    }
-  }
-
-  private parseInputValue = (value: string): PrimitiveValue => {
-    // TODO this should use the column type
-    if (value === "true" || value === "false") {
-      return ValueUtils.booleanOf(value === "true");
-    } else if (!isNaN(parseFloat(value))) {
-      return ValueUtils.numberOf(parseFloat(value));
-    } else {
-      return ValueUtils.stringOf(value);
+      if (!value) {
+        this.cell.setManualValue(undefined);
+        return true;
+      } else {
+        const parseResult = Parser.parseValue(value, this.column.type);
+        if (parseResult.succeeded) {
+          this.cell.setManualValue(parseResult.value);
+          return true;
+        }
+        return false;
+      }
     }
   }
 }
