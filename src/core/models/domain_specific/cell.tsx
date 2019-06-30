@@ -83,17 +83,6 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return changed;
   }
 
-  private getDependenciesDiff(
-    oldDependencies: RODictionary<Model>,
-    newDependencies: RODictionary<Model>,
-  ): {removedIds: string[], addedIds: string[]} {
-    const oldKeys = Object.keys(oldDependencies);
-    const newKeys = Object.keys(newDependencies);
-    const removedIds = _.difference(oldKeys, newKeys);
-    const addedIds = _.difference(newKeys, oldKeys);
-    return {removedIds, addedIds};
-  }
-
   private resolveDependencies = (dependencyRefs: readonly Reference[]): RODictionary<Model> => {
     const absoluteReferences = dependencyRefs.filter(ReferenceUtils.isAbsoluteReference);
     const relativeReferences = dependencyRefs.filter(ReferenceUtils.isRelativeReference);
