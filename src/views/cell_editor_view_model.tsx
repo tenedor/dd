@@ -64,9 +64,9 @@ export abstract class CellEditorViewModel {
   protected abstract makeDisplayValueNonFormula(): string;
 
   // Returns true if value is a valid value to set given the column and edit mode
-  public abstract setValue(value: string): boolean;
+  public abstract setValue(value: string | undefined): boolean;
 
-  protected setFormulaExpression = (value: string): boolean => {
+  protected setFormulaExpression = (value: string | undefined): boolean => {
     const {column} = this;
     if (value) {
       // ignore a leading '='
@@ -101,11 +101,11 @@ export class ColumnHeaderEditorViewModel extends CellEditorViewModel {
     return this.column.name;
   }
 
-  public setValue(value: string): boolean {
+  public setValue(value: string | undefined): boolean {
     if (this.isEditingFormula()) {
       return this.setFormulaExpression(value);
     } else {
-      const name = value.trim();
+      const name = value && value.trim();
       if (!name) {
         return false;
       }
@@ -141,19 +141,22 @@ export class RowCellEditorViewModel extends CellEditorViewModel {
     return ValueUtils.toString(this.cell.value);
   }
 
-  public setValue(value: string): boolean {
+  public setValue(value: string | undefined): boolean {
     if (this.isEditingFormula() || this.mustEditFormula()) {
       return this.setFormulaExpression(value);
     } else {
-      if (!value) {
+      const {type, nameResolver} = this.column;
+      if (value === undefined || (!TypeUtils.isString(type) && value === "")) {
         this.cell.setManualValue(undefined);
         return true;
       } else {
-        const parseResult = Parser.parseValue(value, this.column.type);
+        const parseResult = Parser.parseValue(value, type);
+
         if (parseResult.succeeded) {
           this.cell.setManualValue(parseResult.value);
           return true;
         }
+        // TODO: persist broken expressions
         return false;
       }
     }

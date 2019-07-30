@@ -95,7 +95,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
   }
 
   // Edit the model. This always shifts the editor to not-editing.
-  private setValue(value: string) {
+  private setValue(value: string | undefined) {
     this.viewModel.setValue(value);
     this.stopEditing();
   }
@@ -105,7 +105,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
   }
 
   private clearValue() {
-    this.setValue("");
+    this.setValue(undefined);
   }
 
   private onMouseDown = (e: React.MouseEvent) => {
