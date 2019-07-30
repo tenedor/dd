@@ -153,7 +153,12 @@ export class RowCellEditorViewModel extends CellEditorViewModel {
         const parseResult = Parser.parseValue(value, type);
 
         if (parseResult.succeeded) {
-          this.cell.setManualValue(parseResult.value);
+          const ast = parseResult.ast.resolve(nameResolver);
+          if (!TypeUtils.isAssignableTo(ast.type, type)) {
+            // TODO: inform the user of the type issue
+            return false;
+          }
+          this.cell.setManualValue(ast);
           return true;
         }
         // TODO: persist broken expressions

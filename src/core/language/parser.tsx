@@ -10,15 +10,13 @@ import {BinaryOpUtils} from './binary_op';
 import {Grammar, Node, ohm, Semantics} from './ohm';
 import {Type, TypeUtils} from './types';
 import {UnaryOpUtils} from './unary_op';
-import {Value, ValueUtils} from './values';
 
-interface SuccessfulValueParseResult {
+interface SuccessfulParseResult {
   readonly succeeded: true;
-  readonly value: Value;
+  readonly ast: UnresolvedAST;
 }
 
-interface SuccessfulExpressionParseResult {
-  readonly succeeded: true;
+interface SuccessfulExpressionParseResult extends SuccessfulParseResult {
   readonly ast: ExpressionUnres;
 }
 
@@ -26,7 +24,7 @@ interface ParseFailure {
   readonly succeeded: false;
 }
 
-export type ValueParseResult = SuccessfulValueParseResult | ParseFailure;
+export type ValueParseResult = SuccessfulParseResult | ParseFailure;
 export type ExpressionParseResult = SuccessfulExpressionParseResult | ParseFailure;
 
 export class Parser {
@@ -36,8 +34,8 @@ export class Parser {
   private static formulaSemantics: Semantics;
   private static readonly failure: ParseFailure = {succeeded: false};
 
-  private static success = (value: Value): SuccessfulValueParseResult => {
-    return {value, succeeded: true};
+  private static success = (ast: UnresolvedAST): SuccessfulParseResult => {
+    return {ast, succeeded: true};
   }
 
   private static expressionSuccess = (ast: ExpressionUnres): SuccessfulExpressionParseResult => {
@@ -49,7 +47,7 @@ export class Parser {
       if (isNaN(v)) {
         return Parser.failure;
       }
-      return Parser.success(ValueUtils.numberOf(v));
+      return Parser.success(new PrimitiveUnres(v, TypeUtils.Number));
   }
 
   private static parseBoolean = (value: string): ValueParseResult => {
@@ -57,11 +55,11 @@ export class Parser {
       return Parser.failure;
     }
     const v = value === "true";
-    return Parser.success(ValueUtils.booleanOf(v));
+    return Parser.success(new PrimitiveUnres(v, TypeUtils.Boolean));
   }
 
-  private static parseString = (value: string): SuccessfulValueParseResult => {
-    return Parser.success(ValueUtils.stringOf(value));
+  private static parseString = (value: string): SuccessfulParseResult => {
+    return Parser.success(new PrimitiveUnres(value, TypeUtils.String));
   }
 
   public static parseValue = (value: string, type: Type): ValueParseResult => {
