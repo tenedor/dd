@@ -98,7 +98,7 @@ export class ResolvedASTUtils {
 // ==============
 
 abstract class ExpressionAST<A extends AST> implements AST<ASTNodeType.EXPRESSION> {
-  public readonly nodeType: ASTNodeType.EXPRESSION;
+  public readonly nodeType = ASTNodeType.EXPRESSION;
 
   protected readonly e: A;
 
@@ -146,7 +146,7 @@ export class ExpressionRes<R extends Type = Type> extends ExpressionAST<Resolved
 
 abstract class LambdaAST<A extends AST, AI extends A = A, AE extends A = A>
     implements AST<ASTNodeType.LAMBDA> {
-  public readonly nodeType: ASTNodeType.LAMBDA;
+  public readonly nodeType = ASTNodeType.LAMBDA;
 
   protected readonly ident: AI;
   protected readonly e: AE;
@@ -197,7 +197,7 @@ export class LambdaRes<RI extends Type = Type, RO extends Type = Type>
 
 abstract class BinaryOpAST<A extends AST, A1 extends A = A, A2 extends A = A>
     implements AST<ASTNodeType.BINARY_OP> {
-  public readonly nodeType: ASTNodeType.BINARY_OP;
+  public readonly nodeType = ASTNodeType.BINARY_OP;
 
   protected readonly op: BinaryOp;
   protected readonly e1: A1;
@@ -248,7 +248,7 @@ export class BinaryOpRes<T1 extends Type = Type, T2 extends Type = Type, R exten
 // ============
 
 abstract class UnaryOpAST<A extends AST> implements AST<ASTNodeType.UNARY_OP> {
-  public readonly nodeType: ASTNodeType.UNARY_OP;
+  public readonly nodeType = ASTNodeType.UNARY_OP;
 
   protected readonly op: UnaryOp;
   protected readonly e: A;
@@ -294,7 +294,7 @@ export class UnaryOpRes<R extends Type = Type> extends UnaryOpAST<ResolvedAST<R>
 
 abstract class IndexAST<A extends AST, AL extends A = A, AI extends A = A>
     implements AST<ASTNodeType.INDEX> {
-  public readonly nodeType: ASTNodeType.INDEX;
+  public readonly nodeType = ASTNodeType.INDEX;
 
   protected readonly list: AL;
   protected readonly idx: AI;
@@ -358,7 +358,7 @@ export class IndexRes<R extends Type = Type>
 
 abstract class ProjectAST<A extends AST>
     implements AST<ASTNodeType.PROJECT> {
-  public readonly nodeType: ASTNodeType.PROJECT;
+  public readonly nodeType = ASTNodeType.PROJECT;
 
   protected readonly dict: A;
 
@@ -426,7 +426,7 @@ export class ProjectRes<R extends Type = Type> extends ProjectAST<ResolvedAST<Di
 // ========
 
 abstract class CallAST<A extends AST<ASTNodeType.ASSIGNMENTS>> implements AST<ASTNodeType.CALL> {
-  public readonly nodeType: ASTNodeType.CALL;
+  public readonly nodeType = ASTNodeType.CALL;
 
   protected readonly asmts: A;
 
@@ -490,7 +490,7 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
 // ===============
 
 abstract class AssignmentsAST<A extends AST> implements AST<ASTNodeType.ASSIGNMENTS> {
-  public readonly nodeType: ASTNodeType.ASSIGNMENTS;
+  public readonly nodeType = ASTNodeType.ASSIGNMENTS;
 
   protected readonly asmts: RODictionary<A>;
   protected readonly asmtOrder: ROArray<string>;
@@ -564,7 +564,7 @@ export class AssignmentsRes<I extends Identifier = Identifier>
 // ==============
 
 abstract class IdentifierAST implements AST<ASTNodeType.IDENTIFIER> {
-  public readonly nodeType: ASTNodeType.IDENTIFIER;
+  public readonly nodeType = ASTNodeType.IDENTIFIER;
 
   public abstract toText(resolver: NameResolver): string;
 }
@@ -620,7 +620,7 @@ export class IdentifierRes<R extends Type = Type> extends IdentifierAST
 // Parentheses are explicitly tracked in the AST in order to recover parentheses when
 // converting back to text.
 abstract class ParenthesesAST<A extends AST> implements AST<ASTNodeType.PARENTHESES> {
-  public readonly nodeType: ASTNodeType.PARENTHESES;
+  public readonly nodeType = ASTNodeType.PARENTHESES;
 
   protected readonly e: A;
 
@@ -662,7 +662,7 @@ export class ParenthesesRes<R extends Type = Type> extends ParenthesesAST<Resolv
 // ========
 
 abstract class ListAST<A extends AST> implements AST<ASTNodeType.LIST> {
-  public readonly nodeType: ASTNodeType.LIST;
+  public readonly nodeType = ASTNodeType.LIST;
 
   protected readonly es: A[];
 
@@ -713,7 +713,7 @@ export class ListRes<T extends Type = Type> extends ListAST<ResolvedAST<T>>
 type primitiveValue = number | boolean | string;
 
 abstract class Primitive<T extends PrimitiveType> implements AST<ASTNodeType.PRIMITIVE> {
-  public readonly nodeType: ASTNodeType.PRIMITIVE;
+  public readonly nodeType = ASTNodeType.PRIMITIVE;
   public readonly type: T;
 
   protected readonly value: primitiveValue;
