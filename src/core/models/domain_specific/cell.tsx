@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {ASTUtils, ResolvedAST, ResolvedASTUtils} from '@language/ast';
+import {ResolvedAST, ResolvedASTUtils} from '@language/ast';
 import {AbsoluteValueReference, ModelWithValue, Reference, ReferenceUtils,
         ValueReference} from '@language/reference';
 import {Identifier, Type, TypeUtils} from '@language/types';
@@ -83,7 +83,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   public setManualValue(value: ManualValue<T> | undefined) {
     const {type} = this.column;
     if (value !== undefined) {
-      assert(!isAST(value) || ASTUtils.isLiteral(value), "Manual values must be literals.");
+      assert(!isAST(value) || value.isLiteral, "Manual values must be literals.");
       assert(TypeUtils.isAssignableTo(value.type, type), "Cannot set manual value of " +
           `type ${value.type} on cell of type ${TypeUtils.toString(type)}.`);
 

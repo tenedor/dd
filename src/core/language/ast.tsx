@@ -4,7 +4,8 @@ import {ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
 import {NameResolver} from './name_resolver';
 import {Parser} from './parser';
-import {ConstructorReference, Reference, ValueReference} from './reference';
+import {ConstructorReference, Reference, ReferenceUtils, ValueReference}
+        from './reference';
 import {DictType, GridType, Identifier, LambdaType, ListType, PrimitiveType, RowType,
         Type, TypeUtils} from './types';
 import {UnaryOp, UnaryOpUtils} from './unary_op';
@@ -40,16 +41,8 @@ export interface UnresolvedAST<N extends ASTNodeType = ASTNodeType> extends AST<
 export interface ResolvedAST<R extends Type = Type, N extends ASTNodeType = ASTNodeType> extends AST<N> {
   readonly type: R;
   readonly externalDependencies: ROArray<Reference>;
+  readonly isLiteral: boolean;
   eval: (valueResolver: ValueResolver) => Value<R>;
-}
-
-
-type LiteralNodeType = ASTNodeType.PRIMITIVE;
-
-export class ASTUtils {
-  public static isLiteral = (ast: AST): ast is AST<LiteralNodeType> => {
-    return ast instanceof Primitive;
-  }
 }
 
 
@@ -137,6 +130,10 @@ export class ExpressionRes<R extends Type = Type> extends ExpressionAST<Resolved
     this.externalDependencies = e.externalDependencies;
   }
 
+  public get isLiteral() {
+    return this.e.isLiteral;
+  }
+
   public eval = (valueResolver: ValueResolver): Value<R> => {
     return this.e.eval(valueResolver);
   }
@@ -178,6 +175,7 @@ export class LambdaRes<RI extends Type = Type, RO extends Type = Type>
     implements ResolvedAST<LambdaTypeT<RI, RO>, ASTNodeType.LAMBDA> {
   public readonly type: LambdaTypeT<RI, RO>;
   public readonly externalDependencies: ROArray<Reference>;
+  public readonly isLiteral = false;
 
   constructor(ident: ResolvedAST<RI>, e: ResolvedAST<RO>, type: LambdaTypeT<RI, RO>) {
     super(ident, e);
@@ -230,6 +228,7 @@ export class BinaryOpRes<T1 extends Type = Type, T2 extends Type = Type, R exten
     implements ResolvedAST<R, ASTNodeType.BINARY_OP> {
   public readonly type: R;
   public readonly externalDependencies: ROArray<Reference>;
+  public readonly isLiteral = false;
 
   constructor(op: BinaryOp, e1: ResolvedAST<T1>, e2: ResolvedAST<T2>, type: R) {
     super(op, e1, e2);
@@ -275,6 +274,7 @@ export class UnaryOpUnres extends UnaryOpAST<UnresolvedAST> implements Unresolve
 export class UnaryOpRes<R extends Type = Type> extends UnaryOpAST<ResolvedAST<R>> implements ResolvedAST<R, ASTNodeType.UNARY_OP> {
   public readonly type: R;
   public readonly externalDependencies: ROArray<Reference>;
+  public readonly isLiteral = false;
 
   constructor(op: UnaryOp, e: ResolvedAST<R>, type: R) {
     super(op, e);
@@ -327,6 +327,7 @@ export class IndexRes<R extends Type = Type>
     implements ResolvedAST<R, ASTNodeType.INDEX> {
   public readonly type: R;
   public readonly externalDependencies: ROArray<Reference>;
+  public readonly isLiteral = false;
 
   constructor(list: ResolvedAST<ListType<R>>, idx: ResolvedAST<PrimitiveType.NUMBER>, type: R) {
     super(list, idx);
@@ -394,6 +395,7 @@ export class ProjectRes<R extends Type = Type> extends ProjectAST<ResolvedAST<Di
     implements ResolvedAST<R, ASTNodeType.PROJECT> {
   public readonly type: R;
   public readonly externalDependencies: ROArray<Reference>;
+  public readonly isLiteral = false;
   private readonly ref: ValueReference<R>;
 
   constructor(dict: ResolvedAST<DictType>, ref: ValueReference<R>) {
@@ -467,6 +469,10 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
     this.constructorRef = constructorRef;
   }
 
+  public get isLiteral() {
+    return ReferenceUtils.isConstructorLiteral(this.constructorRef) && this.asmts.isLiteral;
+  }
+
   public eval = (valueResolver: ValueResolver): Value<R> => {
     const asmtsV = this.asmts.eval(valueResolver);
     return this.constructorRef.model.eval(valueResolver, asmtsV);
@@ -537,6 +543,10 @@ export class AssignmentsRes<I extends Identifier = Identifier>
     this.externalDependencies = ResolvedASTUtils.mergeDeps(...Object.values(asmts));
   }
 
+  public get isLiteral() {
+    return _.every(this.asmts, a => a.isLiteral);
+  }
+
   public eval = (valueResolver: ValueResolver): DictValue<I> => {
     const asmtsV = _.mapValues(this.asmts, e => e.eval(valueResolver));
     return ValueUtils.dictOf(asmtsV, this.type.schemaId);
@@ -581,6 +591,7 @@ export class IdentifierRes<R extends Type = Type> extends IdentifierAST
     implements ResolvedAST<R, ASTNodeType.IDENTIFIER> {
   public readonly type: R;
   public readonly externalDependencies: ROArray<Reference>;
+  public readonly isLiteral = false;
   private readonly ref: ValueReference<R>;
 
   constructor(ref: ValueReference<R>) {
@@ -632,6 +643,7 @@ export class ParenthesesUnres extends ParenthesesAST<UnresolvedAST> implements U
 export class ParenthesesRes<R extends Type = Type> extends ParenthesesAST<ResolvedAST<R>> implements ResolvedAST<R, ASTNodeType.PARENTHESES> {
   public readonly type: R;
   public readonly externalDependencies: ROArray<Reference>;
+  public readonly isLiteral = false;
 
   constructor(e: ResolvedAST<R>, type: R) {
     super(e);
@@ -683,6 +695,10 @@ export class ListRes<T extends Type = Type> extends ListAST<ResolvedAST<T>>
     this.externalDependencies = ResolvedASTUtils.mergeDeps(...es);
   }
 
+  public get isLiteral() {
+    return _.every(this.es, e => e.isLiteral);
+  }
+
   public eval = (valueResolver: ValueResolver): ListValue<T> => {
     const esV = this.es.map(e => e.eval(valueResolver));
     return ValueUtils.listOf(esV, this.type.itemType);
@@ -725,6 +741,7 @@ export class PrimitiveUnres<T extends PrimitiveType> extends Primitive<T>
 export class PrimitiveRes<T extends PrimitiveType = PrimitiveType> extends Primitive<T>
     implements ResolvedAST<T, ASTNodeType.PRIMITIVE> {
   public readonly externalDependencies: ROArray<Reference> = [];
+  public readonly isLiteral = true;
 
   public eval = (valueResolver: ValueResolver): Value<T> => {
     return ValueUtils.primitiveOf(this.value, this.type);

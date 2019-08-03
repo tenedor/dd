@@ -1,6 +1,5 @@
 import * as _ from 'lodash';
 
-import {ASTUtils} from '@language/ast';
 import {Parser} from '@language/parser';
 import {TypeUtils} from '@language/types';
 import {ValueUtils} from '@language/values';
@@ -155,7 +154,7 @@ export class RowCellEditorViewModel extends CellEditorViewModel {
 
         if (parseResult.succeeded) {
           const ast = parseResult.ast.resolve(nameResolver);
-          if (!ASTUtils.isLiteral(ast)) {
+          if (!ast.isLiteral) {
             // TODO: inform the user of the restriction to literals
             return false;
           }

@@ -128,4 +128,12 @@ export class ReferenceUtils {
   public static isValueReference = (r: Reference): r is ValueReference => {
     return [ReferenceType.ABSOLUTE_VALUE, ReferenceType.RELATIVE_VALUE].includes(r.referenceType);
   }
+
+  public static isConstructorReference = (r: Reference): r is ConstructorReference => {
+    return r.referenceType === ReferenceType.ABSOLUTE_CONSTRUCTOR;
+  }
+
+  public static isConstructorLiteral = (r: ConstructorReference): boolean => {
+    return r.model.isConstructorLiteral;
+  }
 }

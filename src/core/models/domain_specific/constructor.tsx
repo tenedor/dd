@@ -18,6 +18,7 @@ import {Row} from './row';
 
 interface BaseConstructor<R extends Type, I extends Identifier = Identifier> {
   readonly id: string,
+  readonly isConstructorLiteral: boolean,
   name: string,
   returnType: R,
   namespace: ValueNamespace,
@@ -41,6 +42,7 @@ export class GridConstructor<I extends Identifier = Identifier>
   private readonly gridId: I;
   private readonly columns: GridColumns;
   private readonly getName: () => string;
+  public readonly isConstructorLiteral = true;
   public readonly namespace: ValueNamespace;
   public readonly returnType: RowType<I>;
   public readonly assignmentsType: DictType<I>;
@@ -109,6 +111,7 @@ export class GridConstructor<I extends Identifier = Identifier>
 export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identifier>
     extends Constant implements BaseConstructor<R, I> {
   public readonly name: string;
+  public readonly isConstructorLiteral = false;
   public readonly returnType: R;
   public readonly namespace: ValueNamespace;
   public readonly assignmentsType: DictType<I>;
