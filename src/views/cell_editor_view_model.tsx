@@ -1,8 +1,9 @@
 import * as _ from 'lodash';
 
+import {ASTUtils} from '@language/ast';
 import {Parser} from '@language/parser';
 import {TypeUtils} from '@language/types';
-import {PrimitiveValue, ValueUtils} from '@language/values';
+import {ValueUtils} from '@language/values';
 import {Cell} from '@models/domain_specific/cell';
 import {GridColumn} from '@models/domain_specific/grid_column';
 
@@ -154,6 +155,10 @@ export class RowCellEditorViewModel extends CellEditorViewModel {
 
         if (parseResult.succeeded) {
           const ast = parseResult.ast.resolve(nameResolver);
+          if (!ASTUtils.isLiteral(ast)) {
+            // TODO: inform the user of the restriction to literals
+            return false;
+          }
           if (!TypeUtils.isAssignableTo(ast.type, type)) {
             // TODO: inform the user of the type issue
             return false;

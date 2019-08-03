@@ -44,7 +44,16 @@ export interface ResolvedAST<R extends Type = Type, N extends ASTNodeType = ASTN
 }
 
 
-class ResolvedASTUtils {
+type LiteralNodeType = ASTNodeType.PRIMITIVE;
+
+export class ASTUtils {
+  public static isLiteral = (ast: AST): ast is AST<LiteralNodeType> => {
+    return ast instanceof Primitive;
+  }
+}
+
+
+export class ResolvedASTUtils {
   // ===========
   // Type Guards
   // ===========
@@ -80,6 +89,10 @@ class ResolvedASTUtils {
   // =========
   // Utilities
   // =========
+
+  public static isConstant = (astR: ResolvedAST): boolean => {
+    return astR.externalDependencies.length === 0;
+  }
 
   public static mergeDeps = (...es: ResolvedAST[]): Reference[] => {
     return _.flatMap(es, e => e.externalDependencies);

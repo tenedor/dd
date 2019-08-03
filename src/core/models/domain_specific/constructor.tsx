@@ -17,7 +17,7 @@ import {GridColumnUpdateDescriptor} from './grid_column';
 import {Row} from './row';
 
 interface BaseConstructor<R extends Type, I extends Identifier = Identifier> {
-  id: string,
+  readonly id: string,
   name: string,
   returnType: R,
   namespace: ValueNamespace,

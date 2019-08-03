@@ -1,12 +1,13 @@
 import * as _ from 'lodash';
 
+import {ASTUtils, ResolvedAST, ResolvedASTUtils} from '@language/ast';
 import {AbsoluteValueReference, ModelWithValue, Reference, ReferenceUtils,
         ValueReference} from '@language/reference';
 import {Identifier, Type, TypeUtils} from '@language/types';
 import {ValueResolver} from '@language/value_resolver';
 import {Value, ValueUtils} from '@language/values';
 import {RODictionary} from '@utils/types';
-import {keysDiff} from '@utils/utils';
+import {assert, keysDiff} from '@utils/utils';
 import {Model, ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
 import {DependencySetUpdateDescriptor, UpdateDescriptor, UpdateManager} from '../core/update_manager';
@@ -15,11 +16,17 @@ import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_ex
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {RowContext} from './row';
 
+export type ManualValue<T extends Type = Type> = ResolvedAST<T> | Value<T>;
+
+function isAST<T extends Type>(value: ManualValue<T>): value is ResolvedAST<T> {
+  return 'nodeType' in value;
+}
+
 interface CellData<T extends Type> {
   column: GridColumn<T>,
   getRowContext: () => RowContext,
   gridId: Identifier,
-  manualValue?: Value<T>,
+  manualValue?: ManualValue<T>,
 }
 
 export interface CellUpdateDescriptor extends UpdateDescriptor<CellUpdateType> {}
@@ -30,7 +37,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   private readonly gridId: Identifier;
   private dependencies: RODictionary<Model>;
   private valueDependencies: RODictionary<ModelWithValue>;
-  private manualValue?: Value<T>;
+  private manualValue?: ManualValue<T>;
   private _value: Value<T>;
 
   constructor(
@@ -73,11 +80,17 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     throw new Error(`Default value is not supported for type ${this.column.type}`);
   }
 
-  public setManualValue(value: Value<T> | undefined) {
+  public setManualValue(value: ManualValue<T> | undefined) {
     const {type} = this.column;
-    if (value !== undefined && !TypeUtils.isAssignableTo(value.type, type)) {
-      throw new Error(`Cannot set manual value ${ValueUtils.toString(value)} ` +
-        `on cell of type ${TypeUtils.toString(type)}`);
+    if (value !== undefined) {
+      assert(!isAST(value) || ASTUtils.isLiteral(value), "Manual values must be literals.");
+      assert(TypeUtils.isAssignableTo(value.type, type), "Cannot set manual value of " +
+          `type ${value.type} on cell of type ${TypeUtils.toString(type)}.`);
+
+      if (isAST(value) && ResolvedASTUtils.isConstant(value)) {
+        // can concretize early
+        value = value.eval(this.getValueResolver());
+      }
     }
     this.manualValue = value;
     const descriptors = this.refreshValueAndGetUpdateDescriptors();
@@ -181,10 +194,11 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   private computeValue = (): Value<T> => {
-    if (this.formulaExpression.isSet) {
-      return this.formulaExpression.eval(this.getValueResolver());
-    } else if (this.manualValue !== undefined) {
-      return this.manualValue;
+    const {formulaExpression, manualValue} = this;
+    if (formulaExpression.isSet) {
+      return formulaExpression.eval(this.getValueResolver());
+    } else if (manualValue !== undefined) {
+      return isAST(manualValue) ? manualValue.eval(this.getValueResolver()) : manualValue;
     } else {
       return this.getDefaultValue();
     }

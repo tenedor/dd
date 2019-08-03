@@ -11,7 +11,7 @@ import {ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {RowUpdateType} from '../core/update_types';
-import {Cell, CellUpdateDescriptor} from './cell';
+import {Cell, CellUpdateDescriptor, ManualValue} from './cell';
 import {GridColumns} from './grid';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 
@@ -19,7 +19,7 @@ export type CellRO = Readonly<Cell>;
 export type Cells = FunctionalDictionaryM<Cell, CellUpdateDescriptor>;
 
 interface ManualValues {
-  [columnId: string]: Value,
+  [columnId: string]: ManualValue,
 }
 
 interface RowData {
