@@ -5,7 +5,7 @@ import {AbsoluteValueReference, ModelWithValue, Reference, ReferenceUtils,
         ValueReference} from '@language/reference';
 import {Identifier, Type, TypeUtils} from '@language/types';
 import {ValueResolver} from '@language/value_resolver';
-import {Value, ValueUtils} from '@language/values';
+import {Value, ValueOrAST, ValueUtils} from '@language/values';
 import {RODictionary} from '@utils/types';
 import {assert, keysDiff} from '@utils/utils';
 import {Model, ModelType} from '../core/model';
@@ -16,9 +16,7 @@ import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_ex
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {RowContext} from './row';
 
-export type ManualValue<T extends Type = Type> = ResolvedAST<T> | Value<T>;
-
-function isAST<T extends Type>(value: ManualValue<T> | undefined): value is ResolvedAST<T> {
+function isAST<T extends Type>(value: ValueOrAST<T> | undefined): value is ResolvedAST<T> {
   return value !== undefined && 'nodeType' in value;
 }
 
@@ -26,7 +24,7 @@ interface CellData<T extends Type> {
   column: GridColumn<T>,
   getRowContext: () => RowContext,
   gridId: Identifier,
-  manualValue?: ManualValue<T>,
+  manualValue?: ValueOrAST<T>,
 }
 
 export interface CellUpdateDescriptor extends UpdateDescriptor<CellUpdateType> {}
@@ -37,7 +35,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   private readonly gridId: Identifier;
   private dependencies: RODictionary<Model>;
   private valueDependencies: RODictionary<ModelWithValue>;
-  private manualValue?: ManualValue<T>;
+  private manualValue?: ValueOrAST<T>;
   private _value: Value<T>;
 
   constructor(
@@ -65,30 +63,21 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     this.formulaExpression.listenForUpdate(this, this.onFormulaExpressionUpdated);
   }
 
-  public get value(): Value {
+  public get value(): Value<T> {
     return this._value;
   }
 
   public getDisplayValue = (): string => {
-    const {column} = this;
-    if (!this.isCalculated() && isAST(this.manualValue)) {
-      return this.manualValue.toText(column.nameResolver);
-    }
-    return ValueUtils.toString(this.value, column.nameResolver);
+    const {nameResolver} = this.column;
+    const rawValue = this.isCalculated() ? this.value : this.getManualValueOrDefault();
+    return isAST(rawValue) ? rawValue.toText(nameResolver) : ValueUtils.toString(rawValue, nameResolver);
   }
 
   public get formulaExpression(): FormulaExpression<T> {
     return this.column.formulaExpression;
   }
 
-  private getDefaultValue = (): Value<T> => {
-    if (ValueUtils.supportsDefaultValue(this.column.type)) {
-      return ValueUtils.getDefaultValue(this.column.type);
-    }
-    throw new Error(`Default value is not supported for type ${this.column.type}`);
-  }
-
-  public setManualValue = (value: ManualValue<T> | undefined) => {
+  public setManualValue = (value: ValueOrAST<T> | undefined) => {
     const {type} = this.column;
     if (value !== undefined) {
       assert(!isAST(value) || value.isLiteral, "Manual values must be literals.");
@@ -205,14 +194,24 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return this.formulaExpression.isSet;
   }
 
+  private getManualValueOrDefault = (): ValueOrAST<T> => {
+    return this.manualValue === undefined ? this.getDefaultValue() : this.manualValue;
+  }
+
+  private getDefaultValue = (): ValueOrAST<T> => {
+    const {type, nameResolver} = this.column;
+    if (TypeUtils.supportsLiterals(type)) {
+      return ValueUtils.getDefaultValue(type, nameResolver);
+    }
+    throw new Error(`Default value is not supported for type ${type}`);
+  }
+
   private computeValue = (): Value<T> => {
-    const {formulaExpression, manualValue} = this;
+    const {formulaExpression} = this;
     if (this.isCalculated()) {
       return formulaExpression.eval(this.getValueResolver());
-    } else if (manualValue !== undefined) {
-      return isAST(manualValue) ? manualValue.eval(this.getValueResolver()) : manualValue;
-    } else {
-      return this.getDefaultValue();
     }
+    const localValue = this.getManualValueOrDefault();
+    return isAST(localValue) ? localValue.eval(this.getValueResolver()) : localValue;
   }
 }

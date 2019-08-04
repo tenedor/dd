@@ -40,7 +40,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   public readonly columns: GridColumns;
   public readonly rows: Rows;
   public readonly namespace: ValueNamespace;
-  public readonly gridConstructor: GridConstructor;
+  public readonly gridConstructor: GridConstructor<I>;
 
   constructor(
     updateManager: UpdateManager,
@@ -83,7 +83,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     }
   }
 
-  private buildConstructor = (): GridConstructor => {
+  private buildConstructor = (): GridConstructor<I> => {
     const {id: gridId, columns, namespace} = this;
     // TODO create a Primitive mutable model and make this.name a Primitive
     const getName = () => this.name;

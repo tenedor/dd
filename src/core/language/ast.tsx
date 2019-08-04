@@ -485,6 +485,14 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
     const constructorName = this.constructorRef.getName(resolver)
     return `${Parser.identToText(constructorName)}(${this.asmts.toText(resolver)})`;
   }
+
+  public static buildDefaultConstructorCall = <R extends Type, I extends Identifier> (
+    constructorRef: ConstructorReference<R, I>,
+  ): CallRes<R, I> => {
+    const {assignmentsType, returnType} = constructorRef.model;
+    const asmts = new AssignmentsRes({}, [], constructorRef, assignmentsType);
+    return new CallRes(constructorRef, asmts, returnType);
+  }
 }
 
 

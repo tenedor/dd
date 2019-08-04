@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 
 import {Identifier} from '@language/types';
-import {RowValue, Value, ValueUtils} from '@language/values';
+import {RowValue, ValueOrAST, ValueUtils} from '@language/values';
 import {Dictionary, RODictionary} from '@utils/types';
 import {keysDiff} from '@utils/utils';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
@@ -11,7 +11,7 @@ import {ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {RowUpdateType} from '../core/update_types';
-import {Cell, CellUpdateDescriptor, ManualValue} from './cell';
+import {Cell, CellUpdateDescriptor} from './cell';
 import {GridColumns} from './grid';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 
@@ -19,7 +19,7 @@ export type CellRO = Readonly<Cell>;
 export type Cells = FunctionalDictionaryM<Cell, CellUpdateDescriptor>;
 
 interface ManualValues {
-  [columnId: string]: ManualValue,
+  [columnId: string]: ValueOrAST,
 }
 
 interface RowData<I extends Identifier = Identifier> {

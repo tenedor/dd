@@ -73,23 +73,19 @@ export class Parser {
   }
 
   public static parseLiteral = (unparsed: string, type: Type): ValueParseResult => {
-    if (TypeUtils.isNumber(type)) {
+    if (!TypeUtils.supportsLiterals(type)) {
+      return Parser.failure;
+    } else if (TypeUtils.isNumber(type)) {
       return Parser.parseNumber(unparsed);
     } else if (TypeUtils.isBoolean(type)) {
       return Parser.parseBoolean(unparsed);
     } else if (TypeUtils.isString(type)) {
       return Parser.parseString(unparsed);
+    } else if (TypeUtils.isList(type)) {
+      // for now
+      return Parser.failure;
     } else if (TypeUtils.isRow(type)) {
       return Parser.parseRowLiteral(unparsed);
-    } else if (
-      TypeUtils.isDrawing(type) ||
-      TypeUtils.isGrid(type) ||
-      TypeUtils.isPartialRow(type) ||
-      TypeUtils.isList(type) ||
-      TypeUtils.isLambda(type) ||
-      TypeUtils.isBoundingType(type)
-    ) {
-      return Parser.failure;
     } else {
       return assertUnreachable(type);
     }

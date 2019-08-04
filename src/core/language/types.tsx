@@ -83,6 +83,8 @@ export enum BoundingType {
   BOTTOM = "BOTTOM",  // the "never" type which can be assigned to any type
 }
 
+export type SupportsLiteralsType = PrimitiveType | ListType | RowType;
+
 export type Type = PrimitiveType | DrawingType | ListTypeBase | DictType |
   LambdaTypeBase | BoundingType;
 
@@ -173,6 +175,10 @@ export class TypeUtils {
 
   private static isAtomic = (t: Type): t is PrimitiveType | DrawingType | BoundingType => {
     return TypeUtils.isPrimitive(t) || TypeUtils.isDrawing(t) || TypeUtils.isBoundingType(t);
+  }
+
+  public static supportsLiterals = (t: Type): t is SupportsLiteralsType => {
+    return TypeUtils.isPrimitive(t) || TypeUtils.isList(t) || TypeUtils.isRow(t);
   }
 
 

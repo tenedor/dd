@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 import {Grid} from '@models/domain_specific/grid'; // Only a type dependency
 import {RODictionary} from '@utils/types';
 import {ConstructorReference, Reference, ReferenceUtils, ValueReference} from './reference';
-import {DictType, Identifier, Type, TypeUtils} from './types';
+import {DictType, Identifier, RowType, Type, TypeUtils} from './types';
 
 interface Namespace<R extends Reference> {
   getReferenceForName(name: string): R | undefined;
@@ -25,14 +25,20 @@ export class ConstructorNamespace implements Namespace<ConstructorReference> {
     this.grids = {};
   }
 
-  public getReferenceForName = (name: string): ConstructorReference => {
+  public getReferenceForName = (name: string): ConstructorReference | undefined => {
     const grid = Object.values(this.grids).find(g => g.name === name);
     return grid ? ReferenceUtils.buildReferenceForConstructor(grid.gridConstructor) : this.nameToReferenceMap[name];
   }
 
+  // TODO - in the case of grids, this is using the grid id not the reference id
   public getNameForReference = (refId: Identifier): string | undefined => {
     const grid = this.grids[refId];
     return grid ? grid.name : this.idToNameMap[refId];
+  }
+
+  public getReferenceForGridId = <I extends Identifier> (gridId: I): ConstructorReference<RowType<I>, I> | undefined => {
+    const grid = this.grids[gridId as string] as Grid<I>;
+    return grid ? ReferenceUtils.buildReferenceForConstructor(grid.gridConstructor) : undefined;
   }
 
   public addGrid = (grid: Grid) => {
@@ -88,6 +94,14 @@ export class NameResolver {
     const ref = this.constructorNamespace.getReferenceForName(name);
     if (!ref) {
       throw new TypeError(`No formula or grid exists with name '${name}'`);
+    }
+    return ref;
+  }
+
+  public resolveGridConstructorFromId = <I extends Identifier> (gridId: I): ConstructorReference<RowType<I>, I> => {
+    const ref = this.constructorNamespace.getReferenceForGridId(gridId);
+    if (!ref) {
+      throw new TypeError(`No constructor exists for grid with id '${gridId}'`);
     }
     return ref;
   }

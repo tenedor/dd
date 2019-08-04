@@ -3,12 +3,13 @@ import * as _ from 'lodash';
 import {Row} from '@models/domain_specific/row'; // only a type dependency
 import {RODictionary} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
+import {CallRes, ResolvedAST} from './ast';
 import {Drawing, drawingsAreEqual} from './drawing_value';
 import {NameResolver} from './name_resolver';
 import {Parser} from './parser';
 import {DictType, DrawingType, GridIdentifier, GridType, Identifier, LambdaType,
         ListType, PartialRowType, PrimitiveType, RowIdentifier, RowType,
-        SchemaIdentifier, Type, TypeUtils} from './types';
+        SchemaIdentifier, SupportsLiteralsType, Type, TypeUtils} from './types';
 
 interface BaseValue<T extends Type = Type> {
   type: T,
@@ -69,9 +70,9 @@ export interface LambdaValue<I extends Type = Type, O extends Type = Type>
 type ValueUnion = PrimitiveValue | DrawingValue | ListValue | DictValue | LambdaValue;
 export type Value<T extends Type = Type> = BaseValue<T> & ValueUnion;
 
+export type ValueOrAST<T extends Type = Type> = ResolvedAST<T> | Value<T>;
 
 type primitiveValue = number | boolean | string;
-type TypeWithDefaultValue = PrimitiveType | ListType;
 
 const throwValueConstructionTypeError = (value: any, type: Type) => {
   throw new TypeError(`Cannot construct ${TypeUtils.toString(type)} from value ${value}`);
@@ -200,17 +201,12 @@ export class ValueUtils {
   // Utilities
   // =========
 
-  // Each type that a user can manually input has a default value
-  public static supportsDefaultValue = (type: Type): type is TypeWithDefaultValue => {
-    return TypeUtils.isPrimitive(type) || TypeUtils.isList(type);
-  }
-
   public static get defaultNumber() { return ValueUtils.numberOf(0); }
   public static get defaultBoolean() { return ValueUtils.booleanOf(false); }
   public static get defaultString() { return ValueUtils.stringOf(""); }
   public static defaultListOfType = <T extends Type> (itemType: T) => ValueUtils.listOf([], itemType)
 
-  public static getDefaultValue = <T extends TypeWithDefaultValue> (type: T & TypeWithDefaultValue): Value<T> => {
+  public static getDefaultValue = <T extends SupportsLiteralsType> (type: T & SupportsLiteralsType, resolver: NameResolver): ValueOrAST<T> => {
     // Apologies to R. Milner for the type casts, here and elsewhere...
     //
     // Typescript does not support enum generics properly and needs help.
@@ -223,6 +219,9 @@ export class ValueUtils {
       return ValueUtils.defaultBoolean as Value<T>;
     } else if (TypeUtils.isList(type)) {
       return ValueUtils.defaultListOfType(type.itemType) as Value<T>;
+    } else if (TypeUtils.isRow(type)) {
+      const constructorRef = resolver.resolveGridConstructorFromId(type.schemaId.gridId);
+      return CallRes.buildDefaultConstructorCall(constructorRef) as CallRes<T>;
     } else {
       return assertUnreachable(type);
     }
