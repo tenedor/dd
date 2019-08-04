@@ -138,7 +138,7 @@ export class RowCellEditorViewModel extends CellEditorViewModel {
   }
 
   protected makeDisplayValueNonFormula(): string {
-    return ValueUtils.toString(this.cell.value);
+    return this.cell.getDisplayValue();
   }
 
   public setValue(value: string | undefined): boolean {

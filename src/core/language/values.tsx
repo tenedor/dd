@@ -4,6 +4,8 @@ import {Row} from '@models/domain_specific/row'; // only a type dependency
 import {RODictionary} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
 import {Drawing, drawingsAreEqual} from './drawing_value';
+import {NameResolver} from './name_resolver';
+import {Parser} from './parser';
 import {DictType, DrawingType, GridIdentifier, GridType, Identifier, LambdaType,
         ListType, PartialRowType, PrimitiveType, RowIdentifier, RowType,
         SchemaIdentifier, Type, TypeUtils} from './types';
@@ -226,18 +228,23 @@ export class ValueUtils {
     }
   }
 
-  // TODO this is terrible
-  public static toString = (v: Value): string => {
+  public static toString = (v: Value, resolver: NameResolver): string => {
     if (ValueUtils.isLambda(v)) {
-      return 'fn';
-    } else if (ValueUtils.isGrid(v)) {
-      return `Grid{${v.type.schemaId}}`;
-    } else if (ValueUtils.isRow(v)) {
-      return `RowOf{${v.type.schemaId}}`;
-    } else if (ValueUtils.isPartialRow(v)) {
-      return `PartialRowOf{${v.type.schemaId}}`;
+      return 'fn'; // TODO
+    } else if (ValueUtils.isDict(v)) {
+      const gridName = resolver.nameForConstructorId(v.type.schemaId.gridId);
+      const escapedName = Parser.identToText(gridName);
+      if (ValueUtils.isGrid(v)) {
+        return `Grid ${escapedName}`;
+      } else if (ValueUtils.isRow(v)) {
+        return `Row of ${escapedName}`;
+      } else if (ValueUtils.isPartialRow(v)) {
+        return `Partial Row of ${escapedName}`;
+      } else {
+        return assertUnreachable(v);
+      }
     } else if (ValueUtils.isList(v)) {
-      const values = v.list.map(e => ValueUtils.toString(e));
+      const values = v.list.map(e => ValueUtils.toString(e, resolver));
       return `[${values.join(", ")}]`;
     } else if (ValueUtils.isDrawing(v)) {
       return v.drawing.drawingType;

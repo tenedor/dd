@@ -18,8 +18,8 @@ import {RowContext} from './row';
 
 export type ManualValue<T extends Type = Type> = ResolvedAST<T> | Value<T>;
 
-function isAST<T extends Type>(value: ManualValue<T>): value is ResolvedAST<T> {
-  return 'nodeType' in value;
+function isAST<T extends Type>(value: ManualValue<T> | undefined): value is ResolvedAST<T> {
+  return value !== undefined && 'nodeType' in value;
 }
 
 interface CellData<T extends Type> {
@@ -69,18 +69,26 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return this._value;
   }
 
+  public getDisplayValue = (): string => {
+    const {column} = this;
+    if (!this.isCalculated() && isAST(this.manualValue)) {
+      return this.manualValue.toText(column.nameResolver);
+    }
+    return ValueUtils.toString(this.value, column.nameResolver);
+  }
+
   public get formulaExpression(): FormulaExpression<T> {
     return this.column.formulaExpression;
   }
 
-  private getDefaultValue(): Value<T> {
+  private getDefaultValue = (): Value<T> => {
     if (ValueUtils.supportsDefaultValue(this.column.type)) {
       return ValueUtils.getDefaultValue(this.column.type);
     }
     throw new Error(`Default value is not supported for type ${this.column.type}`);
   }
 
-  public setManualValue(value: ManualValue<T> | undefined) {
+  public setManualValue = (value: ManualValue<T> | undefined) => {
     const {type} = this.column;
     if (value !== undefined) {
       assert(!isAST(value) || value.isLiteral, "Manual values must be literals.");
@@ -193,9 +201,13 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return new ValueResolver(dependencyValues);
   }
 
+  private isCalculated = (): boolean => {
+    return this.formulaExpression.isSet;
+  }
+
   private computeValue = (): Value<T> => {
     const {formulaExpression, manualValue} = this;
-    if (formulaExpression.isSet) {
+    if (this.isCalculated()) {
       return formulaExpression.eval(this.getValueResolver());
     } else if (manualValue !== undefined) {
       return isAST(manualValue) ? manualValue.eval(this.getValueResolver()) : manualValue;

@@ -194,8 +194,8 @@ export class TableView extends BaseComponent<Props, State> {
     const {cells} = row;
     return grid.columns.a.map(({columnId}) => {
       const cellIndexString = this.stringEncodeCellIndex({columnId, rowIndex});
-      const value = ValueUtils.toString(cells.d[columnId].value);
-      return <CellView key={cellIndexString} dataCellId={cellIndexString} value={value} />;
+      const displayValue = cells.d[columnId].getDisplayValue();
+      return <CellView key={cellIndexString} dataCellId={cellIndexString} value={displayValue} />;
     });
   }
 

@@ -2,6 +2,7 @@ import * as _ from 'lodash';
 
 import {ROArray} from '@utils/types';
 import {assertUnreachable, capitalizeFirstLetter} from '@utils/utils';
+import {NameResolver} from './name_resolver';
 
 export type Identifier = string;
 

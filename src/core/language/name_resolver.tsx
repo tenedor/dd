@@ -30,7 +30,7 @@ export class ConstructorNamespace implements Namespace<ConstructorReference> {
     return grid ? ReferenceUtils.buildReferenceForConstructor(grid.gridConstructor) : this.nameToReferenceMap[name];
   }
 
-  public getNameForReference = (refId: Identifier): string => {
+  public getNameForReference = (refId: Identifier): string | undefined => {
     const grid = this.grids[refId];
     return grid ? grid.name : this.idToNameMap[refId];
   }
