@@ -4,9 +4,10 @@ import {BuiltInFormula} from '@models/domain_specific/constructor';
 import {RODictionary} from '@utils/types';
 import {DrawingVariant} from './drawing_value';
 import {Identifier, PrimitiveType, Type, TypeUtils} from './types';
-import {DictValue, DrawingValue, PrimitiveValue, Value, ValueUtils} from './values';
+import {DrawingValue, PartialRowValue, PrimitiveValue, Value, ValueUtils}
+        from './values';
 
-type BuiltInEval<R extends Type = Type, I extends Identifier = Identifier> = (parameters: DictValue<I>) => Value<R>;
+type BuiltInEval<R extends Type = Type, I extends Identifier = Identifier> = (parameters: PartialRowValue<I>) => Value<R>;
 
 export interface Parameter<T extends Type = Type> {
   readonly id: Identifier,
@@ -103,7 +104,7 @@ const dematerializeEval = <R extends Type = Type> (
   parameterDefs: {[id: string]: Parameter},
   returnType: R,
 ): BuiltInEval<R> => {
-  return (parameters: DictValue): Value<R> => {
+  return (parameters: PartialRowValue): Value<R> => {
     const defaultParametersByName = _.mapValues(parameterDefs, p => p.defaultValue);
     const parametersWithDefaults = _.extend({}, defaultParametersByName, parameters.dict);
     const parametersByName = _.mapKeys(parametersWithDefaults, (parameter: Value, id: string) => {

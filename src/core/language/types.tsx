@@ -3,6 +3,33 @@ import * as _ from 'lodash';
 import {ROArray} from '@utils/types';
 import {assertUnreachable, capitalizeFirstLetter} from '@utils/utils';
 
+export type Identifier = string;
+
+export enum SchemaIdentifierType {
+  PARTIAL_ROW = "PARTIAL_ROW",
+  ROW = "ROW",
+  GRID = "GRID",
+}
+
+type PartialRowIdentifierType = SchemaIdentifierType.PARTIAL_ROW | SchemaIdentifierType.ROW;
+
+export interface PartialRowIdentifier<I extends Identifier = Identifier> {
+  identifierType: PartialRowIdentifierType;
+  gridId: I;
+}
+
+export interface RowIdentifier<I extends Identifier = Identifier> extends PartialRowIdentifier {
+  identifierType: SchemaIdentifierType.ROW;
+  gridId: I;
+}
+
+export interface GridIdentifier<I extends Identifier = Identifier> {
+  identifierType: SchemaIdentifierType.GRID;
+  gridId: I;
+}
+
+export type SchemaIdentifier<I extends Identifier = Identifier> = PartialRowIdentifier<I> | GridIdentifier<I>;
+
 export enum PrimitiveType {
   NUMBER = "NUMBER",
   BOOLEAN = "BOOLEAN",
@@ -21,18 +48,24 @@ export interface ListType<T extends Type = Type> extends ListTypeBase {
   itemType: T,
 }
 
-export interface DictType<I extends Identifier = Identifier> {
-  schemaId: I,
+interface BaseDictType<SI extends SchemaIdentifier> {
+  schemaId: SI,
 }
 
-export type SchemaIdentifier<I extends Identifier = Identifier> = Identifier;
+export interface PartialRowType<I extends Identifier = Identifier> extends BaseDictType<PartialRowIdentifier<I>> {
+  schemaId: PartialRowIdentifier<I>,
+}
 
-export type RowType<I extends Identifier = Identifier> = DictType<SchemaIdentifier<I>>;
+export interface RowType<I extends Identifier = Identifier> extends PartialRowType<I>, BaseDictType<RowIdentifier<I>> {
+  schemaId: RowIdentifier<I>,
+}
 
-export interface GridType<I extends Identifier = Identifier> extends ListType<RowType<I>>, DictType<I> {
+export interface GridType<I extends Identifier = Identifier> extends ListType<RowType<I>>, BaseDictType<GridIdentifier<I>> {
   itemType: RowType<I>,
-  schemaId: I,
+  schemaId: GridIdentifier<I>,
 }
+
+export type DictType = PartialRowType | GridType;
 
 interface LambdaTypeBase {
   inputType: Type,
@@ -45,13 +78,12 @@ export interface LambdaType<I extends Type = Type, O extends Type = Type> extend
 }
 
 export enum BoundingType {
-  TOP = "TOP",
-  BOTTOM = "BOTTOM",
+  TOP = "TOP",        // the "any" type to which any type may be assigned
+  BOTTOM = "BOTTOM",  // the "never" type which can be assigned to any type
 }
 
-export type Identifier = string;
-export type Type = PrimitiveType | DrawingType | ListTypeBase | DictType | RowType |
-    GridType | LambdaTypeBase | BoundingType;
+export type Type = PrimitiveType | DrawingType | ListTypeBase | DictType |
+  LambdaTypeBase | BoundingType;
 
 
 export class TypeUtils {
@@ -69,16 +101,19 @@ export class TypeUtils {
     return {itemType};
   }
 
-  public static DictOf = <I extends Identifier> (schemaId: I): DictType<I> => {
+  public static PartialRowOf = <I extends Identifier> (gridId: I): PartialRowType<I> => {
+    const schemaId: PartialRowIdentifier<I> = {identifierType: SchemaIdentifierType.PARTIAL_ROW, gridId};
     return {schemaId};
   }
 
-  public static RowOf = <I extends Identifier> (schemaId: I): RowType<I> => {
+  public static RowOf = <I extends Identifier> (gridId: I): RowType<I> => {
+    const schemaId: RowIdentifier<I> = {identifierType: SchemaIdentifierType.ROW, gridId};
     return {schemaId};
   }
 
-  public static GridOf = <I extends Identifier>(schemaId: I): GridType<I> => {
-    return {itemType: TypeUtils.RowOf(schemaId), schemaId};
+  public static GridOf = <I extends Identifier>(gridId: I): GridType<I> => {
+    const schemaId: GridIdentifier<I> = {identifierType: SchemaIdentifierType.GRID, gridId};
+    return {itemType: TypeUtils.RowOf(gridId), schemaId};
   }
 
   public static LambdaOf = <I extends Type, O extends Type> (inputType: I, outputType: O): LambdaType<I, O> => {
@@ -89,6 +124,15 @@ export class TypeUtils {
   // ===========
   // Type Guards
   // ===========
+
+  public static isPartialRowIdentifier= (id: SchemaIdentifier): id is RowIdentifier =>
+    id.identifierType === SchemaIdentifierType.PARTIAL_ROW || TypeUtils.isRowIdentifier(id)
+
+  public static isRowIdentifier= (id: SchemaIdentifier): id is RowIdentifier =>
+    id.identifierType === SchemaIdentifierType.ROW
+
+  public static isGridIdentifier= (id: SchemaIdentifier): id is GridIdentifier =>
+    id.identifierType === SchemaIdentifierType.GRID
 
   public static isNumber = (t: Type): t is PrimitiveType.NUMBER => t === PrimitiveType.NUMBER
 
@@ -102,9 +146,14 @@ export class TypeUtils {
 
   public static isDict = (t: Type): t is DictType => !TypeUtils.isAtomic(t) && 'schemaId' in t
 
-  public static isRow = (t: Type): t is RowType => TypeUtils.isDict(t)
+  public static isPartialRow = (t: Type): t is PartialRowType => TypeUtils.isDict(t) &&
+    TypeUtils.isPartialRowIdentifier(t.schemaId)
 
-  public static isGrid = (t: Type): t is GridType => TypeUtils.isList(t) && TypeUtils.isRow(t)
+  public static isRow = (t: Type): t is RowType => TypeUtils.isDict(t) &&
+    TypeUtils.isRowIdentifier(t.schemaId)
+
+  public static isGrid = (t: Type): t is GridType => TypeUtils.isList(t) && TypeUtils.isRow(t.itemType) &&
+    TypeUtils.isDict(t) && TypeUtils.isGridIdentifier(t.schemaId)
 
   public static isLambda = (t: Type): t is LambdaType => !TypeUtils.isAtomic(t) &&
     'inputType' in t && 'outputType' in t
@@ -130,6 +179,10 @@ export class TypeUtils {
   // Types Logic
   // ===========
 
+  private static idsAreEqual = (id1: SchemaIdentifier, id2: SchemaIdentifier): boolean => {
+    return id1.identifierType === id2.identifierType && id1.gridId === id2.gridId;
+  }
+
   public static isAssignableTo = (t1: Type, t2: Type): boolean => {
     if (TypeUtils.isBottom(t1)) {
       return true;
@@ -144,9 +197,13 @@ export class TypeUtils {
         && TypeUtils.isAssignableTo(t1.outputType, t2.outputType);
     } else if (TypeUtils.isGrid(t2)) {
       // TODO support grid inheritance
-      return TypeUtils.isGrid(t1) && t1.schemaId === t2.schemaId;
-    } else if (TypeUtils.isDict(t2)) {
-      return TypeUtils.isDict(t1) && t1.schemaId === t2.schemaId;
+      return TypeUtils.isGrid(t1) && TypeUtils.idsAreEqual(t1.schemaId, t2.schemaId);
+    } else if (TypeUtils.isRow(t2)) {
+      // TODO support grid inheritance
+      return TypeUtils.isRow(t1) && TypeUtils.idsAreEqual(t1.schemaId, t2.schemaId);
+    } else if (TypeUtils.isPartialRow(t2)) {
+      // TODO support grid inheritance
+      return TypeUtils.isPartialRow(t1) && TypeUtils.idsAreEqual(t1.schemaId, t2.schemaId);
     } else if (TypeUtils.isList(t2)) {
       return TypeUtils.isList(t1) && TypeUtils.isAssignableTo(t1.itemType, t2.itemType);
     } else if (TypeUtils.isDrawing(t2)) {
@@ -170,6 +227,7 @@ export class TypeUtils {
     return TypeUtils.isAssignableTo(t1, t2) && TypeUtils.isAssignableTo(t2, t1);
   }
 
+  // The intersection is the widest type that can be assigned to any of the input types
   public static intersect = (t1: Type, t2: Type): Type => {
     if (TypeUtils.isTop(t1) || TypeUtils.isTop(t2)) {
       return TypeUtils.isTop(t1) ? t2 : t1;
@@ -177,16 +235,20 @@ export class TypeUtils {
       const inputType = TypeUtils.union(t1.inputType, t2.inputType);
       const outputType = TypeUtils.intersect(t1.inputType, t2.inputType);
       return TypeUtils.LambdaOf(inputType, outputType);
-    } else if (TypeUtils.isDict(t1) && TypeUtils.isDict(t2)) {
-      // TODO fix this when Grid<I> is fixed to not be a Dict<I>
-      const strongerType = TypeUtils.isGrid(t1) ? t1 : t2;
+    } else if (TypeUtils.isGrid(t1) && TypeUtils.isGrid(t2)) {
       // TODO support grid inheritance
-      return t1.schemaId === t2.schemaId ? strongerType : BoundingType.BOTTOM;
+      return TypeUtils.idsAreEqual(t1.schemaId, t2.schemaId) ? t2 : BoundingType.BOTTOM;
+    } else if (TypeUtils.isRow(t1) && TypeUtils.isRow(t2)) {
+      // TODO support grid inheritance
+      return TypeUtils.idsAreEqual(t1.schemaId, t2.schemaId) ? t2 : BoundingType.BOTTOM;
+    } else if (TypeUtils.isPartialRow(t1) && TypeUtils.isPartialRow(t2)) {
+      // TODO support grid inheritance
+      return TypeUtils.idsAreEqual(t1.schemaId, t2.schemaId) ? t2 : BoundingType.BOTTOM;
     } else if (TypeUtils.isList(t1) && TypeUtils.isList(t2)) {
       const itemTypeIntersection = TypeUtils.intersect(t1.itemType, t2.itemType);
       if (TypeUtils.isGrid(t1) || TypeUtils.isGrid(t2)) {
-        return TypeUtils.isDict(itemTypeIntersection)
-          ? TypeUtils.GridOf(itemTypeIntersection.schemaId)
+        return TypeUtils.isRow(itemTypeIntersection)
+          ? TypeUtils.GridOf(itemTypeIntersection.schemaId.gridId)
           : BoundingType.BOTTOM;
       }
       return TypeUtils.ListOf(itemTypeIntersection);
@@ -203,6 +265,7 @@ export class TypeUtils {
     return _.reduce(types, TypeUtils.intersect, BoundingType.TOP);
   }
 
+  // The union is the narrowest type to which any of the input types can be assigned
   public static union = (t1: Type, t2: Type): Type => {
     if (TypeUtils.isBottom(t1) || TypeUtils.isBottom(t2)) {
       return TypeUtils.isBottom(t1) ? t2 : t1;
@@ -212,11 +275,14 @@ export class TypeUtils {
       return TypeUtils.LambdaOf(inputType, outputType);
     } else if (TypeUtils.isGrid(t1) && TypeUtils.isGrid(t2)) {
       // TODO support grid inheritance
-      return t1.schemaId === t2.schemaId ? t2 :
+      return TypeUtils.idsAreEqual(t1.schemaId, t2.schemaId) ? t2 :
         TypeUtils.ListOf(TypeUtils.union(t1.itemType, t2.itemType));
-    } else if (TypeUtils.isDict(t1) && TypeUtils.isDict(t2)) {
-      // TODO fix this when Grid<I> is fixed to not be a Dict<I>
-      return t1.schemaId === t2.schemaId ? t2 : BoundingType.TOP;
+    } else if (TypeUtils.isRow(t1) && TypeUtils.isRow(t2)) {
+      // TODO support grid inheritance
+      return TypeUtils.idsAreEqual(t1.schemaId, t2.schemaId) ? t2 : BoundingType.TOP;
+    } else if (TypeUtils.isPartialRow(t1) && TypeUtils.isPartialRow(t2)) {
+      // TODO support grid inheritance
+      return TypeUtils.idsAreEqual(t1.schemaId, t2.schemaId) ? t2 : BoundingType.TOP;
     } else if (TypeUtils.isList(t1) && TypeUtils.isList(t2)) {
       return TypeUtils.ListOf(TypeUtils.union(t1.itemType, t2.itemType));
     } else if (TypeUtils.isDrawing(t1) && TypeUtils.isDrawing(t2)) {

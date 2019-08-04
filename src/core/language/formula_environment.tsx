@@ -73,13 +73,13 @@ export class FormulaEnvironment {
   }
 
   public getAllowedColumnTypes = (): Type[] => {
-    const instanceTypes = _.values(this.customTypes).map(t => t.itemType);
-    return TypeUtils.atomicTypes.concat(instanceTypes);
+    const constructableRowTypes = _.values(this.customTypes).map(t => t.itemType);
+    return TypeUtils.atomicTypes.concat(constructableRowTypes);
   }
 
   public getNameForType = (t: Type): string => {
     if (TypeUtils.isDict(t)) {
-      const name = this.constructorNamespace.getNameForReference(t.schemaId);
+      const name = this.constructorNamespace.getNameForReference(t.schemaId.gridId);
       if (name !== undefined) {
         return name;
       }

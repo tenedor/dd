@@ -6,11 +6,11 @@ import {NameResolver} from './name_resolver';
 import {Parser} from './parser';
 import {ConstructorReference, Reference, ReferenceUtils, ValueReference}
         from './reference';
-import {DictType, GridType, Identifier, LambdaType, ListType, PrimitiveType, RowType,
-        Type, TypeUtils} from './types';
+import {DictType, GridType, Identifier, LambdaType, ListType, PartialRowType,
+        PrimitiveType, RowType, Type, TypeUtils} from './types';
 import {UnaryOp, UnaryOpUtils} from './unary_op';
 import {ValueResolver} from './value_resolver';
-import {DictValue, ListValue, Value, ValueUtils} from './values';
+import {ListValue, PartialRowValue, Value, ValueUtils} from './values';
 
 enum ASTNodeType {
   EXPRESSION = "EXPRESSION",
@@ -68,6 +68,9 @@ export class ResolvedASTUtils {
   }
   public static resolvesToDict = (astR: ResolvedAST): astR is ResolvedAST<DictType> => {
     return TypeUtils.isDict(astR.type);
+  }
+  public static resolvesToPartialRow = (astR: ResolvedAST): astR is ResolvedAST<PartialRowType> => {
+    return TypeUtils.isPartialRow(astR.type);
   }
   public static resolvesToRow = (astR: ResolvedAST): astR is ResolvedAST<RowType> => {
     return TypeUtils.isRow(astR.type);
@@ -529,14 +532,14 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
 
 export class AssignmentsRes<I extends Identifier = Identifier>
     extends AssignmentsAST<ResolvedAST>
-    implements ResolvedAST<DictType<I>, ASTNodeType.ASSIGNMENTS> {
-  public readonly type: DictType<I>;
+    implements ResolvedAST<PartialRowType<I>, ASTNodeType.ASSIGNMENTS> {
+  public readonly type: PartialRowType<I>;
   public readonly externalDependencies: ROArray<Reference>;
 
   private readonly constructorRef: ConstructorReference;
 
   constructor(asmts: RODictionary<ResolvedAST>, asmtOrder: ROArray<string>,
-      constructorRef: ConstructorReference, type: DictType<I>) {
+      constructorRef: ConstructorReference, type: PartialRowType<I>) {
     super(asmts, asmtOrder);
     this.constructorRef = constructorRef;
     this.type = type;
@@ -547,9 +550,9 @@ export class AssignmentsRes<I extends Identifier = Identifier>
     return _.every(this.asmts, a => a.isLiteral);
   }
 
-  public eval = (valueResolver: ValueResolver): DictValue<I> => {
+  public eval = (valueResolver: ValueResolver): PartialRowValue<I> => {
     const asmtsV = _.mapValues(this.asmts, e => e.eval(valueResolver));
-    return ValueUtils.dictOf(asmtsV, this.type.schemaId);
+    return ValueUtils.partialRowOf(asmtsV, this.type.schemaId.gridId);
   }
 
   protected asmtIdToText(asmtId: string, resolver: NameResolver): string {

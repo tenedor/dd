@@ -136,12 +136,12 @@ export class NameResolver {
   }
 
   public resolverFor = (dict: DictType): NameResolver => {
-    const valueNamespace = this.resolveNamespace(dict.schemaId);
+    const valueNamespace = this.resolveNamespace(dict.schemaId.gridId);
     return new NameResolver(this.namespaceResolver, this.constructorNamespace, valueNamespace);
   }
 
   public extendWith = (dict: DictType): NameResolver => {
-    const localNamespace = this.resolveNamespace(dict.schemaId);
+    const localNamespace = this.resolveNamespace(dict.schemaId.gridId);
     const stackedNamespace = NameResolver.extendNamespace(this.valueNamespace, localNamespace);
     return new NameResolver(this.namespaceResolver, this.constructorNamespace, stackedNamespace);
   }

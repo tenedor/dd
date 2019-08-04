@@ -1,10 +1,12 @@
 import * as _ from 'lodash';
 
+import {Row} from '@models/domain_specific/row'; // only a type dependency
 import {RODictionary} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
 import {Drawing, drawingsAreEqual} from './drawing_value';
-import {DictType, DrawingType, GridType, Identifier, LambdaType, ListType, PrimitiveType,
-        RowType, SchemaIdentifier, Type, TypeUtils} from './types';
+import {DictType, DrawingType, GridIdentifier, GridType, Identifier, LambdaType,
+        ListType, PartialRowType, PrimitiveType, RowIdentifier, RowType,
+        SchemaIdentifier, Type, TypeUtils} from './types';
 
 interface BaseValue<T extends Type = Type> {
   type: T,
@@ -32,26 +34,37 @@ export interface ListValue<T extends Type = Type> extends BaseValue<ListType<T>>
   list: Array<Value<T>>,
 }
 
-export interface DictValue<I extends Identifier = Identifier> extends BaseValue<DictType<I>> {
+interface BaseDictValue<SI extends SchemaIdentifier> extends BaseValue<DictType> {
   dict: RODictionary<Value>,
 }
 
-export type RowValue<I extends Identifier = Identifier> = DictValue<SchemaIdentifier<I>>;
+export interface PartialRowValue<I extends Identifier = Identifier>
+  extends BaseValue<PartialRowType<I>>, BaseDictValue<RowIdentifier<I>> {
+  type: PartialRowType<I>,
+  dict: RODictionary<Value>,
+}
+
+export interface RowValue<I extends Identifier = Identifier>
+  extends BaseValue<RowType<I>>, PartialRowValue<I> {
+  type: RowType<I>,
+  dict: RODictionary<Value>,
+}
 
 export interface GridValue<I extends Identifier = Identifier>
-    extends BaseValue<GridType<I>>, ListValue<RowType<I>>, DictValue<I> {
+    extends BaseValue<GridType<I>>, ListValue<RowType<I>>, BaseDictValue<GridIdentifier<I>> {
   type: GridType<I>,
   dict: RODictionary<ListValue>,
   list: Array<RowValue<I>>,
 }
+
+type DictValue = PartialRowValue | GridValue;
 
 export interface LambdaValue<I extends Type = Type, O extends Type = Type>
     extends BaseValue<LambdaType<I, O>> {
   lambda: (input: Value<I>) => Value<O>,
 }
 
-type ValueUnion = PrimitiveValue | DrawingValue | ListValue | DictValue | RowValue |
-    GridValue | LambdaValue;
+type ValueUnion = PrimitiveValue | DrawingValue | ListValue | DictValue | LambdaValue;
 export type Value<T extends Type = Type> = BaseValue<T> & ValueUnion;
 
 
@@ -114,12 +127,13 @@ export class ValueUtils {
     return {list, type: TypeUtils.ListOf(itemType)};
   }
 
-  public static dictOf = <I extends Identifier> (dict: RODictionary<Value>, id: I): DictValue<I> => {
-    return {dict, type: TypeUtils.DictOf(id)};
+  public static partialRowOf = <I extends Identifier> (dict: RODictionary<Value>, id: I): PartialRowValue<I> => {
+    return {dict, type: TypeUtils.PartialRowOf(id)};
   }
 
-  public static rowOf = (): never => {
-    throw new Error("Constructing a row value with Value.rowOf is not allowed.");
+  public static rowOf = <I extends Identifier> (row: Row<I>, id: I): RowValue<I> => {
+    const cellValues = _.mapValues(row.cells.d, c => c.value);
+    return {dict: cellValues, type: TypeUtils.RowOf(id)};
   }
 
   public static gridOf = (): never => {
@@ -143,6 +157,7 @@ export class ValueUtils {
   public static isDrawing = (v: Value): v is DrawingValue => TypeUtils.isDrawing(v.type)
   public static isList = (v: Value): v is ListValue => TypeUtils.isList(v.type)
   public static isDict = (v: Value): v is DictValue => TypeUtils.isDict(v.type)
+  public static isPartialRow = (v: Value): v is PartialRowValue => TypeUtils.isPartialRow(v.type)
   public static isRow = (v: Value): v is RowValue => TypeUtils.isRow(v.type)
   public static isGrid = (v: Value): v is GridValue => TypeUtils.isGrid(v.type)
   public static isLambda = (v: Value): v is LambdaValue => TypeUtils.isLambda(v.type)
@@ -160,7 +175,7 @@ export class ValueUtils {
       return v1.lambda === v2.lambda;
     } else if (ValueUtils.isGrid(v1) && ValueUtils.isGrid(v2)) {
       return true;
-    } else if (ValueUtils.isDict(v1) && ValueUtils.isDict(v2)) {
+    } else if (ValueUtils.isPartialRow(v1) && ValueUtils.isPartialRow(v2)) {
       const keys1 = Object.keys(v1.dict);
       const keys2 = Object.keys(v2.dict);
       return _.isEqual(new Set(keys1), new Set(keys2)) &&
@@ -218,9 +233,9 @@ export class ValueUtils {
     } else if (ValueUtils.isGrid(v)) {
       return `Grid{${v.type.schemaId}}`;
     } else if (ValueUtils.isRow(v)) {
-      return `InstanceOf{${v.type.schemaId}}`;
-    } else if (ValueUtils.isDict(v)) {
-      return `DictOf{${v.type.schemaId}}`;
+      return `RowOf{${v.type.schemaId}}`;
+    } else if (ValueUtils.isPartialRow(v)) {
+      return `PartialRowOf{${v.type.schemaId}}`;
     } else if (ValueUtils.isList(v)) {
       const values = v.list.map(e => ValueUtils.toString(e));
       return `[${values.join(", ")}]`;

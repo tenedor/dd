@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver, ValueNamespace} from '@language/name_resolver';
 import {RelativeValueReference} from '@language/reference';
-import {Type, TypeUtils} from '@language/types';
+import {Identifier, Type, TypeUtils} from '@language/types';
 import {GridValue} from '@language/values';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from '../collections/functional_array';
 import {FunctionalKeyedArray} from '../collections/functional_keyed_array';
@@ -32,7 +32,8 @@ export interface GridData {
 
 export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {}
 
-export class Grid extends Mutable<GridUpdateDescriptor> {
+export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateDescriptor> {
+  public readonly id: I;
   private _name: string;
   private readonly formulaEnvironment: FormulaEnvironment;
   private readonly parent?: Grid;

@@ -3,9 +3,9 @@ import * as _ from 'lodash';
 import {buildNamespace, ValueNamespace} from '@language/name_resolver';
 import {RelativeValueReference} from '@language/reference';
 import {BuiltInFormulaSpec} from '@language/standard_library';
-import {DictType, Identifier, RowType, Type, TypeUtils} from '@language/types';
+import {Identifier, PartialRowType, RowType, Type, TypeUtils} from '@language/types';
 import {ValueResolver} from '@language/value_resolver';
-import {DictValue, RowValue, Value} from '@language/values';
+import {PartialRowValue, RowValue, Value} from '@language/values';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
 import {Constant} from '../core/constant';
 import {Model, ModelType} from '../core/model';
@@ -22,8 +22,8 @@ interface BaseConstructor<R extends Type, I extends Identifier = Identifier> {
   name: string,
   returnType: R,
   namespace: ValueNamespace,
-  assignmentsType: DictType<I>,
-  eval: (valueResolver: ValueResolver, asmts: DictValue<I>) => Value<R>;
+  assignmentsType: PartialRowType<I>,
+  eval: (valueResolver: ValueResolver, asmts: PartialRowValue<I>) => Value<R>;
 }
 
 export type Constructor<R extends Type = Type, I extends Identifier = Identifier> = BaseConstructor<R, I> & Model;
@@ -45,7 +45,7 @@ export class GridConstructor<I extends Identifier = Identifier>
   public readonly isConstructorLiteral = true;
   public readonly namespace: ValueNamespace;
   public readonly returnType: RowType<I>;
-  public readonly assignmentsType: DictType<I>;
+  public readonly assignmentsType: PartialRowType<I>;
 
   constructor(
     updateManager: UpdateManager,
@@ -58,7 +58,7 @@ export class GridConstructor<I extends Identifier = Identifier>
     this.getName = getName;
     this.namespace = namespace;
     this.returnType = TypeUtils.RowOf(gridId);
-    this.assignmentsType = TypeUtils.DictOf(gridId);
+    this.assignmentsType = TypeUtils.PartialRowOf(gridId);
 
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
   }
@@ -67,7 +67,7 @@ export class GridConstructor<I extends Identifier = Identifier>
     return this.getName();
   }
 
-  public eval = (valueResolver: ValueResolver, asmts: DictValue<I>): RowValue<I> => {
+  public eval = (valueResolver: ValueResolver, asmts: PartialRowValue<I>): RowValue<I> => {
     const {columns, gridId} = this;
     const updateManager = new SimpleUpdateManager();
     const manualValues = _.extend({}, asmts.dict);
@@ -114,16 +114,16 @@ export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identi
   public readonly isConstructorLiteral = false;
   public readonly returnType: R;
   public readonly namespace: ValueNamespace;
-  public readonly assignmentsType: DictType<I>;
-  public readonly eval: (valueResolver: ValueResolver, asmts: DictValue<I>) => Value<R>;
+  public readonly assignmentsType: PartialRowType<I>;
+  public readonly eval: (valueResolver: ValueResolver, asmts: PartialRowValue<I>) => Value<R>;
 
   constructor(formula: BuiltInFormulaSpec<R, I>) {
     super(formula.id);
     this.name = formula.name;
     this.returnType = formula.returnType;
     this.namespace = BuiltInFormula.buildNamespace(formula);
-    this.assignmentsType = TypeUtils.DictOf(formula.id);
-    this.eval = (valueResolver: ValueResolver, asmts: DictValue<I>) => formula.eval(asmts);
+    this.assignmentsType = TypeUtils.PartialRowOf(formula.id);
+    this.eval = (valueResolver: ValueResolver, asmts: PartialRowValue<I>) => formula.eval(asmts);
   }
 
   private static buildNamespace = (formula: BuiltInFormulaSpec): ValueNamespace => {

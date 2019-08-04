@@ -22,10 +22,10 @@ interface ManualValues {
   [columnId: string]: ManualValue,
 }
 
-interface RowData {
+interface RowData<I extends Identifier = Identifier> {
   columns: GridColumns,
   manualValues: ManualValues,
-  gridId: Identifier,
+  gridId: I,
 }
 
 export type RowContext = RODictionary<Cell>;
@@ -34,12 +34,12 @@ export interface RowUpdateDescriptor extends UpdateDescriptor<RowUpdateType> {
   columnIds: string[];
 }
 
-export class Row extends Mutable<RowUpdateDescriptor> {
+export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDescriptor> {
   private readonly columns: GridColumns;
-  private readonly gridId: Identifier;
+  private readonly gridId: I;
   public readonly cells: Cells;
 
-  constructor(updateManager: UpdateManager, {columns, gridId, manualValues}: RowData, modelType: ModelType = ModelType.ROW) {
+  constructor(updateManager: UpdateManager, {columns, gridId, manualValues}: RowData<I>, modelType: ModelType = ModelType.ROW) {
     super(updateManager, modelType);
     this.columns = columns;
     this.gridId = gridId;
@@ -110,9 +110,8 @@ export class Row extends Mutable<RowUpdateDescriptor> {
     return this.cells.d;
   }
 
-  public asValue = (): RowValue => {
-    const cellValues = _.mapValues(this.cells.d, c => c.value);
-    return ValueUtils.dictOf(cellValues, this.gridId);
+  public asValue = (): RowValue<I> => {
+    return ValueUtils.rowOf(this, this.gridId);
   }
 
   private onCellsUpdated = (
