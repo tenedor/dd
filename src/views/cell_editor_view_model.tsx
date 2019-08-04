@@ -150,7 +150,7 @@ export class RowCellEditorViewModel extends CellEditorViewModel {
         this.cell.setManualValue(undefined);
         return true;
       } else {
-        const parseResult = Parser.parseValue(value, type);
+        const parseResult = Parser.parseLiteral(value, type);
 
         if (parseResult.succeeded) {
           const ast = parseResult.ast.resolve(nameResolver);

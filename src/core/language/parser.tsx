@@ -42,37 +42,49 @@ export class Parser {
     return {ast, succeeded: true};
   }
 
-  private static parseNumber = (value: string): ValueParseResult => {
-      const v = parseFloat(value);
+  private static parseNumber = (unparsed: string): ValueParseResult => {
+      const v = parseFloat(unparsed);
       if (isNaN(v)) {
         return Parser.failure;
       }
       return Parser.success(new PrimitiveUnres(v, TypeUtils.Number));
   }
 
-  private static parseBoolean = (value: string): ValueParseResult => {
-    if (value !== "true" && value !== "false") {
+  private static parseBoolean = (unparsed: string): ValueParseResult => {
+    if (unparsed !== "true" && unparsed !== "false") {
       return Parser.failure;
     }
-    const v = value === "true";
+    const v = unparsed === "true";
     return Parser.success(new PrimitiveUnres(v, TypeUtils.Boolean));
   }
 
-  private static parseString = (value: string): SuccessfulParseResult => {
-    return Parser.success(new PrimitiveUnres(value, TypeUtils.String));
+  private static parseString = (unparsed: string): SuccessfulParseResult => {
+    return Parser.success(new PrimitiveUnres(unparsed, TypeUtils.String));
   }
 
-  public static parseValue = (value: string, type: Type): ValueParseResult => {
+  private static parseRowLiteral = (unparsed: string): ValueParseResult => {
+    Parser.ensureInitialized();
+    const match = Parser.formulaGrammar.match(unparsed, "CallExp");
+    if (match.succeeded()) {
+      const ast = Parser.formulaSemantics(match).toAST() as CallUnres;
+      return Parser.success(ast);
+    }
+    return Parser.failure;
+  }
+
+  public static parseLiteral = (unparsed: string, type: Type): ValueParseResult => {
     if (TypeUtils.isNumber(type)) {
-      return Parser.parseNumber(value);
+      return Parser.parseNumber(unparsed);
     } else if (TypeUtils.isBoolean(type)) {
-      return Parser.parseBoolean(value);
+      return Parser.parseBoolean(unparsed);
     } else if (TypeUtils.isString(type)) {
-      return Parser.parseString(value);
+      return Parser.parseString(unparsed);
+    } else if (TypeUtils.isRow(type)) {
+      return Parser.parseRowLiteral(unparsed);
     } else if (
       TypeUtils.isDrawing(type) ||
       TypeUtils.isGrid(type) ||
-      TypeUtils.isDict(type) ||
+      TypeUtils.isPartialRow(type) ||
       TypeUtils.isList(type) ||
       TypeUtils.isLambda(type) ||
       TypeUtils.isBoundingType(type)
@@ -83,9 +95,9 @@ export class Parser {
     }
   }
 
-  public static parseExpression = (exp: string): ExpressionParseResult => {
+  public static parseExpression = (unparsed: string): ExpressionParseResult => {
     Parser.ensureInitialized();
-    const match = Parser.formulaGrammar.match(exp);
+    const match = Parser.formulaGrammar.match(unparsed);
     if (match.succeeded()) {
       const ast = Parser.formulaSemantics(match).toAST() as ExpressionUnres;
       return Parser.expressionSuccess(ast);
