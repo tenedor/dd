@@ -63,15 +63,15 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
 
   public static fromParent<T extends Type, C extends Type, P extends Type>(
     parentGridColumn: GridColumn<P, C>,
-    {grid, type, width}: {grid: Grid, type: T, width?: number},
+    {grid, type, width}: {grid: Grid, type?: T, width?: number},
   ): GridColumn<T, C, P> {
-    const {column, formulaEnvironment, updateManager, width: parentWidth} = parentGridColumn;
+    const {column, formulaEnvironment, type: parentType, updateManager, width: parentWidth} = parentGridColumn;
     return new GridColumn(updateManager, {
       column,
       formulaEnvironment,
       grid,
       parentGridColumn,
-      type,
+      type: type || (parentType as Type as T),
       width: width || parentWidth,
     });
   }

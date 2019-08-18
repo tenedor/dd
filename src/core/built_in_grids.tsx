@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 
+import {AssignmentsUnres, CallUnres} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver} from '@language/name_resolver';
 import {Parser} from '@language/parser';
@@ -144,6 +145,46 @@ export function addArithmeticGrid(
   grid.addRows(gridRows);
 }
 
+export function addDerivativeGrid(
+  document: Document,
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+) {
+  const {nameResolver} = formulaEnvironment;
+
+  const grid = document.createGrid({name: "Derivative", formulaEnvironment});
+
+  const instanceType = formulaEnvironment.nameResolver.resolveConstructorReference("Radius Calculator").model.returnType;
+  const columnsDataMap = {
+    In: {name: 'In', type: TypeUtils.Number},
+    Mid: {name: 'Mid', type: instanceType},
+    Out: {name: 'Out', type: TypeUtils.Number},
+  };
+  const columns = generateColumns(updateManager, columnsDataMap);
+  const gridColumnsData: GridColumnData[] = [
+    {column: columns.In, width: 100},
+    {column: columns.Mid, width: 200},
+    {column: columns.Out, width: 100, expressionString: 'Mid.Out'},
+  ];
+  const gridColumns = generateGridColumns(updateManager, formulaEnvironment, grid, gridColumnsData);
+  grid.addColumns(gridColumns);
+  setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
+
+  const astUnres = new CallUnres("Radius Calculator", new AssignmentsUnres({}, []));
+  const astLiteral = astUnres.resolve(nameResolver);
+  const gridRows = [
+    new Row(updateManager, {
+      columns: grid.columns,
+      gridId: grid.id,
+      manualValues: {
+        [gridColumns[0].columnId]: ValueUtils.numberOf(5),
+        [gridColumns[1].columnId]: astLiteral,
+      },
+    }),
+  ];
+  grid.addRows(gridRows);
+}
+
 export function addShapeGrids(
   document: Document,
   updateManager: UpdateManager,
@@ -196,5 +237,6 @@ export function addBuiltInGrids(
   formulaEnvironment: FormulaEnvironment,
 ) {
   addArithmeticGrid(document, updateManager, formulaEnvironment);
+  addDerivativeGrid(document, updateManager, formulaEnvironment);
   addShapeGrids(document, updateManager, formulaEnvironment);
 }
