@@ -54,17 +54,16 @@ export const RowUpdateType = {
 export type RowUpdateType = (typeof RowUpdateType)[keyof typeof RowUpdateType];
 
 export const ConstructorUpdateType = {
+  DEFAULT_VALUES_UPDATED: "DEFAULT_VALUES_UPDATED" as "DEFAULT_VALUES_UPDATED",
   SCHEMA_UPDATED: "SCHEMA_UPDATED" as "SCHEMA_UPDATED",
 };
 export type ConstructorUpdateType = (typeof ConstructorUpdateType)[keyof typeof ConstructorUpdateType];
 
 export const GridUpdateType = {
-  COLUMN_UPDATED: "COLUMN_UPDATED" as "COLUMN_UPDATED",
+  COLUMNS_UPDATED: "COLUMNS_UPDATED" as "COLUMNS_UPDATED",
   CONSTRUCTOR_UPDATED: "CONSTRUCTOR_UPDATED" as "CONSTRUCTOR_UPDATED",
   DEFAULT_VALUES_UPDATED: "DEFAULT_VALUES_UPDATED" as "DEFAULT_VALUES_UPDATED",
-  FIRST_ROW_UPDATED: "FIRST_ROW_UPDATED" as "FIRST_ROW_UPDATED",
-  NAME_UPDATED: "NAME_UPDATED" as "NAME_UPDATED",
-  ROW_UPDATED: "ROW_UPDATED" as "ROW_UPDATED",
+  ROWS_UPDATED: "ROWS_UPDATED" as "ROWS_UPDATED",
 }
 export type GridUpdateType = (typeof GridUpdateType)[keyof typeof GridUpdateType];
 

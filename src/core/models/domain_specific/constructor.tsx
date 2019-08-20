@@ -14,7 +14,7 @@ import {SimpleUpdateManager, UpdateDescriptor, UpdateManager} from '../core/upda
 import {ArrayUpdateType, ConstructorUpdateType, GridColumnUpdateType} from '../core/update_types';
 import {GridColumns} from './grid';
 import {GridColumnUpdateDescriptor} from './grid_column';
-import {Row} from './row';
+import {Row, RowUpdateDescriptor} from './row';
 
 interface BaseConstructor<R extends Type, I extends Identifier = Identifier> {
   readonly id: string,
@@ -29,8 +29,9 @@ interface BaseConstructor<R extends Type, I extends Identifier = Identifier> {
 export type Constructor<R extends Type = Type, I extends Identifier = Identifier> = BaseConstructor<R, I> & Model;
 
 export interface ConstructorData<I extends Identifier = Identifier> {
-  gridId: I,
   columns: GridColumns,
+  defaultValues: Row,
+  gridId: I,
   getName: () => string,
   namespace: ValueNamespace,
 }
@@ -39,8 +40,9 @@ export interface ConstructorUpdateDescriptor extends UpdateDescriptor<Constructo
 
 export class GridConstructor<I extends Identifier = Identifier>
     extends Mutable<ConstructorUpdateDescriptor> implements BaseConstructor<RowType<I>, I> {
-  private readonly gridId: I;
   private readonly columns: GridColumns;
+  private readonly defaultValues: Row;
+  private readonly gridId: I;
   private readonly getName: () => string;
   public readonly isConstructorLiteral = true;
   public readonly namespace: ValueNamespace;
@@ -49,18 +51,20 @@ export class GridConstructor<I extends Identifier = Identifier>
 
   constructor(
     updateManager: UpdateManager,
-    {gridId, columns, getName, namespace}: ConstructorData<I>,
+    {columns, defaultValues, gridId, getName, namespace}: ConstructorData<I>,
     modelType: ModelType = ModelType.CONSTRUCTOR,
   ) {
     super(updateManager, modelType);
-    this.gridId = gridId;
     this.columns = columns;
+    this.defaultValues = defaultValues;
+    this.gridId = gridId;
     this.getName = getName;
     this.namespace = namespace;
     this.returnType = TypeUtils.RowOf(gridId);
     this.assignmentsType = TypeUtils.PartialRowOf(gridId);
 
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
+    this.defaultValues.listenForUpdate(this, this.onDefaultValuesUpdated);
   }
 
   public get name(): string {
@@ -68,11 +72,12 @@ export class GridConstructor<I extends Identifier = Identifier>
   }
 
   public eval = (valueResolver: ValueResolver, asmts: PartialRowValue<I>): RowValue<I> => {
-    const {columns, gridId} = this;
+    const {columns, defaultValues, gridId} = this;
     const updateManager = new SimpleUpdateManager();
     const manualValues = _.extend({}, asmts.dict);
     const row = new Row(updateManager, {
       columns,
+      defaultValues,
       gridId,
       manualValues,
     });
@@ -89,6 +94,14 @@ export class GridConstructor<I extends Identifier = Identifier>
       return [descriptor];
     }
     return [];
+  }
+
+  private onDefaultValuesUpdated = (
+    epoch: number,
+    updates: RowUpdateDescriptor[],
+  ): ConstructorUpdateDescriptor[] => {
+      this.onDependencyUpdated(epoch);
+      return [{type: ConstructorUpdateType.DEFAULT_VALUES_UPDATED}];
   }
 
   private schemaUpdated = (updates: Array<ArrayUD<GridColumnUpdateDescriptor>>): boolean => {

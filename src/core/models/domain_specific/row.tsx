@@ -23,9 +23,10 @@ interface ManualValues {
 }
 
 interface RowData<I extends Identifier = Identifier> {
+  gridId: I,
   columns: GridColumns,
   manualValues: ManualValues,
-  gridId: I,
+  defaultValues?: Row,
 }
 
 export type RowContext = RODictionary<Cell>;
@@ -35,14 +36,16 @@ export interface RowUpdateDescriptor extends UpdateDescriptor<RowUpdateType> {
 }
 
 export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDescriptor> {
-  private readonly columns: GridColumns;
   private readonly gridId: I;
+  private readonly columns: GridColumns;
+  private readonly defaultValues?: Row;
   public readonly cells: Cells;
 
-  constructor(updateManager: UpdateManager, {columns, gridId, manualValues}: RowData<I>, modelType: ModelType = ModelType.ROW) {
+  constructor(updateManager: UpdateManager, {columns, defaultValues, gridId, manualValues}: RowData<I>, modelType: ModelType = ModelType.ROW) {
     super(updateManager, modelType);
-    this.columns = columns;
     this.gridId = gridId;
+    this.columns = columns;
+    this.defaultValues = defaultValues;
     this.cells = new FunctionalDictionaryM(updateManager, {});
     this.constructCells(manualValues);
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
@@ -80,11 +83,13 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
   private constructCells = (manualValues: ManualValues) => {
     const cellsToConstruct = Row.getColumnsOrderedByDependency(this.columns);
     cellsToConstruct.forEach(column => {
-      const {getRowContext, gridId, updateManager} = this;
+      const {defaultValues, getRowContext, gridId, updateManager} = this;
       const {columnId} = column;
       const manualValue = manualValues[columnId];
+      const defaultValue = defaultValues ? defaultValues.cells.get(columnId) : undefined;
       this.cells.set(columnId, new Cell(updateManager, {
         column,
+        defaultValue,
         getRowContext,
         gridId,
         manualValue,
@@ -93,14 +98,19 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
   }
 
   private updateCellMembership(): RowUpdateDescriptor[] {
-    const {getRowContext, gridId, updateManager} = this;
+    const {defaultValues, getRowContext, gridId, updateManager} = this;
     const {addedIds, removedIds} = keysDiff(this.cells.d, this.columns.d);
     removedIds.forEach(id => this.cells.remove(id));
-    addedIds.forEach(id => this.cells.set(id, new Cell(updateManager, {
-      column: this.columns.d[id],
-      getRowContext,
-      gridId,
-    })));
+    addedIds.forEach(id => {
+      const column = this.columns.d[id];
+      const defaultValue = defaultValues ? defaultValues.cells.get(id) : undefined;
+      this.cells.set(id, new Cell(updateManager, {
+        column,
+        defaultValue,
+        getRowContext,
+        gridId,
+      }));
+    });
     const updatedIds = addedIds.concat(removedIds);
     const descriptor = {type: RowUpdateType.CELLS_UPDATED, columnIds: updatedIds};
     return [descriptor];

@@ -22,6 +22,7 @@ function isAST<T extends Type>(value: ValueOrAST<T> | undefined): value is Resol
 
 interface CellData<T extends Type> {
   column: GridColumn<T>,
+  defaultValue?: Cell<T>,
   getRowContext: () => RowContext,
   gridId: Identifier,
   manualValue?: ValueOrAST<T>,
@@ -31,6 +32,7 @@ export interface CellUpdateDescriptor extends UpdateDescriptor<CellUpdateType> {
 
 export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   private readonly column: GridColumn<T>;
+  private readonly defaultValue?: Cell<T>;
   private readonly getRowContext: () => RowContext;
   private readonly gridId: Identifier;
   private dependencies: RODictionary<Model>;
@@ -40,11 +42,12 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
   constructor(
     updateManager: UpdateManager,
-    {column, getRowContext, gridId, manualValue}: CellData<T>,
+    {column, defaultValue, getRowContext, gridId, manualValue}: CellData<T>,
     modelType: ModelType = ModelType.CELL,
   ) {
     super(updateManager, modelType);
     this.column = column;
+    this.defaultValue = defaultValue;
     this.getRowContext = getRowContext;
     this.gridId = gridId;
     this.manualValue = manualValue;
@@ -56,6 +59,10 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     this._value = this.computeValue();
 
     this.column.listenForUpdate(this, this.onColumnUpdated);
+
+    if (this.defaultValue) {
+      this.defaultValue.listenForUpdate(this, this.onDefaultValueUpdated);
+    }
 
     // Need to listen to the formula container for dependency updates but this
     // is not enough: the formula might change without changing dependencies.
@@ -135,6 +142,10 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return [];
   }
 
+  private onDefaultValueUpdated = (epoch: number, updates: CellUpdateDescriptor[]): CellUpdateDescriptor[] => {
+    return this.onDependencyUpdatedHelper(epoch);
+  }
+
   private onFormulaExpressionUpdatedDependencies = (
     updates: FormulaExpressionUpdateDescriptor[],
   ): DependencySetUpdateDescriptor[] => {
@@ -147,14 +158,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     updates: FormulaExpressionUpdateDescriptor[],
   ): CellUpdateDescriptor[] => {
     const formulaUpdated = updates.some(u => u.type === FormulaExpressionUpdateType.FORMULA_EXPRESSION_UPDATED);
-    if (formulaUpdated) {
-      const descriptors = this.refreshValueAndGetUpdateDescriptors();
-      if (descriptors.length) {
-        this.onDependencyUpdated(epoch);
-        return descriptors;
-      }
-    }
-    return [];
+    return formulaUpdated ? this.onDependencyUpdatedHelper(epoch) : [];
   }
 
   public onDependencySetUpdated = (
@@ -168,6 +172,10 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   private onValueDependencyUpdated = (epoch: number, updates: CellUpdateDescriptor[]): CellUpdateDescriptor[] => {
+      return this.onDependencyUpdatedHelper(epoch);
+  }
+
+  private onDependencyUpdatedHelper = (epoch: number): CellUpdateDescriptor[] => {
     const descriptors = this.refreshValueAndGetUpdateDescriptors();
     if (descriptors.length) {
       this.onDependencyUpdated(epoch);
@@ -200,7 +208,9 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
   private getDefaultValue = (): ValueOrAST<T> => {
     const {type, nameResolver} = this.column;
-    if (TypeUtils.supportsLiterals(type)) {
+    if (this.defaultValue) {
+      return this.defaultValue.value;
+    } else if (TypeUtils.supportsLiterals(type)) {
       return ValueUtils.getDefaultValue(type, nameResolver);
     }
     throw new Error(`Default value is not supported for type ${type}`);

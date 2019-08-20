@@ -47,6 +47,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     {formulaEnvironment, name, parentGrid}: GridData,
     modelType: ModelType = ModelType.GRID,
   ) {
+    // TODO need to set up default row
     super(updateManager, modelType);
     this._name = name;
     this.formulaEnvironment = formulaEnvironment;
@@ -56,11 +57,21 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     }
     this.columns = new FunctionalKeyedArray(updateManager, [], 'columnId');
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
-    this.rows = new FunctionalArrayM(updateManager, []);
+    this.rows = new FunctionalArrayM(updateManager, [this.buildDefaultRow()]);
     this.rows.listenForUpdate(this, this.onRowsUpdated);
     this.namespace = Grid.buildNamespace(this.getColumnByName, this.getColumnById);
     this.gridConstructor = this.buildConstructor();
     this.gridConstructor.listenForUpdate(this, this.onGridConstructorUpdated);
+  }
+
+  private buildDefaultRow = (): Row => {
+    const {columns, id, parent, updateManager} = this;
+    return new Row(updateManager, {
+      columns,
+      defaultValues: parent ? parent.defaultValues : undefined,
+      gridId: id,
+      manualValues: {},
+    });
   }
 
   private static buildNamespace = (
@@ -84,10 +95,10 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private buildConstructor = (): GridConstructor<I> => {
-    const {id: gridId, columns, namespace} = this;
+    const {columns, defaultValues, id: gridId, namespace} = this;
     // TODO create a Primitive mutable model and make this.name a Primitive
     const getName = () => this.name;
-    return new GridConstructor(this.updateManager, {gridId, columns, getName, namespace});
+    return new GridConstructor(this.updateManager, {columns, defaultValues, gridId, getName, namespace});
   }
 
   public get name(): string {
@@ -97,6 +108,10 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   public get value(): GridValue {
     // TODO fix this
     return {type: TypeUtils.GridOf(this.id), dict: {}, list: []};
+  }
+
+  public get defaultValues(): Row {
+    return this.rows.get(0)!;
   }
 
   private getColumnByName = (name: string): GridColumn | undefined => {
@@ -142,9 +157,10 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   public addNewRow = () => {
-    const {columns, id, updateManager} = this;
+    const {columns, defaultValues, id, updateManager} = this;
     const row = new Row(updateManager, {
       columns,
+      defaultValues,
       gridId: id,
       manualValues: {},
     });
@@ -164,15 +180,14 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     updates: Array<ArrayUD<GridColumnUpdateDescriptor>>,
   ): GridUpdateDescriptor[] => {
     this.onDependencyUpdated(epoch);
-    const descriptor = {type: GridUpdateType.COLUMN_UPDATED};
-    return [descriptor];
+    return [{type: GridUpdateType.COLUMNS_UPDATED}];
   }
 
   private onRowsUpdated = (epoch: number, updates: Array<ArrayUD<RowUpdateDescriptor>>): GridUpdateDescriptor[] => {
-    const descriptors: GridUpdateDescriptor[] = [{type: GridUpdateType.ROW_UPDATED}];
-    const firstRowUpdated = updates.some(u => u.index === 0);
-    if (firstRowUpdated) {
-      descriptors.push({type: GridUpdateType.FIRST_ROW_UPDATED});
+    const descriptors: GridUpdateDescriptor[] = [{type: GridUpdateType.ROWS_UPDATED}];
+    const defaultValueUpdated = updates.some(u => u.index === 0);
+    if (defaultValueUpdated) {
+      descriptors.push({type: GridUpdateType.DEFAULT_VALUES_UPDATED});
     }
     this.onDependencyUpdated(epoch);
     return descriptors;
@@ -188,7 +203,11 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private onParentGridUpdated = (epoch: number, updates: GridUpdateDescriptor[]): GridUpdateDescriptor[] => {
-    // for now do nothing
+    const columnsUpdated = updates.some(u => u.type === GridUpdateType.COLUMNS_UPDATED);
+    if (columnsUpdated) {
+      // TODO - Need to keep inherited columns in sync with parent's columns
+      return [];
+    }
     return [];
   }
 }

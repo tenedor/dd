@@ -5,7 +5,7 @@ import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver} from '@language/name_resolver';
 import {Parser} from '@language/parser';
 import {Type, TypeUtils} from '@language/types';
-import {ValueUtils} from '@language/values';
+import {ValueOrAST, ValueUtils} from '@language/values';
 import {UpdateManager} from '@models/core/update_manager';
 import {Column} from '@models/domain_specific/column';
 import {Document} from '@models/domain_specific/document';
@@ -90,27 +90,36 @@ function setColumnExpressions(grid: Grid, gridColumnsData: Array<GridColumnData 
   });
 }
 
-function generateRows(
+function addRows(
   updateManager: UpdateManager,
   grid: Grid,
-  columns: GridColumn[],
   hasParent: boolean,
-): Row[] {
-  const gridId = grid.id;
+) {
+  const {columns, defaultValues, id: gridId} = grid;
   const rowCount = hasParent ? 3 : 6;
   const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
   const sideLength = (i: number) => 15 * (0.5 + i / 4);
-  return _.range(rowCount).map(i => new Row(updateManager, {
-    columns: grid.columns,
-    gridId,
-    manualValues: {
-      [columns[0].columnId]: ValueUtils.numberOf(hasParent ? 100 - i * 20 : i * 10),
-      [columns[1].columnId]: ValueUtils.numberOf(i * i * 3),
-      [columns[2].columnId]: ValueUtils.numberOf((i + 1) * (i + 1) * 2),
-      [columns[3].columnId]: ValueUtils.stringOf(colors[i + (hasParent ? 2 : 0)]),
-      [columns[4].columnId]: ValueUtils.stringOf(getStarPath(5 + 2 * i, 2 + 2 * i, sideLength(i))),
-    },
+  const rowsValues = _.range(rowCount).map(i => ({
+    [columns.get(0)!.columnId]: ValueUtils.numberOf(hasParent ? 100 - i * 20 : i * 10),
+    [columns.get(1)!.columnId]: ValueUtils.numberOf(i * i * 3),
+    [columns.get(2)!.columnId]: ValueUtils.numberOf((i + 1) * (i + 1) * 2),
+    [columns.get(3)!.columnId]: ValueUtils.stringOf(colors[i + (hasParent ? 2 : 0)]),
+    [columns.get(4)!.columnId]: ValueUtils.stringOf(getStarPath(5 + 2 * i, 2 + 2 * i, sideLength(i))),
   }));
+  setFirstRowValues(grid, rowsValues[0]);
+  const laterRowsValues = rowsValues.slice(1);
+  const laterRows = laterRowsValues.map(manualValues => new Row(updateManager, {
+    columns,
+    defaultValues,
+    gridId,
+    manualValues,
+  }));
+  grid.addRows(laterRows);
+}
+
+function setFirstRowValues(grid: Grid, values: {[columnId: string]: ValueOrAST}) {
+  const {cells} = grid.rows.get(0)!;
+  Object.keys(values).map(id => cells.get(id)!.setManualValue(values[id]));
 }
 
 export function addArithmeticGrid(
@@ -135,14 +144,8 @@ export function addArithmeticGrid(
   grid.addColumns(gridColumns);
   setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
 
-  const gridRows = [
-    new Row(updateManager, {
-      columns: grid.columns,
-      gridId: grid.id,
-      manualValues: {[gridColumns[0].columnId]: ValueUtils.numberOf(5)},
-    }),
-  ];
-  grid.addRows(gridRows);
+  const manualValues = {[gridColumns[0].columnId]: ValueUtils.numberOf(5)};
+  setFirstRowValues(grid, manualValues);
 }
 
 export function addDerivativeGrid(
@@ -172,17 +175,11 @@ export function addDerivativeGrid(
 
   const astUnres = new CallUnres("Radius Calculator", new AssignmentsUnres({}, []));
   const astLiteral = astUnres.resolve(nameResolver);
-  const gridRows = [
-    new Row(updateManager, {
-      columns: grid.columns,
-      gridId: grid.id,
-      manualValues: {
-        [gridColumns[0].columnId]: ValueUtils.numberOf(5),
-        [gridColumns[1].columnId]: astLiteral,
-      },
-    }),
-  ];
-  grid.addRows(gridRows);
+  const manualValues = {
+    [gridColumns[0].columnId]: ValueUtils.numberOf(5),
+    [gridColumns[1].columnId]: astLiteral,
+  };
+  setFirstRowValues(grid, manualValues);
 }
 
 export function addShapeGrids(
@@ -214,8 +211,7 @@ export function addShapeGrids(
   const grid1Columns = generateGridColumns(updateManager, formulaEnvironment, grid1, grid1ColumnsData);
   grid1.addColumns(grid1Columns);
   setColumnExpressions(grid1, grid1ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid1.id)));
-  const grid1Rows = generateRows(updateManager, grid1, grid1Columns, false);
-  grid1.addRows(grid1Rows);
+  addRows(updateManager, grid1, false);
 
   const grid2ColumnsData: ChildGridColumnData[] = grid1Columns.map(parentGridColumn => {
     if (parentGridColumn.columnId === columns.DrawShape.id) {
@@ -227,8 +223,7 @@ export function addShapeGrids(
   const grid2Columns = generateGridColumns(updateManager, formulaEnvironment, grid2, grid2ColumnsData);
   grid2.addColumns(grid2Columns);
   setColumnExpressions(grid2, grid2ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid2.id)));
-  const grid2Rows = generateRows(updateManager, grid2, grid2Columns, true);
-  grid2.addRows(grid2Rows);
+  addRows(updateManager, grid2, true);
 }
 
 export function addBuiltInGrids(
