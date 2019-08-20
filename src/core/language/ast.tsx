@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 
+import {Constructor} from '@models/domain_specific/constructor'; // Only a type dependency
 import {ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
 import {NameResolver} from './name_resolver';
@@ -470,6 +471,10 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
     this.type = type;
     this.externalDependencies = asmts.externalDependencies.concat([constructorRef]);
     this.constructorRef = constructorRef;
+  }
+
+  public get constructor(): Constructor<R, I> {
+    return this.constructorRef.model;
   }
 
   public get isLiteral() {

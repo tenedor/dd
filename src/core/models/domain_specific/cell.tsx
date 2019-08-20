@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {ResolvedAST, ResolvedASTUtils} from '@language/ast';
+import {CallRes, ResolvedAST, ResolvedASTUtils} from '@language/ast';
 import {AbsoluteValueReference, ModelWithValue, Reference, ReferenceUtils,
         ValueReference} from '@language/reference';
 import {Identifier, Type, TypeUtils} from '@language/types';
@@ -18,6 +18,10 @@ import {RowContext} from './row';
 
 function isAST<T extends Type>(value: ValueOrAST<T> | undefined): value is ResolvedAST<T> {
   return value !== undefined && 'nodeType' in value;
+}
+
+function isCallAST<T extends Type>(value: ValueOrAST<T> | undefined): value is CallRes<T> {
+  return isAST(value) && value instanceof CallRes;
 }
 
 interface CellData<T extends Type> {
@@ -86,6 +90,9 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
   public setManualValue = (value: ValueOrAST<T> | undefined) => {
     const {type} = this.column;
+    if (value === this.manualValue) {
+      return;
+    }
     if (value !== undefined) {
       assert(!isAST(value) || value.isLiteral, "Manual values must be literals.");
       assert(TypeUtils.isAssignableTo(value.type, type), "Cannot set manual value of " +
@@ -96,10 +103,24 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
         value = value.eval(this.getValueResolver());
       }
     }
+    this.removeManualValueListeners();
     this.manualValue = value;
+    this.addManualValueListeners();
     const descriptors = this.refreshValueAndGetUpdateDescriptors();
     if (descriptors.length) {
       this.onSelfMutated(descriptors);
+    }
+  }
+
+  private addManualValueListeners = () => {
+    if (isCallAST(this.manualValue)) {
+      this.manualValue.constructor.listenForUpdate(this, this.onValueConstructorUpdated);
+    }
+  }
+
+  private removeManualValueListeners = () => {
+    if (isCallAST(this.manualValue)) {
+      this.manualValue.constructor.removeUpdateListener(this);
     }
   }
 
@@ -140,6 +161,10 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   private onColumnUpdated = (epoch: number, updates: GridColumnUpdateDescriptor[]): CellUpdateDescriptor[] => {
     // for now do nothing
     return [];
+  }
+
+  private onValueConstructorUpdated = (epoch: number, updates: UpdateDescriptor[]): CellUpdateDescriptor[] => {
+    return this.onDependencyUpdatedHelper(epoch);
   }
 
   private onDefaultValueUpdated = (epoch: number, updates: CellUpdateDescriptor[]): CellUpdateDescriptor[] => {
