@@ -81,6 +81,9 @@ export class Parser {
       return Parser.parseBoolean(unparsed);
     } else if (TypeUtils.isString(type)) {
       return Parser.parseString(unparsed);
+    } else if (TypeUtils.isDrawing(type)) {
+      // for now
+      return Parser.failure;
     } else if (TypeUtils.isList(type)) {
       // for now
       return Parser.failure;

@@ -4,7 +4,7 @@ import {Row} from '@models/domain_specific/row'; // only a type dependency
 import {RODictionary} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
 import {CallRes, ResolvedAST} from './ast';
-import {Drawing, drawingsAreEqual} from './drawing_value';
+import {Drawing, drawingsAreEqual, DrawingVariant} from './drawing_value';
 import {NameResolver} from './name_resolver';
 import {Parser} from './parser';
 import {DictType, DrawingType, GridIdentifier, GridType, Identifier, LambdaType,
@@ -204,6 +204,15 @@ export class ValueUtils {
   public static get defaultNumber() { return ValueUtils.numberOf(0); }
   public static get defaultBoolean() { return ValueUtils.booleanOf(false); }
   public static get defaultString() { return ValueUtils.stringOf(""); }
+
+  public static get defaultDrawing() {
+    const drawingType = DrawingVariant.CIRCLE;
+    const radius = 10;
+    const center = {x: 50, y: 50};
+    const fill = "black";
+    return ValueUtils.drawingOf({drawingType, radius, center, fill});
+  }
+
   public static defaultListOfType = <T extends Type> (itemType: T) => ValueUtils.listOf([], itemType)
 
   public static getDefaultValue = <T extends SupportsLiteralsType> (type: T & SupportsLiteralsType, resolver: NameResolver): ValueOrAST<T> => {
@@ -217,6 +226,8 @@ export class ValueUtils {
       return ValueUtils.defaultString as Value<T>;
     } else if (TypeUtils.isBoolean(type)) {
       return ValueUtils.defaultBoolean as Value<T>;
+    } else if (TypeUtils.isDrawing(type)) {
+      return ValueUtils.defaultDrawing as Value<T>;
     } else if (TypeUtils.isList(type)) {
       return ValueUtils.defaultListOfType(type.itemType) as Value<T>;
     } else if (TypeUtils.isRow(type)) {

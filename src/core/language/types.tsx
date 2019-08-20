@@ -85,7 +85,7 @@ export enum BoundingType {
 
 // ListType only supports literals if its item type is Bottom or is a
 // SupportsLiteralsType, but TypeScript's types cannot express this concept.
-export type SupportsLiteralsType = PrimitiveType | ListType | RowType;
+export type SupportsLiteralsType = PrimitiveType | DrawingType | ListType | RowType;
 
 export type Type = PrimitiveType | DrawingType | ListTypeBase | DictType |
   LambdaTypeBase | BoundingType;
@@ -180,7 +180,7 @@ export class TypeUtils {
   }
 
   public static supportsLiterals = (t: Type): t is SupportsLiteralsType => {
-    return TypeUtils.isPrimitive(t) || TypeUtils.isRow(t) ||
+    return TypeUtils.isPrimitive(t) || TypeUtils.isDrawing(t) || TypeUtils.isRow(t) ||
         (TypeUtils.isList(t) && TypeUtils.listItemTypeSupportsLiterals(t.itemType));
   }
 
