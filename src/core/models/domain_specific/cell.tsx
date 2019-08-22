@@ -10,8 +10,10 @@ import {RODictionary} from '@utils/types';
 import {assert, keysDiff} from '@utils/utils';
 import {Model, ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
-import {DependencySetUpdateDescriptor, UpdateDescriptor, UpdateManager} from '../core/update_manager';
-import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType} from '../core/update_types';
+import {DependencyNode, DependencySetUpdateDescriptor, UpdateDescriptor, UpdateListener,
+        UpdateManager} from '../core/update_manager';
+import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType}
+        from '../core/update_types';
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {RowContext} from './row';
@@ -43,6 +45,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   private valueDependencies: RODictionary<ModelWithValue>;
   private manualValue?: ValueOrAST<T>;
   private _value: Value<T>;
+  private readonly permanentDependencies: DependencyNode[] = [];
 
   constructor(
     updateManager: UpdateManager,
@@ -62,16 +65,49 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
     this._value = this.computeValue();
 
-    this.column.listenForUpdate(this, this.onColumnUpdated);
+    this.addPermanentListener(this.column, this.onColumnUpdated);
 
+    const {type, nameResolver} = this.column;
     if (this.defaultValue) {
-      this.defaultValue.listenForUpdate(this, this.onDefaultValueUpdated);
+      this.addPermanentListener(this.defaultValue, this.onDefaultValueUpdated);
+    } else if (TypeUtils.supportsLiterals(type)) {
+      const builtInDefault = ValueUtils.getDefaultValue(type, nameResolver);
+      if (isCallAST(builtInDefault)) {
+      this.addPermanentListener(builtInDefault.constructor, this.onRootDefaultValueUpdated);
+      }
     }
 
     // Need to listen to the formula container for dependency updates but this
     // is not enough: the formula might change without changing dependencies.
     this.formulaExpression.listenForDependencyUpdate(this, this.onFormulaExpressionUpdatedDependencies);
-    this.formulaExpression.listenForUpdate(this, this.onFormulaExpressionUpdated);
+    this.addPermanentListener(this.formulaExpression, this.onFormulaExpressionUpdated);
+  }
+
+  private hasPermanentListener = (node: DependencyNode): boolean => {
+    return this.permanentDependencies.includes(node);
+  }
+
+  private addPermanentListener = <D extends UpdateDescriptor, N extends DependencyNode<D>> (
+    node: N, listener: UpdateListener<N, D, UpdateDescriptor>,
+  ) => {
+    if (!this.hasPermanentListener(node)) {
+      node.listenForUpdate(this, listener);
+      this.permanentDependencies.push(node);
+    }
+  }
+
+  private addDynamicListener = <D extends UpdateDescriptor, N extends DependencyNode<D>> (
+    node: N, listener: UpdateListener<N, D, UpdateDescriptor>,
+  ) => {
+    if (!this.hasPermanentListener(node)) {
+      node.listenForUpdate(this, listener);
+    }
+  }
+
+  private removeDynamicListener = (node: DependencyNode) => {
+    if (!this.hasPermanentListener(node)) {
+      node.removeUpdateListener(this);
+    }
   }
 
   public get value(): Value<T> {
@@ -114,13 +150,13 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
   private addManualValueListeners = () => {
     if (isCallAST(this.manualValue)) {
-      this.manualValue.constructor.listenForUpdate(this, this.onValueConstructorUpdated);
+      this.addDynamicListener(this.manualValue.constructor, this.onValueConstructorUpdated);
     }
   }
 
   private removeManualValueListeners = () => {
     if (isCallAST(this.manualValue)) {
-      this.manualValue.constructor.removeUpdateListener(this);
+      this.removeDynamicListener(this.manualValue.constructor);
     }
   }
 
@@ -143,6 +179,8 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return _.extend({}, absoluteDependencies, relativeDependencies);
   }
 
+  // TODO - Clean up dependency management! Need to guarantee that fixed dependencies
+  // never get lost during dynamic dependency updating.
   private updateDependencies = (): DependencySetUpdateDescriptor[] => {
     const oldDependencies = this.dependencies;
     const dependencyRefs = this.formulaExpression.dependencies;
@@ -151,8 +189,8 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     this.valueDependencies = this.resolveValueDependencies(valueDependencyRefs);
     const {removedIds, addedIds} = keysDiff(oldDependencies, this.dependencies);
     if (removedIds.length || addedIds.length) {
-      removedIds.forEach(id => oldDependencies[id].removeUpdateListener(this));
-      addedIds.forEach(id => this.dependencies[id].listenForUpdate(this, this.onValueDependencyUpdated));
+      removedIds.forEach(id => this.removeDynamicListener(oldDependencies[id]));
+      addedIds.forEach(id => this.addDynamicListener(this.dependencies[id], this.onValueDependencyUpdated));
       return [{type: DependencySetUpdateType.DEPENDENCY_SET_UPDATED}];
     }
     return [];
@@ -168,6 +206,10 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   private onDefaultValueUpdated = (epoch: number, updates: CellUpdateDescriptor[]): CellUpdateDescriptor[] => {
+    return this.onDependencyUpdatedHelper(epoch);
+  }
+
+  private onRootDefaultValueUpdated = (epoch: number, updates: UpdateDescriptor[]): CellUpdateDescriptor[] => {
     return this.onDependencyUpdatedHelper(epoch);
   }
 
@@ -196,7 +238,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return [];
   }
 
-  private onValueDependencyUpdated = (epoch: number, updates: CellUpdateDescriptor[]): CellUpdateDescriptor[] => {
+  private onValueDependencyUpdated = (epoch: number, updates: UpdateDescriptor[]): CellUpdateDescriptor[] => {
       return this.onDependencyUpdatedHelper(epoch);
   }
 
