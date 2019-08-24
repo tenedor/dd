@@ -114,6 +114,10 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return this._value;
   }
 
+  public get rawValue(): ValueOrAST<T> {
+    return this.isCalculated() ? this.value : this.getManualValueOrDefault();
+  }
+
   public getDisplayValue = (): string => {
     const {nameResolver} = this.column;
     const rawValue = this.isCalculated() ? this.value : this.getManualValueOrDefault();
@@ -280,7 +284,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   private getDefaultValue = (): ValueOrAST<T> => {
     const {type, nameResolver} = this.column;
     if (this.defaultValue) {
-      return this.defaultValue.value;
+      return this.defaultValue.rawValue;
     } else if (TypeUtils.supportsLiterals(type)) {
       return ValueUtils.getDefaultValue(type, nameResolver);
     }

@@ -245,9 +245,9 @@ export class ValueUtils {
       const gridName = resolver.nameForConstructorId(v.type.schemaId.gridId);
       const escapedName = Parser.identToText(gridName);
       if (ValueUtils.isGrid(v)) {
-        return `Grid ${escapedName}`;
+        return `${escapedName}`;
       } else if (ValueUtils.isRow(v)) {
-        return `Row of ${escapedName}`;
+        return `${escapedName}(...)`;
       } else if (ValueUtils.isPartialRow(v)) {
         return `Partial Row of ${escapedName}`;
       } else {
