@@ -120,6 +120,10 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return isAST(rawValue) ? rawValue.toText(nameResolver) : ValueUtils.toString(rawValue, nameResolver);
   }
 
+  public valueIsDefault = (): boolean => {
+    return this.manualValue === undefined && !this.isCalculated();
+  }
+
   public get formulaExpression(): FormulaExpression<T> {
     return this.column.formulaExpression;
   }

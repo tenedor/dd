@@ -2,7 +2,6 @@ import * as _ from 'lodash';
 import * as React from 'react';
 
 import {Type} from '@language/types';
-import {ValueUtils} from '@language/values';
 import {Cell} from '@models/domain_specific/cell';
 import {CellIndex, Grid} from '@models/domain_specific/grid';
 import {Row} from '@models/domain_specific/row';
@@ -195,7 +194,8 @@ export class TableView extends BaseComponent<Props, State> {
     return grid.columns.a.map(({columnId}) => {
       const cellIndexString = this.stringEncodeCellIndex({columnId, rowIndex});
       const displayValue = cells.d[columnId].getDisplayValue();
-      return <CellView key={cellIndexString} dataCellId={cellIndexString} value={displayValue} />;
+      const isDefaultValue = cells.d[columnId].valueIsDefault();
+      return <CellView key={cellIndexString} dataCellId={cellIndexString} value={displayValue} isDefaultValue={isDefaultValue} />;
     });
   }
 

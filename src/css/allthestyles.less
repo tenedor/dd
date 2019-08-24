@@ -1,12 +1,15 @@
 // all blame for the monolithic stylesheet goes to my laziness to learn webpack
 
 @z-index-pop-up: 1;
+@text-color: black;
+@default-value-text-color: #888888;
 
 body {
   margin: 0;
 }
 
 .text() {
+  color: @text-color;
   font-family: sans-serif;
   font-size: 16px;
   line-height: 18px;
@@ -156,6 +159,10 @@ input, textarea, select, button {
   cursor: default;
   padding: 4px 0;
 
+  &.defaultValue {
+    color: @default-value-text-color;
+  }
+
   &.header {
     border-bottom-color: #aaaaaa;
     border-bottom-width: 2px;
@@ -193,6 +200,14 @@ input, textarea, select, button {
   position: absolute;
   right: -1px;
   top: -1px;
+
+  &.defaultValue textarea {
+    color: @default-value-text-color;
+  }
+
+  &.defaultValue.editing textarea {
+      color: @text-color;
+  }
 
   &.editing {
     caret-color: auto;

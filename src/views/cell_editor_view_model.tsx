@@ -14,6 +14,7 @@ enum EditState {
 }
 
 export abstract class CellEditorViewModel {
+  public abstract readonly isDefaultValue: boolean;
   public abstract readonly isHeader: boolean;
   protected readonly column: GridColumn;
   protected readonly setIsEditing: (isEditing: boolean) => void;
@@ -91,6 +92,7 @@ export abstract class CellEditorViewModel {
 }
 
 export class ColumnHeaderEditorViewModel extends CellEditorViewModel {
+  public readonly isDefaultValue = false;
   public readonly isHeader = true;
 
   public startEditing() {
@@ -126,6 +128,10 @@ export class RowCellEditorViewModel extends CellEditorViewModel {
   ) {
     super({column, setIsEditing});
     this.cell = cell;
+  }
+
+  public get isDefaultValue(): boolean {
+    return this.cell.valueIsDefault();
   }
 
   public startEditing() {

@@ -52,6 +52,7 @@ export class CellEditorView extends BaseComponent<Props, State> {
   public render = () => {
     const value = this.viewModel.makeDisplayValue();
     const className = classNames("cell-editor-view", {
+      defaultValue: this.viewModel.isDefaultValue,
       editing: this.state.isEditing,
       header: this.viewModel.isHeader,
     });
