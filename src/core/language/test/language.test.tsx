@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 
+import {Grid} from '@models/domain_specific/grid';
 import {ConvertibleToValue, JestErrorMatcher, TestUtils} from '@test_utils/test_utils';
 import {FormulaEnvironment} from '../formula_environment';
 import {buildNamespace, ConstructorNamespace, NameResolver, NamespaceResolver}
@@ -29,7 +30,8 @@ const fakeGridNamespace = {
 const fakeGrid = {id: fakeGridId, namespace: fakeGridNamespace};
 
 const formulaEnvironment = new FormulaEnvironment();
-formulaEnvironment.addObjectWithNamespace(fakeGrid);
+// TODO make an actual grid to avoid casting
+formulaEnvironment.addGrid(fakeGrid as any as Grid);
 
 const gridColumnNameResolver = formulaEnvironment.nameResolver.resolverFor(TypeUtils.GridOf(fakeGridId));
 const gridColumnValueResolver = new ValueResolver(_.mapValues(fakeColumns, 'value'));
