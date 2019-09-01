@@ -33,7 +33,7 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
   private readonly grid: Grid;
   private readonly parentGridColumn?: GridColumn<P, C>;
   private readonly _type: T;
-  private readonly formulaEnvironment: FormulaEnvironment;
+  private readonly _formulaEnvironment: FormulaEnvironment;
   private readonly _formulaExpression: FormulaExpression<T>;
   private _width: number;
 
@@ -47,7 +47,7 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
     this.grid = grid;
     this.parentGridColumn = parentGridColumn;
     this._type = type;
-    this.formulaEnvironment = formulaEnvironment;
+    this._formulaEnvironment = formulaEnvironment;
     const {nameResolver} = formulaEnvironment;
     const parentExpression = parentGridColumn ? parentGridColumn.formulaExpression : undefined;
     this._formulaExpression = new FormulaExpression(updateManager,
@@ -65,7 +65,7 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
     parentGridColumn: GridColumn<P, C>,
     {grid, type, width}: {grid: Grid, type?: T, width?: number},
   ): GridColumn<T, C, P> {
-    const {column, formulaEnvironment, type: parentType, updateManager, width: parentWidth} = parentGridColumn;
+    const {column, _formulaEnvironment: formulaEnvironment, type: parentType, updateManager, width: parentWidth} = parentGridColumn;
     return new GridColumn(updateManager, {
       column,
       formulaEnvironment,
@@ -89,7 +89,11 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
   }
 
   public get nameResolver(): NameResolver {
-    return this.formulaEnvironment.nameResolver.resolverFor(TypeUtils.GridOf(this.grid.id));
+    return this._formulaEnvironment.nameResolver.resolverFor(TypeUtils.GridOf(this.grid.id));
+  }
+
+  public get formulaEnvironment(): FormulaEnvironment {
+    return this._formulaEnvironment;
   }
 
   public get name(): string {

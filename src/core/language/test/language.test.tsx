@@ -11,11 +11,13 @@ import {TypeUtils} from '../types';
 import {ValueResolver} from '../value_resolver';
 import {ValueUtils} from '../values';
 
+const formulaEnvironment = new FormulaEnvironment();
+
 const fakeGridId = 'fake-grid-id';
 
 const fakeColumns = {
   'fake-column-1': {type: TypeUtils.Number, name: 'One', value: ValueUtils.numberOf(1)},
-  'fake-column-2': {type: TypeUtils.ListOf(TypeUtils.Boolean), name: 'True and False', value: TestUtils.asValue([true, false])},
+  'fake-column-2': {type: TypeUtils.ListOf(TypeUtils.Boolean), name: 'True and False', value: TestUtils.asValue([true, false], formulaEnvironment)},
 };
 
 const fakeGridNamespace = {
@@ -29,16 +31,15 @@ const fakeGridNamespace = {
 
 const fakeGrid = {id: fakeGridId, namespace: fakeGridNamespace};
 
-const formulaEnvironment = new FormulaEnvironment();
 // TODO make an actual grid to avoid casting
 formulaEnvironment.addGrid(fakeGrid as any as Grid);
 
 const gridColumnNameResolver = formulaEnvironment.nameResolver.resolverFor(TypeUtils.GridOf(fakeGridId));
-const gridColumnValueResolver = new ValueResolver(_.mapValues(fakeColumns, 'value'));
+const gridColumnValueResolver = new ValueResolver(_.mapValues(fakeColumns, 'value'), formulaEnvironment);
 
 const nullNamespaceResolver: NamespaceResolver = {resolveNamespace: () => {throw new Error("unexpected namespace resolution")}};
-const nullNameResolver = new NameResolver(nullNamespaceResolver, new ConstructorNamespace({}), buildNamespace({}));
-const nullValueResolver = new ValueResolver({});
+const nullNameResolver = new NameResolver(nullNamespaceResolver, new ConstructorNamespace({}), buildNamespace({}), formulaEnvironment);
+const nullValueResolver = new ValueResolver({}, formulaEnvironment);
 
 
 enum FailureStage {
@@ -102,7 +103,7 @@ const testFormulas = (name: string, formulas: FormulaTestInput[], {
 
         // result
         if (expectedResult !== undefined) {
-          const expectation = TestUtils.asValue(expectedResult);
+          const expectation = TestUtils.asValue(expectedResult, formulaEnvironment);
           expect(result).toEqual(expectation);
         }
       }

@@ -2,6 +2,7 @@ import * as _ from 'lodash';
 
 import {Grid} from '@models/domain_specific/grid'; // Only a type dependency
 import {RODictionary} from '@utils/types';
+import {FormulaEnvironment} from './formula_environment';
 import {ConstructorReference, Reference, ReferenceUtils, ValueReference} from './reference';
 import {DictType, Identifier, RowType, Type, TypeUtils} from './types';
 
@@ -67,19 +68,23 @@ export interface NamespaceResolver {
 }
 
 export class NameResolver {
-  private namespaceResolver: NamespaceResolver;
-  private constructorNamespace: ConstructorNamespace;
-  private valueNamespace: ValueNamespace;
+  private readonly namespaceResolver: NamespaceResolver;
+  private readonly constructorNamespace: ConstructorNamespace;
+  private readonly valueNamespace: ValueNamespace;
+  // TODO clarify the role of NameResolver vs FormulaEnvironment
+  public readonly environment: FormulaEnvironment;
   private static MISSING_NAME_PLACEHOLDER = "missing_name";
 
   constructor(
     namespaceResolver: NamespaceResolver,
     constructorNamespace: ConstructorNamespace,
     valueNamespace: ValueNamespace,
+    environment: FormulaEnvironment,
   ) {
     this.namespaceResolver = namespaceResolver;
     this.constructorNamespace = constructorNamespace;
     this.valueNamespace = valueNamespace;
+    this.environment = environment;
   }
 
   public resolveValueReference = (name: string): ValueReference => {
@@ -143,7 +148,7 @@ export class NameResolver {
         throw new TypeError(`Assignment to \`${id}\` does not match constructor \`${constructor.id}\``);
       } else {
         const {type} = ref;
-        TypeUtils.validateIsAssignableTo(asmtTypesById[id], type,
+        TypeUtils.validateIsAssignableTo(asmtTypesById[id], type, this.environment,
           `Expected value \`${name}\` to be assignable to type \`${TypeUtils.toString(type)}\``);
       }
     });
@@ -151,13 +156,13 @@ export class NameResolver {
 
   public resolverFor = (dict: DictType): NameResolver => {
     const valueNamespace = this.resolveNamespace(dict.schemaId.gridId);
-    return new NameResolver(this.namespaceResolver, this.constructorNamespace, valueNamespace);
+    return new NameResolver(this.namespaceResolver, this.constructorNamespace, valueNamespace, this.environment);
   }
 
   public extendWith = (dict: DictType): NameResolver => {
     const localNamespace = this.resolveNamespace(dict.schemaId.gridId);
     const stackedNamespace = NameResolver.extendNamespace(this.valueNamespace, localNamespace);
-    return new NameResolver(this.namespaceResolver, this.constructorNamespace, stackedNamespace);
+    return new NameResolver(this.namespaceResolver, this.constructorNamespace, stackedNamespace, this.environment);
   }
 
   private static extendNamespace = (parentNamespace: ValueNamespace, namespace: ValueNamespace): ValueNamespace => {

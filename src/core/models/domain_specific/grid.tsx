@@ -114,6 +114,17 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     return this.rows.get(0)!;
   }
 
+  public isOrExtends = (grid: Grid): boolean => {
+    return this === grid || (!!this.parent && this.parent.isOrExtends(grid));
+  }
+
+  public getCommonAncestor = (grid: Grid): Grid | undefined => {
+    if (grid.isOrExtends(this)) {
+      return this;
+    }
+    return this.parent && this.parent.getCommonAncestor(grid);
+  }
+
   private getColumnByName = (name: string): GridColumn | undefined => {
     return this.columns.a.find(c => c.name === name);
   }

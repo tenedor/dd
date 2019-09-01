@@ -695,7 +695,7 @@ export class ListUnres extends ListAST<UnresolvedAST>
     implements UnresolvedAST<ASTNodeType.LIST> {
   public resolve = (resolver: NameResolver) => {
     const esR = this.es.map(e => e.resolve(resolver));
-    const itemType = TypeUtils.unionAll(esR.map(eR => eR.type));
+    const itemType = TypeUtils.unionAll(esR.map(eR => eR.type), resolver.environment);
     return new ListRes(esR, itemType);
   }
 }

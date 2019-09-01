@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 
 import {CallRes, ResolvedAST, ResolvedASTUtils} from '@language/ast';
+import {FormulaEnvironment} from '@language/formula_environment';
 import {AbsoluteValueReference, ModelWithValue, Reference, ReferenceUtils,
         ValueReference} from '@language/reference';
 import {Identifier, Type, TypeUtils} from '@language/types';
@@ -132,6 +133,10 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return this.column.formulaExpression;
   }
 
+  private get formulaEnvironment(): FormulaEnvironment {
+    return this.column.formulaEnvironment;
+  }
+
   public setManualValue = (value: ValueOrAST<T> | undefined) => {
     const {type} = this.column;
     if (value === this.manualValue) {
@@ -139,7 +144,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     }
     if (value !== undefined) {
       assert(!isAST(value) || value.isLiteral, "Manual values must be literals.");
-      assert(TypeUtils.isAssignableTo(value.type, type), "Cannot set manual value of " +
+      assert(TypeUtils.isAssignableTo(value.type, type, this.formulaEnvironment), "Cannot set manual value of " +
           `type ${value.type} on cell of type ${TypeUtils.toString(type)}.`);
 
       if (isAST(value) && ResolvedASTUtils.isConstant(value)) {
@@ -270,7 +275,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
   private getValueResolver = (): ValueResolver => {
     const dependencyValues = _.mapValues(this.valueDependencies, r => r.value);
-    return new ValueResolver(dependencyValues);
+    return new ValueResolver(dependencyValues, this.formulaEnvironment);
   }
 
   private isCalculated = (): boolean => {

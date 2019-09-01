@@ -1,4 +1,5 @@
 import {ExpressionRes} from '@language/ast';
+import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver} from '@language/name_resolver';
 import {Reference} from '@language/reference';
 import {Type, TypeUtils} from '@language/types';
@@ -40,11 +41,15 @@ export class FormulaExpression<T extends Type = Type, P extends Type = Type> ext
     }
   }
 
+  private get environment(): FormulaEnvironment {
+    return this.nameResolver.environment;
+  }
+
   private get expression(): ExpressionRes<T> | undefined {
     if (this._expression) {
       return this._expression;
     } else if (this.parent && this.parent.expression) {
-      TypeUtils.validateIsAssignableTo(this.parent.expression.type, this.type,
+      TypeUtils.validateIsAssignableTo(this.parent.expression.type, this.type, this.environment,
         "Column narrows its parent's type more narrowly than its parent's formula " +
         "but does not override that formula.");
       return this.parent.expression as unknown as ExpressionRes<T>;
@@ -70,7 +75,7 @@ export class FormulaExpression<T extends Type = Type, P extends Type = Type> ext
   }
 
   public setExpression = (expression: ExpressionRes<T> | undefined) => {
-    if (expression && !TypeUtils.isAssignableTo(expression.type, this.type)) {
+    if (expression && !TypeUtils.isAssignableTo(expression.type, this.type, this.environment)) {
       throw new Error("A formula expression must be assignable to its column's type");
     }
     this._expression = expression;

@@ -5,6 +5,7 @@ import {RODictionary} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
 import {CallRes, ResolvedAST} from './ast';
 import {Drawing, drawingsAreEqual, DrawingVariant} from './drawing_value';
+import {FormulaEnvironment} from './formula_environment';
 import {NameResolver} from './name_resolver';
 import {Parser} from './parser';
 import {DictType, DrawingType, GridIdentifier, GridType, Identifier, LambdaType,
@@ -121,8 +122,8 @@ export class ValueUtils {
     return {drawing, type: DrawingType.DRAWING};
   }
 
-  public static listOfInferType = (list: Value[]): ListValue => {
-    const itemType = TypeUtils.unionAll(list.map(v => v.type));
+  public static listOfInferType = (list: Value[], environment: FormulaEnvironment): ListValue => {
+    const itemType = TypeUtils.unionAll(list.map(v => v.type), environment);
     return {list, type: TypeUtils.ListOf(itemType)};
   }
 

@@ -6,7 +6,7 @@ import {Dictionary, RODictionary} from '@utils/types';
 import {buildNamespace, ConstructorNamespace, NameResolver, ValueNamespace} from './name_resolver';
 import {ReferenceUtils} from './reference';
 import {getBuiltInFormulas} from './standard_library';
-import {Identifier, Type, TypeUtils} from './types';
+import {GridType, Identifier, ListOfAnyType, Type, TypeUtils} from './types';
 
 export class FormulaEnvironment {
   private readonly builtInFormulasByGridId: Dictionary<BuiltInFormula>;
@@ -31,7 +31,8 @@ export class FormulaEnvironment {
 
   private buildNameResolver = (): NameResolver => {
     const namespaceResolver = {resolveNamespace: this.resolveNamespace};
-    return new NameResolver(namespaceResolver, this.constructorNamespace, this.valueNamespace);
+    // TODO clarify the role of NameResolver vs FormulaEnvironment
+    return new NameResolver(namespaceResolver, this.constructorNamespace, this.valueNamespace, this);
   }
 
   private resolveNamespace = (objectId: Identifier): ValueNamespace | undefined => {
@@ -66,5 +67,22 @@ export class FormulaEnvironment {
       }
     }
     return TypeUtils.toString(t);
+  }
+
+  public isAssignableTo = (t1: GridType, t2: GridType): boolean => {
+    return this.isOrExtends(t1, t2);
+  }
+
+  private isOrExtends = (t1: GridType, t2: GridType): boolean => {
+    const g1 = this.grids[t1.schemaId.gridId];
+    const g2 = this.grids[t2.schemaId.gridId];
+    return g1.isOrExtends(g2);
+  }
+
+  public getUnionType = (t1: GridType, t2: GridType): GridType | ListOfAnyType => {
+    const g1 = this.grids[t1.schemaId.gridId];
+    const g2 = this.grids[t2.schemaId.gridId];
+    const commonAncestor = g1.getCommonAncestor(g2);
+    return commonAncestor ? TypeUtils.GridOf(commonAncestor.id) : TypeUtils.ListOfAny;
   }
 }

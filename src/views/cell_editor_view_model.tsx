@@ -74,8 +74,9 @@ export abstract class CellEditorViewModel {
       const unparsedExpression = value[0] === '=' ? value.substr(1) : value;
       const parseResult = Parser.parseExpression(unparsedExpression);
       if (parseResult.succeeded) {
-        const ast = parseResult.ast.resolve(column.nameResolver);
-        if (!TypeUtils.isAssignableTo(ast.type, column.type)) {
+        const {formulaEnvironment, nameResolver} = column;
+        const ast = parseResult.ast.resolve(nameResolver);
+        if (!TypeUtils.isAssignableTo(ast.type, column.type, formulaEnvironment)) {
           // TODO: inform the user of the type issue
           return false;
         }
@@ -151,7 +152,7 @@ export class RowCellEditorViewModel extends CellEditorViewModel {
     if (this.isEditingFormula() || this.mustEditFormula()) {
       return this.setFormulaExpression(value);
     } else {
-      const {type, nameResolver} = this.column;
+      const {formulaEnvironment, type, nameResolver} = this.column;
       if (value === undefined || (!TypeUtils.isString(type) && value === "")) {
         this.cell.setManualValue(undefined);
         return true;
@@ -164,7 +165,7 @@ export class RowCellEditorViewModel extends CellEditorViewModel {
             // TODO: inform the user of the restriction to literals
             return false;
           }
-          if (!TypeUtils.isAssignableTo(ast.type, type)) {
+          if (!TypeUtils.isAssignableTo(ast.type, type, formulaEnvironment)) {
             // TODO: inform the user of the type issue
             return false;
           }
