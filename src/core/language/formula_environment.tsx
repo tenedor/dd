@@ -1,8 +1,11 @@
 import * as _ from 'lodash';
 
+import {loadBuiltInGrids} from '@core/built_in_grids';
+import {UpdateManager} from '@models/core/update_manager'; // only a type dependency
 import {BuiltInFormula, Constructor} from '@models/domain_specific/constructor'; // only a type dependency
 import {Grid} from '@models/domain_specific/grid'; // only a type dependency
 import {Dictionary, RODictionary} from '@utils/types';
+import {assert} from '@utils/utils';
 import {buildNamespace, ConstructorNamespace, NameResolver, ValueNamespace} from './name_resolver';
 import {ReferenceUtils} from './reference';
 import {getBuiltInFormulas} from './standard_library';
@@ -15,13 +18,15 @@ export class FormulaEnvironment {
   private readonly constructorNamespace: ConstructorNamespace;
   private readonly _nameResolver: NameResolver;
 
-  constructor() {
+  constructor(updateManager: UpdateManager) {
     const builtInFormulas = getBuiltInFormulas();
     this.builtInFormulasByGridId = _.mapKeys(builtInFormulas, g => g.id);
     this.grids = {};
     this.valueNamespace = buildNamespace({});
     this.constructorNamespace = FormulaEnvironment.buildConstructorNamespace(builtInFormulas);
     this._nameResolver = this.buildNameResolver();
+
+    loadBuiltInGrids(updateManager, this);
   }
 
   private static buildConstructorNamespace = (constructors: RODictionary<Constructor>): ConstructorNamespace => {
@@ -38,6 +43,11 @@ export class FormulaEnvironment {
   private resolveNamespace = (objectId: Identifier): ValueNamespace | undefined => {
     const object = (this.builtInFormulasByGridId[objectId] || this.grids[objectId]) as BuiltInFormula | Grid | undefined;
     return object && object.namespace;
+  }
+
+  public addBuiltInGrid = (grid: Grid): void => {
+    this.grids[grid.id] = grid;
+    this.constructorNamespace.addGrid(grid);
   }
 
   public addGrid = (grid: Grid): void => {
@@ -67,6 +77,12 @@ export class FormulaEnvironment {
       }
     }
     return TypeUtils.toString(t);
+  }
+
+  public getGridByName = (gridName: string): Grid => {
+    const grid = Object.values(this.grids).find(g => g.name === gridName);
+    assert(grid !== undefined, `Unrecognized grid ${gridName}.`);
+    return grid!;
   }
 
   public isAssignableTo = (t1: GridType, t2: GridType): boolean => {

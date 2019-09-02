@@ -137,6 +137,13 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({Value: value}: {Value: number}): number => value * value,
   },
+  Sqrt: {
+    returnType: TypeUtils.Number,
+    parameters: {
+      Value: ParameterUtils.number(1),
+    },
+    eval: ({Value: value}: {Value: number}): number => Math.sqrt(value),
+  },
   Power: {
     returnType: TypeUtils.Number,
     parameters: {
@@ -144,6 +151,19 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
       Exponent: ParameterUtils.number(3),
     },
     eval: ({Base: base, Exponent: exponent}: {Base: number, Exponent: number}): number => Math.pow(base, exponent),
+  },
+  Pi: {
+    returnType: TypeUtils.Number,
+    parameters: {},
+    eval: ({}: {}): number => Math.PI,
+  },
+  Atan2: {
+    returnType: TypeUtils.Number,
+    parameters: {
+      X: ParameterUtils.number(1),
+      Y: ParameterUtils.number(0),
+    },
+    eval: ({X: x, Y: y}: {X: number, Y: number}): number => Math.atan2(y, x),
   },
   DrawCircle: {
     returnType: TypeUtils.Drawing,

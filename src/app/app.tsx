@@ -18,8 +18,7 @@ export class App extends Mutable {
     super(new SimpleUpdateManager(), modelType);
     this.document = new Document(this.updateManager);
     this.document.listenForUpdate(this, this.onDocumentUpdated);
-    this.document.loadBuiltInFormulas();
-    this.document.addBuiltInGrids();
+    this.document.addDemoGrids();
   }
 
   private onDocumentUpdated = (epoch: number, updates: DocumentUpdateDescriptor[]) => {

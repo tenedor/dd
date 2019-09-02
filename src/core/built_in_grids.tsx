@@ -38,27 +38,49 @@ function getStarPath(n: number, m: number, sideLength: number) {
   return `m${scaledPoint[0]} ${-scaledPoint[1]} ${lineCommands} z`
 }
 
-interface ColumnData {name: string, type: Type};
+interface ColumnData {
+  name: string,
+  type: Type,
+};
+
+interface GridColumnData<T extends Type = Type> {
+  column: Column<T>,
+  width?: number,
+  expressionString?: string,
+  defaultValue?: ValueOrAST<T>,
+};
+
+interface ChildGridColumnData<T extends Type = Type> {
+  parentGridColumn: GridColumn<T>,
+  expressionString?: string,
+  defaultValue?: ValueOrAST<T>,
+};
+
+type MixedGridColumnData = GridColumnData | ChildGridColumnData;
+
+function isChildData(columnData: MixedGridColumnData): columnData is ChildGridColumnData {
+  return 'parentGridColumn' in columnData;
+}
+
 function generateColumns(
   updateManager: UpdateManager,
-  columnsDataMap: {[name: string]: ColumnData},
+  columnsData: ColumnData[],
 ): {[name: string]: Column} {
   const columnsMap = {};
-  Object.keys(columnsDataMap).forEach(name =>
-      columnsMap[name] = new Column(updateManager, columnsDataMap[name]));
+  columnsData.forEach(columnData => {
+    columnsMap[columnData.name] = new Column(updateManager, columnData);
+  });
   return columnsMap;
 }
 
-interface GridColumnData<T extends Type = Type> {column: Column<T>, width: number, expressionString?: string};
-interface ChildGridColumnData {parentGridColumn: GridColumn, expressionString?: string};
 function generateGridColumns(
   updateManager: UpdateManager,
   formulaEnvironment: FormulaEnvironment,
   grid: Grid,
-  gridColumnsData: Array<GridColumnData | ChildGridColumnData>,
+  gridColumnsData: MixedGridColumnData[],
 ): GridColumn[] {
   return gridColumnsData.map(gridColumnData => {
-    if ('parentGridColumn' in gridColumnData) {
+    if (isChildData(gridColumnData)) {
       const {parentGridColumn} = gridColumnData;
       const {type} = parentGridColumn;
       return GridColumn.fromParent(parentGridColumn, {grid, type});
@@ -70,13 +92,17 @@ function generateGridColumns(
         formulaEnvironment,
         grid,
         type,
-        width,
+        width: width || 100,
       });
     }
   });
 }
 
-function setColumnExpressions(grid: Grid, gridColumnsData: Array<GridColumnData | ChildGridColumnData>, resolver: NameResolver) {
+function getGridColumnsByName(grid: Grid): {[name: string]: GridColumn} {
+  return _.mapKeys(grid.columns.d, c => c.name);
+}
+
+function setColumnExpressions(grid: Grid, gridColumnsData: MixedGridColumnData[], resolver: NameResolver) {
   const columns = grid.columns.a;
   gridColumnsData.map(({expressionString}, i) => {
     if (expressionString) {
@@ -88,6 +114,53 @@ function setColumnExpressions(grid: Grid, gridColumnsData: Array<GridColumnData 
       columns[i].setExpression(ast);
     }
   });
+}
+
+function getColumnId(columnData: MixedGridColumnData): string {
+  return isChildData(columnData) ? columnData.parentGridColumn.columnId : columnData.column.id;
+}
+
+function setDefaultValues(grid: Grid, columns: MixedGridColumnData[]) {
+  const {cells} = grid.rows.get(0)!;
+  columns.filter(c => c.expressionString === undefined && c.defaultValue !== undefined)
+         .forEach(c => cells.get(getColumnId(c))!.setManualValue(c.defaultValue));
+}
+
+function addBuiltInGrid(
+  name: string,
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+  gridColumnsData: MixedGridColumnData[],
+  parentGrid?: Grid,
+) {
+  const {nameResolver} = formulaEnvironment;
+  const grid = new Grid(updateManager, {name, formulaEnvironment, parentGrid});
+  formulaEnvironment.addBuiltInGrid(grid);
+
+  const gridColumns = generateGridColumns(updateManager, formulaEnvironment, grid, gridColumnsData);
+  grid.addColumns(gridColumns);
+  setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
+  setDefaultValues(grid, gridColumnsData);
+}
+
+function getTypeForInstanceOf(
+  formulaEnvironment: FormulaEnvironment,
+  gridName: string,
+): Type {
+  return formulaEnvironment.nameResolver.resolveConstructorReference(gridName).model.returnType;
+}
+
+function makeLiteralInstance(
+  formulaEnvironment: FormulaEnvironment,
+  gridName: string,
+): ValueOrAST {
+  const astUnres = new CallUnres(gridName, new AssignmentsUnres({}, []));
+  return astUnres.resolve(formulaEnvironment.nameResolver);
+}
+
+function setFirstRowValues(grid: Grid, values: {[columnId: string]: ValueOrAST}) {
+  const {cells} = grid.rows.get(0)!;
+  Object.keys(values).map(id => cells.get(id)!.setManualValue(values[id]));
 }
 
 function addRows(
@@ -117,12 +190,145 @@ function addRows(
   grid.addRows(laterRows);
 }
 
-function setFirstRowValues(grid: Grid, values: {[columnId: string]: ValueOrAST}) {
-  const {cells} = grid.rows.get(0)!;
-  Object.keys(values).map(id => cells.get(id)!.setManualValue(values[id]));
+function addRotationGrid(
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+) {
+  const columns = generateColumns(updateManager, [
+    {name: 'Rotation CW', type: TypeUtils.Number},
+    {name: 'Rotation CCW', type: TypeUtils.Number},
+  ]);
+  const gridColumnsData: GridColumnData[] = [
+    {column: columns['Rotation CW']},
+    {column: columns['Rotation CCW'], expressionString: "-'Rotation CW'"},
+  ];
+  addBuiltInGrid("Rotation", updateManager, formulaEnvironment, gridColumnsData);
 }
 
-export function addArithmeticGrid(
+function addDirectionGrid(
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+) {
+  const rotationType = getTypeForInstanceOf(formulaEnvironment, "Rotation");
+  const columns = generateColumns(updateManager, [
+    {name: 'Rotation From Up', type: rotationType},
+  ]);
+  const gridColumnsData: GridColumnData[] = [
+    {column: columns['Rotation From Up']},
+  ];
+  addBuiltInGrid("Direction", updateManager, formulaEnvironment, gridColumnsData);
+}
+
+function addVectorGrid(
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+) {
+  const directionType = getTypeForInstanceOf(formulaEnvironment, "Direction");
+  const columns = generateColumns(updateManager, [
+    {name: 'X', type: TypeUtils.Number},
+    {name: 'Y', type: TypeUtils.Number},
+    {name: 'R', type: TypeUtils.Number},
+    {name: 'Theta', type: directionType},
+  ]);
+  const gridColumnsData: GridColumnData[] = [
+    {column: columns.X},
+    {column: columns.Y},
+    {column: columns.R, expressionString: "Sqrt(Value = X * X + Y * Y)"},
+    {column: columns.Theta, expressionString: "Direction('Rotation From Up' = Rotation('Rotation CW' = Atan2(X = Y, Y = X) / (2 * Pi())))"},
+  ];
+  addBuiltInGrid("Vector", updateManager, formulaEnvironment, gridColumnsData);
+}
+
+function addCoordinateSystemGrid(
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+) {
+  const vectorType = getTypeForInstanceOf(formulaEnvironment, "Vector");
+  const rotationType = getTypeForInstanceOf(formulaEnvironment, "Rotation");
+  const columns = generateColumns(updateManager, [
+    {name: 'Center', type: vectorType},
+    {name: 'Scale', type: TypeUtils.Number}, // TODO generalize to Scalar(Number, Units)
+    {name: 'Rotation', type: rotationType}, // TODO generalize to Orientation(Rotation, Reflection)
+  ]);
+  const gridColumnsData: GridColumnData[] = [
+    {column: columns.Center},
+    {column: columns.Scale},
+    {column: columns.Rotation},
+  ];
+  addBuiltInGrid("Coordinate System", updateManager, formulaEnvironment, gridColumnsData);
+}
+
+function addTrigonometryGrids(
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+) {
+  addRotationGrid(updateManager, formulaEnvironment);
+  addDirectionGrid(updateManager, formulaEnvironment);
+  addVectorGrid(updateManager, formulaEnvironment);
+  addCoordinateSystemGrid(updateManager, formulaEnvironment);
+}
+
+function addShapeGrid(
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+) {
+  const coordinateSystemType = getTypeForInstanceOf(formulaEnvironment, "Coordinate System");
+  const columns = generateColumns(updateManager, [
+    {name: 'Coordinate System', type: coordinateSystemType},
+    {name: 'Fill', type: TypeUtils.String},
+    {name: '_Drawing_', type: TypeUtils.Drawing},
+  ]);
+  const gridColumnsData: GridColumnData[] = [
+    {column: columns['Coordinate System']},
+    {column: columns.Fill},
+    {column: columns._Drawing_, expressionString: "DrawCircle(Radius=10, X='Coordinate System'.Center.X, Y='Coordinate System'.Center.Y, Fill=Fill)"},
+  ];
+  addBuiltInGrid("Shape", updateManager, formulaEnvironment, gridColumnsData);
+}
+
+function addPathShapeGrid(
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+) {
+  const columns = generateColumns(updateManager, [
+    {name: 'Path', type: TypeUtils.String},
+  ]);
+  const parentGrid = formulaEnvironment.getGridByName("Shape");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {parentGridColumn: parentColumns['Coordinate System']},
+    {parentGridColumn: parentColumns.Fill},
+    {column: columns.Path, defaultValue: ValueUtils.stringOf("l20 0 l0 20 l-20 0 z")},
+    {parentGridColumn: parentColumns._Drawing_, expressionString: "DrawPath(Path=Path, X='Coordinate System'.Center.X, Y='Coordinate System'.Center.Y, Fill=Fill)"},
+  ];
+  addBuiltInGrid("Path Shape", updateManager, formulaEnvironment, gridColumnsData, parentGrid);
+}
+
+function addTriangleGrid(
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+) {
+  const parentGrid = formulaEnvironment.getGridByName("Path Shape");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {parentGridColumn: parentColumns['Coordinate System']},
+    {parentGridColumn: parentColumns.Fill},
+    {parentGridColumn: parentColumns.Path, expressionString: '"l20 0 l-10 17.3 z"'},
+    {parentGridColumn: parentColumns._Drawing_},
+  ];
+  addBuiltInGrid("Triangle", updateManager, formulaEnvironment, gridColumnsData, parentGrid);
+}
+
+function addShapeGrids(
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+) {
+  addShapeGrid(updateManager, formulaEnvironment);
+  addPathShapeGrid(updateManager, formulaEnvironment);
+  addTriangleGrid(updateManager, formulaEnvironment);
+}
+
+function addDemoArithmeticGrid(
   document: Document,
   updateManager: UpdateManager,
   formulaEnvironment: FormulaEnvironment,
@@ -131,14 +337,13 @@ export function addArithmeticGrid(
 
   const grid = document.createGrid({name: "Radius Calculator", formulaEnvironment});
 
-  const columnsDataMap = {
-    In: {name: 'In', type: TypeUtils.Number},
-    Out: {name: 'Out', type: TypeUtils.Number},
-  };
-  const columns = generateColumns(updateManager, columnsDataMap);
+  const columns = generateColumns(updateManager, [
+    {name: 'In', type: TypeUtils.Number},
+    {name: 'Out', type: TypeUtils.Number},
+  ]);
   const gridColumnsData: GridColumnData[] = [
-    {column: columns.In, width: 100},
-    {column: columns.Out, width: 100, expressionString: 'Square(Value = In / 10 + 1) * 2'},
+    {column: columns.In},
+    {column: columns.Out, expressionString: 'Square(Value = In / 10 + 1) * 2'},
   ];
   const gridColumns = generateGridColumns(updateManager, formulaEnvironment, grid, gridColumnsData);
   grid.addColumns(gridColumns);
@@ -148,7 +353,7 @@ export function addArithmeticGrid(
   setFirstRowValues(grid, manualValues);
 }
 
-export function addDerivativeGrid(
+function addDemoDerivativeGrid(
   document: Document,
   updateManager: UpdateManager,
   formulaEnvironment: FormulaEnvironment,
@@ -158,16 +363,15 @@ export function addDerivativeGrid(
   const grid = document.createGrid({name: "Derivative", formulaEnvironment});
 
   const instanceType = formulaEnvironment.nameResolver.resolveConstructorReference("Radius Calculator").model.returnType;
-  const columnsDataMap = {
-    In: {name: 'In', type: TypeUtils.Number},
-    Mid: {name: 'Mid', type: instanceType},
-    Out: {name: 'Out', type: TypeUtils.Number},
-  };
-  const columns = generateColumns(updateManager, columnsDataMap);
+  const columns = generateColumns(updateManager, [
+    {name: 'In', type: TypeUtils.Number},
+    {name: 'Mid', type: instanceType},
+    {name: 'Out', type: TypeUtils.Number},
+  ]);
   const gridColumnsData: GridColumnData[] = [
-    {column: columns.In, width: 100},
+    {column: columns.In},
     {column: columns.Mid, width: 200},
-    {column: columns.Out, width: 100, expressionString: 'Mid.Out'},
+    {column: columns.Out, expressionString: 'Mid.Out'},
   ];
   const gridColumns = generateGridColumns(updateManager, formulaEnvironment, grid, gridColumnsData);
   grid.addColumns(gridColumns);
@@ -182,30 +386,29 @@ export function addDerivativeGrid(
   setFirstRowValues(grid, manualValues);
 }
 
-export function addShapeGrids(
+function addDemoShapeGrids(
   document: Document,
   updateManager: UpdateManager,
   formulaEnvironment: FormulaEnvironment,
 ) {
   const {nameResolver} = formulaEnvironment;
 
-  const columnsDataMap = {
-    X: {name: 'X', type: TypeUtils.Number},
-    Y: {name: 'Y', type: TypeUtils.Number},
-    Radius: {name: 'Radius', type: TypeUtils.Number},
-    Fill: {name: 'Fill', type: TypeUtils.String},
-    Path: {name: 'Path', type: TypeUtils.String},
-    DrawShape: {name: 'Draw Shape', type: TypeUtils.Drawing},
-  };
-  const columns = generateColumns(updateManager, columnsDataMap);
+  const columns = generateColumns(updateManager, [
+    {name: 'X', type: TypeUtils.Number},
+    {name: 'Y', type: TypeUtils.Number},
+    {name: 'Radius', type: TypeUtils.Number},
+    {name: 'Fill', type: TypeUtils.String},
+    {name: 'Path', type: TypeUtils.String},
+    {name: 'Draw Shape', type: TypeUtils.Drawing},
+  ]);
 
   const grid1ColumnsData: GridColumnData[] = [
-    {column: columns.X, width: 100},
-    {column: columns.Y, width: 100},
-    {column: columns.Radius, width: 100, expressionString: "'Radius Calculator'(In=X).Out"},
-    {column: columns.Fill, width: 100},
-    {column: columns.Path, width: 100},
-    {column: columns.DrawShape, width: 150, expressionString: 'DrawPath(Path=Path,X=X,Y=Y,Fill=Fill)'},
+    {column: columns.X},
+    {column: columns.Y},
+    {column: columns.Radius, expressionString: "'Radius Calculator'(In=X).Out"},
+    {column: columns.Fill},
+    {column: columns.Path},
+    {column: columns['Draw Shape'], width: 150, expressionString: 'DrawPath(Path=Path,X=X,Y=Y,Fill=Fill)'},
   ];
   const grid1 = document.createGrid({name: "Shapes", formulaEnvironment});
   const grid1Columns = generateGridColumns(updateManager, formulaEnvironment, grid1, grid1ColumnsData);
@@ -214,7 +417,7 @@ export function addShapeGrids(
   addRows(updateManager, grid1, false);
 
   const grid2ColumnsData: ChildGridColumnData[] = grid1Columns.map(parentGridColumn => {
-    if (parentGridColumn.columnId === columns.DrawShape.id) {
+    if (parentGridColumn.columnId === columns['Draw Shape'].id) {
       return {parentGridColumn}
     }
     return {parentGridColumn}
@@ -226,12 +429,20 @@ export function addShapeGrids(
   addRows(updateManager, grid2, true);
 }
 
-export function addBuiltInGrids(
+export function loadBuiltInGrids(
+  updateManager: UpdateManager,
+  formulaEnvironment: FormulaEnvironment,
+) {
+  addTrigonometryGrids(updateManager, formulaEnvironment);
+  addShapeGrids(updateManager, formulaEnvironment);
+}
+
+export function addDemoGrids(
   document: Document,
   updateManager: UpdateManager,
   formulaEnvironment: FormulaEnvironment,
 ) {
-  addArithmeticGrid(document, updateManager, formulaEnvironment);
-  addDerivativeGrid(document, updateManager, formulaEnvironment);
-  addShapeGrids(document, updateManager, formulaEnvironment);
+  addDemoArithmeticGrid(document, updateManager, formulaEnvironment);
+  addDemoDerivativeGrid(document, updateManager, formulaEnvironment);
+  addDemoShapeGrids(document, updateManager, formulaEnvironment);
 }

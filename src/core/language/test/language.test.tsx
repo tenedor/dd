@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 
+import {SimpleUpdateManager} from '@models/core/update_manager';
 import {Grid} from '@models/domain_specific/grid';
 import {ConvertibleToValue, JestErrorMatcher, TestUtils} from '@test_utils/test_utils';
 import {FormulaEnvironment} from '../formula_environment';
@@ -11,7 +12,7 @@ import {TypeUtils} from '../types';
 import {ValueResolver} from '../value_resolver';
 import {ValueUtils} from '../values';
 
-const formulaEnvironment = new FormulaEnvironment();
+const formulaEnvironment = new FormulaEnvironment(new SimpleUpdateManager());
 
 const fakeGridId = 'fake-grid-id';
 

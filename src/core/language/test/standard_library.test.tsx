@@ -1,10 +1,12 @@
 import {ConvertibleToValue} from '@test_utils/test_utils';
+
+import {SimpleUpdateManager} from '@models/core/update_manager';
 import {DrawingVariant} from '../drawing_value';
 import {FormulaEnvironment} from '../formula_environment';
 import {ValueUtils} from '../values';
 import {expectResults as _expectResults} from "./language.test";
 
-const formulaEnvironment = new FormulaEnvironment();
+const formulaEnvironment = new FormulaEnvironment(new SimpleUpdateManager());
 
 export const expectResults = (
   name: string,
