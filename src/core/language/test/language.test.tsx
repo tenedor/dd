@@ -1,18 +1,18 @@
 import * as _ from 'lodash';
 
-import {SimpleUpdateManager} from '@models/core/update_manager';
 import {Grid} from '@models/domain_specific/grid';
-import {ConvertibleToValue, JestErrorMatcher, TestUtils} from '@test_utils/test_utils';
+import {TestUtils} from '@test_utils/test_utils';
 import {FormulaEnvironment} from '../formula_environment';
-import {buildNamespace, ConstructorNamespace, NameResolver, NamespaceResolver}
-        from '../name_resolver';
-import {Parser} from '../parser';
+import {NameResolver} from '../name_resolver';
 import {RelativeValueReference} from '../reference';
+import {getExampleFormulaForTesting} from '../standard_library';
 import {TypeUtils} from '../types';
 import {ValueResolver} from '../value_resolver';
 import {ValueUtils} from '../values';
+import {buildLanguageTestHelpers} from './test_helpers';
 
-const formulaEnvironment = new FormulaEnvironment(new SimpleUpdateManager());
+const formulaEnvironment = new FormulaEnvironment();
+formulaEnvironment.addBuiltInFormula(getExampleFormulaForTesting());
 
 const fakeGridId = 'fake-grid-id';
 
@@ -38,131 +38,15 @@ formulaEnvironment.addGrid(fakeGrid as any as Grid);
 const gridColumnNameResolver = formulaEnvironment.nameResolver.resolverFor(TypeUtils.GridOf(fakeGridId));
 const gridColumnValueResolver = new ValueResolver(_.mapValues(fakeColumns, 'value'), formulaEnvironment);
 
-const nullNamespaceResolver: NamespaceResolver = {resolveNamespace: () => {throw new Error("unexpected namespace resolution")}};
-const nullNameResolver = new NameResolver(nullNamespaceResolver, new ConstructorNamespace({}), buildNamespace({}), formulaEnvironment);
-const nullValueResolver = new ValueResolver({}, formulaEnvironment);
 
-
-enum FailureStage {
-  FAILS_PARSE = "FAILS_PARSE",
-  FAILS_RESOLUTION = "FAILS_RESOLUTION",
-  FAILS_EVALUATION = "FAILS_EVALUATION",
-  SUCCEEDS = "SUCCEEDS",
-}
-
-interface FormulaTestInput {
-  formula: string,
-  result?: ConvertibleToValue,
-  error?: JestErrorMatcher,
-  asText?: string,
-}
-
-interface FormulaTestConfig {
-  failureStage?: FailureStage,
-  nameResolver?: NameResolver,
-  valueResolver?: ValueResolver,
-}
-
-const testFormulas = (name: string, formulas: FormulaTestInput[], {
-  failureStage = FailureStage.SUCCEEDS,
-  nameResolver = nullNameResolver,
-  valueResolver = nullValueResolver,
-}: FormulaTestConfig = {}) => {
-  it(name, () => {
-    formulas.forEach(({formula, result: expectedResult, error: expectedError, asText: expectedText}) => {
-      // parse
-      const parseResult = Parser.parseExpression(formula);
-      if (failureStage === FailureStage.FAILS_PARSE) {
-        expect(parseResult.succeeded).toBe(false);
-        return;
-      }
-      expect(parseResult.succeeded).toBe(true);
-
-      if (parseResult.succeeded) {
-        // resolve
-        const {ast} = parseResult;
-        const resolve = () => ast.resolve(nameResolver);
-        if (failureStage === FailureStage.FAILS_RESOLUTION) {
-          expect(resolve).toThrow(expectedError);
-          return;
-        }
-        const astR = resolve();
-
-        // to text
-        if (expectedText !== undefined) {
-          const actualText = astR.toText(nameResolver);
-          expect(actualText).toBe(expectedText);
-        }
-
-        // evaluate
-        const evaluate = () => astR.eval(valueResolver);
-        if (failureStage === FailureStage.FAILS_EVALUATION) {
-          expect(evaluate).toThrow(expectedError);
-          return;
-        }
-        const result = evaluate();
-
-        // result
-        if (expectedResult !== undefined) {
-          const expectation = TestUtils.asValue(expectedResult, formulaEnvironment);
-          expect(result).toEqual(expectation);
-        }
-      }
-    });
-  });
-}
-
-const expectParseErrors = (name: string, formulas: string[]) => {
-  const tests = formulas.map(formula => ({formula}));
-  testFormulas(name, tests, {failureStage: FailureStage.FAILS_PARSE});
-}
-
-export const expectResolutionErrors = (
-  name: string,
-  formulas: string[],
-  nameResolver: NameResolver = nullNameResolver,
-) => {
-  const tests = formulas.map(formula => ({formula}));
-  testFormulas(`static error - ${name}`, tests, {failureStage: FailureStage.FAILS_RESOLUTION, nameResolver});
-}
-
-export const expectEvaluationErrors = (
-  name: string,
-  formulas: string[],
-  nameResolver: NameResolver = nullNameResolver,
-  valueResolver: ValueResolver = nullValueResolver,
-) => {
-  const tests = formulas.map(formula => ({formula}));
-  testFormulas(`runtime error - ${name}`, tests, {failureStage: FailureStage.FAILS_EVALUATION, nameResolver, valueResolver});
-}
-
-export const expectResults = (
-  name: string,
-  formulas: Array<{formula: string, result: ConvertibleToValue}>,
-  nameResolver: NameResolver = nullNameResolver,
-  valueResolver: ValueResolver = nullValueResolver,
-) => {
-  testFormulas(name, formulas, {failureStage: FailureStage.SUCCEEDS, nameResolver, valueResolver});
-}
-
-const expectToTextIrregular = (
-  name: string,
-  formulas: Array<{formula: string, asText: string}>,
-  nameResolver: NameResolver = nullNameResolver,
-  valueResolver: ValueResolver = nullValueResolver,
-) => {
-  testFormulas(name, formulas, {failureStage: FailureStage.SUCCEEDS, nameResolver, valueResolver});
-}
-
-const expectToText = (
-  name: string,
-  formulas: string[],
-  nameResolver: NameResolver = nullNameResolver,
-  valueResolver: ValueResolver = nullValueResolver,
-) => {
-  const tests = formulas.map(formula => ({formula, asText: formula}));
-  testFormulas(name, tests, {failureStage: FailureStage.SUCCEEDS, nameResolver, valueResolver});
-}
+const {
+  expectParseErrors,
+  expectEvaluationErrors,
+  expectResolutionErrors,
+  expectResults,
+  expectToText,
+  expectToTextIrregular,
+} = buildLanguageTestHelpers(formulaEnvironment);
 
 
 beforeAll(TestUtils.defaultBeforeAll);

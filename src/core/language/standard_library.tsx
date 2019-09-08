@@ -1,8 +1,11 @@
 import * as _ from 'lodash';
 
+import {loadBuiltInGrids} from '@core/built_in_grids';
+import {UpdateManager} from '@models/core/update_manager';
 import {BuiltInFormula} from '@models/domain_specific/constructor';
 import {RODictionary} from '@utils/types';
 import {DrawingVariant} from './drawing_value';
+import {FormulaEnvironment} from './formula_environment';
 import {Identifier, PrimitiveType, Type, TypeUtils} from './types';
 import {DrawingValue, PartialRowValue, PrimitiveValue, Value, ValueUtils}
         from './values';
@@ -212,4 +215,14 @@ const builtInFormulas: RODictionary<BuiltInFormula> = _.mapValues(formulaDefs, (
   return new BuiltInFormula(spec);
 });
 
-export const getBuiltInFormulas = () => builtInFormulas;
+export const loadStandardLibrary = (updateManager: UpdateManager): FormulaEnvironment => {
+  const environment = new FormulaEnvironment();
+  Object.values(builtInFormulas).map(environment.addBuiltInFormula);
+  loadBuiltInGrids(updateManager, environment);
+  return environment;
+}
+
+export const getExampleFormulaForTesting = (): BuiltInFormula => {
+  const spec = generateFormulaSpec(formulaDefs.Power, "Power");
+  return new BuiltInFormula(spec);
+}

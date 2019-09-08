@@ -135,7 +135,7 @@ function addBuiltInGrid(
 ) {
   const {nameResolver} = formulaEnvironment;
   const grid = new Grid(updateManager, {name, formulaEnvironment, parentGrid});
-  formulaEnvironment.addBuiltInGrid(grid);
+  formulaEnvironment.addGrid(grid);
 
   const gridColumns = generateGridColumns(updateManager, formulaEnvironment, grid, gridColumnsData);
   grid.addColumns(gridColumns);

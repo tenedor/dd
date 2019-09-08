@@ -15,31 +15,43 @@ export type ValueNamespace = Namespace<ValueReference>;
 
 
 export class ConstructorNamespace implements Namespace<ConstructorReference> {
+  private readonly parent?: ConstructorNamespace;
   private readonly nameToReferenceMap: {[name: string]: ConstructorReference};
   private readonly idToNameMap: {[id: string]: string};
   private readonly grids: {[id: string]: Grid};
 
-  constructor(nameToReferenceMap: {[name: string]: ConstructorReference}) {
-    this.nameToReferenceMap = nameToReferenceMap;
-    const nameToIdMap = _.mapValues(nameToReferenceMap, ref => ref.id);
-    this.idToNameMap = _.invert(nameToIdMap);
+  constructor(parent?: ConstructorNamespace) {
+    this.parent = parent;
+    this.nameToReferenceMap = {};
+    this.idToNameMap = {};
     this.grids = {};
   }
 
   public getReferenceForName = (name: string): ConstructorReference | undefined => {
     const grid = Object.values(this.grids).find(g => g.name === name);
-    return grid ? ReferenceUtils.buildReferenceForConstructor(grid.gridConstructor) : this.nameToReferenceMap[name];
+    return grid ?
+      ReferenceUtils.buildReferenceForConstructor(grid.gridConstructor) :
+      this.nameToReferenceMap[name] || (this.parent && this.parent.getReferenceForName(name));
   }
 
   // TODO - in the case of grids, this is using the grid id not the reference id
   public getNameForReference = (refId: Identifier): string | undefined => {
     const grid = this.grids[refId];
-    return grid ? grid.name : this.idToNameMap[refId];
+    return grid ?
+      grid.name :
+      this.idToNameMap[refId] || (this.parent && this.parent.getNameForReference(refId));
   }
 
   public getReferenceForGridId = <I extends Identifier> (gridId: I): ConstructorReference<RowType<I>, I> | undefined => {
     const grid = this.grids[gridId as string] as Grid<I>;
-    return grid ? ReferenceUtils.buildReferenceForConstructor(grid.gridConstructor) : undefined;
+    return grid ?
+      ReferenceUtils.buildReferenceForConstructor(grid.gridConstructor) :
+      (this.parent && this.parent.getReferenceForGridId(gridId));
+  }
+
+  public addBuiltInFormula = (name: string, ref: ConstructorReference) => {
+    this.nameToReferenceMap[name] = ref;
+    this.idToNameMap[ref.id] = name;
   }
 
   public addGrid = (grid: Grid) => {

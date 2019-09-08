@@ -2,6 +2,7 @@ import * as _ from 'lodash';
 
 import {addDemoGrids} from '@core/built_in_grids';
 import {FormulaEnvironment} from '@language/formula_environment';
+import {loadStandardLibrary} from '@language/standard_library';
 import {ROArray} from '@utils/types';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from '../collections/functional_array';
 import {ModelType} from '../core/model';
@@ -23,7 +24,8 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
     // update manager per document and all other models receive this singleton.
     super(updateManager, modelType);
 
-    this.formulaEnvironment = new FormulaEnvironment(this.updateManager);
+    const standardLibrary = loadStandardLibrary(updateManager);
+    this.formulaEnvironment = new FormulaEnvironment(standardLibrary);
     this.grids = new FunctionalArrayM(this.updateManager, []);
     this.grids.listenForUpdate(this, this.onGridsUpdated);
   }

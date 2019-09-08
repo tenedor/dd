@@ -1,19 +1,15 @@
-import {ConvertibleToValue} from '@test_utils/test_utils';
+import {TestUtils} from '@test_utils/test_utils';
 
 import {SimpleUpdateManager} from '@models/core/update_manager';
 import {DrawingVariant} from '../drawing_value';
-import {FormulaEnvironment} from '../formula_environment';
+import {loadStandardLibrary} from '../standard_library';
 import {ValueUtils} from '../values';
-import {expectResults as _expectResults} from "./language.test";
+import {buildLanguageTestHelpers} from "./test_helpers";
 
-const formulaEnvironment = new FormulaEnvironment(new SimpleUpdateManager());
+TestUtils.defaultBeforeAll();
+const formulaEnvironment = loadStandardLibrary(new SimpleUpdateManager());
 
-export const expectResults = (
-  name: string,
-  formulas: Array<{formula: string, result: ConvertibleToValue}>,
-) => {
-  _expectResults(name, formulas, formulaEnvironment.nameResolver);
-}
+const {expectResults} = buildLanguageTestHelpers(formulaEnvironment);
 
 describe('Standard Library', () => {
 
