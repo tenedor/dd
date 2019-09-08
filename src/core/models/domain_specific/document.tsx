@@ -36,7 +36,6 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
 
   public createGrid = (gridData: GridData): Grid => {
     const grid = new Grid(this.updateManager, gridData);
-    this.formulaEnvironment.addGrid(grid);
     this.grids.push(grid);
     return grid;
   }

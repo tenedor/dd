@@ -79,22 +79,17 @@ function generateGridColumns(
   grid: Grid,
   gridColumnsData: MixedGridColumnData[],
 ): GridColumn[] {
-  return gridColumnsData.map(gridColumnData => {
-    if (isChildData(gridColumnData)) {
-      const {parentGridColumn} = gridColumnData;
-      const {type} = parentGridColumn;
-      return GridColumn.fromParent(parentGridColumn, {grid, type});
-    } else {
-      const {column, width} = gridColumnData;
-      const {type} = column;
-      return new GridColumn(updateManager, {
-        column,
-        formulaEnvironment,
-        grid,
-        type,
-        width: width || 100,
-      });
-    }
+  const newColumns = gridColumnsData.filter((c): c is GridColumnData  => !isChildData(c));
+  return newColumns.map(gridColumnData => {
+    const {column, width} = gridColumnData;
+    const {type} = column;
+    return new GridColumn(updateManager, {
+      column,
+      formulaEnvironment,
+      grid,
+      type,
+      width: width || 100,
+    });
   });
 }
 
@@ -103,15 +98,17 @@ function getGridColumnsByName(grid: Grid): {[name: string]: GridColumn} {
 }
 
 function setColumnExpressions(grid: Grid, gridColumnsData: MixedGridColumnData[], resolver: NameResolver) {
-  const columns = grid.columns.a;
-  gridColumnsData.map(({expressionString}, i) => {
+  const columns = grid.columns;
+  gridColumnsData.map((data) => {
+    const {expressionString} = data;
+    const columnId = getColumnId(data);
     if (expressionString) {
       const parseResult = Parser.parseExpression(expressionString);
       if (!parseResult.succeeded) {
         throw new Error("Bad built-in grid formula");
       }
       const ast = parseResult.ast.resolve(resolver);
-      columns[i].setExpression(ast);
+      columns.getByKey(columnId)!.setExpression(ast);
     }
   });
 }
@@ -135,7 +132,6 @@ function addBuiltInGrid(
 ) {
   const {nameResolver} = formulaEnvironment;
   const grid = new Grid(updateManager, {name, formulaEnvironment, parentGrid});
-  formulaEnvironment.addGrid(grid);
 
   const gridColumns = generateGridColumns(updateManager, formulaEnvironment, grid, gridColumnsData);
   grid.addColumns(gridColumns);
@@ -173,11 +169,11 @@ function addRows(
   const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
   const sideLength = (i: number) => 15 * (0.5 + i / 4);
   const rowsValues = _.range(rowCount).map(i => ({
-    [columns.get(0)!.columnId]: ValueUtils.numberOf(hasParent ? 100 - i * 20 : i * 10),
-    [columns.get(1)!.columnId]: ValueUtils.numberOf(i * i * 3),
-    [columns.get(2)!.columnId]: ValueUtils.numberOf((i + 1) * (i + 1) * 2),
-    [columns.get(3)!.columnId]: ValueUtils.stringOf(colors[i + (hasParent ? 2 : 0)]),
-    [columns.get(4)!.columnId]: ValueUtils.stringOf(getStarPath(5 + 2 * i, 2 + 2 * i, sideLength(i))),
+    [columns.get(1)!.columnId]: ValueUtils.numberOf(hasParent ? 100 - i * 20 : i * 10),
+    [columns.get(2)!.columnId]: ValueUtils.numberOf(i * i * 3),
+    [columns.get(3)!.columnId]: ValueUtils.numberOf((i + 1) * (i + 1) * 2),
+    [columns.get(4)!.columnId]: ValueUtils.stringOf(colors[i + (hasParent ? 2 : 0)]),
+    [columns.get(5)!.columnId]: ValueUtils.stringOf(getStarPath(5 + 2 * i, 2 + 2 * i, sideLength(i))),
   }));
   setFirstRowValues(grid, rowsValues[0]);
   const laterRowsValues = rowsValues.slice(1);

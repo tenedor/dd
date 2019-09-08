@@ -83,6 +83,7 @@ export enum BoundingType {
   BOTTOM = "BOTTOM",  // the "never" type which can be assigned to any type
 }
 
+export type EmptyListType = ListType<BoundingType.BOTTOM>;
 export type ListOfAnyType = ListType<BoundingType.TOP>;
 
 // ListType only supports literals if its item type is Bottom or is a
@@ -103,6 +104,9 @@ export class TypeUtils {
   public static readonly Boolean = PrimitiveType.BOOLEAN;
   public static readonly String = PrimitiveType.STRING;
   public static readonly Drawing = DrawingType.DRAWING;
+  public static readonly Bottom: BoundingType.BOTTOM = BoundingType.BOTTOM;
+  public static readonly Top: BoundingType.TOP = BoundingType.TOP;
+  public static readonly EmptyList: EmptyListType = {itemType: BoundingType.BOTTOM};
   public static readonly ListOfAny: ListOfAnyType = {itemType: BoundingType.TOP};
 
   public static ListOf = <T extends Type> (itemType: T): ListType<T> => {

@@ -1,14 +1,16 @@
 import * as _ from 'lodash';
 
 import {loadBuiltInGrids} from '@core/built_in_grids';
+import {getDrawing, hasNonEmptyDrawing} from '@core/drawing_grid_utilities';
 import {UpdateManager} from '@models/core/update_manager';
 import {BuiltInFormula} from '@models/domain_specific/constructor';
 import {RODictionary} from '@utils/types';
 import {DrawingVariant} from './drawing_value';
 import {FormulaEnvironment} from './formula_environment';
-import {Identifier, PrimitiveType, Type, TypeUtils} from './types';
-import {DrawingValue, PartialRowValue, PrimitiveValue, Value, ValueUtils}
-        from './values';
+import {BoundingType, Identifier, ListOfAnyType, PrimitiveType, Type, TypeUtils}
+        from './types';
+import {DrawingValue, ListValue, PartialRowValue, PrimitiveValue, Value,
+        ValueUtils} from './values';
 
 type BuiltInEval<R extends Type = Type, I extends Identifier = Identifier> = (parameters: PartialRowValue<I>) => Value<R>;
 
@@ -28,7 +30,7 @@ export interface BuiltInFormulaSpec<R extends Type = Type, I extends Identifier 
 }
 
 type Primitive = number | boolean | string;
-type MaterializedValue = Primitive | DrawingValue;
+type MaterializedValue = Primitive | DrawingValue | ListValue;
 type MaterializedEval = (parameters: {[name: string]: MaterializedValue}) => MaterializedValue;
 
 interface ParameterGenerator<T extends Type = Type> {
@@ -61,6 +63,10 @@ class ParameterUtils {
     return {type: TypeUtils.String, defaultValue};
   }
 
+  public static listOfAny = (defaultValue: ListValue): ParameterGenerator<ListOfAnyType> => {
+    return {type: TypeUtils.ListOfAny, defaultValue};
+  }
+
   public static readonly baseDrawing = {
     X: ParameterUtils.number(0),
     Y: ParameterUtils.number(0),
@@ -74,14 +80,16 @@ const getParameterUID = (formulaId: Identifier, parameterName: string) => `${for
 const dematerializeValue = <T extends Type = Type> (value: MaterializedValue, type: T): Value<T> => {
   if (TypeUtils.isDrawing(type)) {
     return value as DrawingValue & Value<T>;
+  } else if (TypeUtils.isList(type)) {
+    return value as ListValue<BoundingType.TOP> & Value<T>;
   } else if (TypeUtils.isPrimitive(type)) {
     return ValueUtils.primitiveOf(value as Primitive, type);
   }
   throw new TypeError("Can only dematerialize values for primitive types and drawings currently");
 }
 
-const materializeValue = (value: PrimitiveValue): MaterializedValue => {
-  return value.value;
+const materializeValue = (value: PrimitiveValue | DrawingValue | ListValue): MaterializedValue => {
+  return ValueUtils.isPrimitive(value) ? value.value : value;
 }
 
 const generateParameters = (
@@ -206,6 +214,20 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
       const drawingType = DrawingVariant.PATH;
       const center = {x, y};
       return ValueUtils.drawingOf({drawingType, path, center, fill});
+    },
+  },
+  DrawDrawings: {
+    returnType: TypeUtils.Drawing,
+    parameters: {
+      Values: ParameterUtils.listOfAny(ValueUtils.emptyList()),
+    },
+    eval: ({
+      Values: values,
+    }: {Values: ListValue}): DrawingValue => {
+      const drawingType = DrawingVariant.COLLECTION;
+      const drawings = values.list.filter(hasNonEmptyDrawing).map(getDrawing);
+      const center = {x: 0, y: 0};
+      return ValueUtils.drawingOf({drawingType, drawings, center});
     },
   },
 };

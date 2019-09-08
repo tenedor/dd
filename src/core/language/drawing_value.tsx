@@ -14,36 +14,52 @@ export enum DrawingVariant {
   // POLYGON = "POLYGON",
   // POLYLINE = "POLYLINE",
   // RECT = "RECT",
+  COLLECTION = "COLLECTION",
 }
 
 interface BaseDrawing {
   drawingType: DrawingVariant,
   center: Vector,
   // rotation: Rotation,
+}
+
+interface BaseShapeDrawing extends BaseDrawing {
   fill: Color,
   // stroke: number,
   // stroke-color: Color,
-  // children: Drawing[],
 }
 
-interface Circle extends BaseDrawing {
+interface Circle extends BaseShapeDrawing {
   drawingType: DrawingVariant.CIRCLE,
   radius: Scalar,
 }
 
-interface Ellipse extends BaseDrawing {
+interface Ellipse extends BaseShapeDrawing {
   drawingType: DrawingVariant.ELLIPSE,
   radius1: Scalar,
   radius2: Scalar,
 }
 
-interface Path extends BaseDrawing {
+interface Path extends BaseShapeDrawing {
   drawingType: DrawingVariant.PATH,
   path: SVGPathString,
 }
 
-export type Drawing = Circle | Ellipse | Path;
+interface Collection extends BaseDrawing {
+  drawingType: DrawingVariant.COLLECTION,
+  drawings: Drawing[],
+}
+
+export type Drawing = Circle | Ellipse | Path | Collection;
 
 export function drawingsAreEqual(d1: Drawing, d2: Drawing): boolean {
   return _.isEqual(d1, d2);
+}
+
+export function isCollection(v: Drawing): v is Collection {
+  return v.drawingType === DrawingVariant.COLLECTION;
+}
+
+export function isEmptyDrawing(v: Drawing): boolean {
+  return isCollection(v) && v.drawings.length === 0;
 }

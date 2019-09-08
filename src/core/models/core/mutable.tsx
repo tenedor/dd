@@ -19,8 +19,8 @@ export class Mutable<D extends UpdateDescriptor = UpdateDescriptor> implements D
   // Child class properties are not initialized until after calling super() so
   // the model type must be overridden by passing it as a constructor parameter.
   // By contract Mutable must initialize the id.
-  constructor(updateManager: UpdateManager, modelType: ModelType = ModelType.MODEL) {
-    this.id = generateUID(modelType);
+  constructor(updateManager: UpdateManager, modelType: ModelType = ModelType.MODEL, id?: string) {
+    this.id = id || generateUID(modelType);
     this.updateManager = updateManager;
     this.epoch = updateManager.epoch;
   }

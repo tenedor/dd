@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
-import {DrawingVariant} from '@language/drawing_value';
+import {Drawing, DrawingVariant} from '@language/drawing_value';
 import {Grid} from '@models/domain_specific/grid';
 import {ROArray} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
@@ -22,7 +22,17 @@ export class DrawingView extends BaseComponent<Props> {
 
   public render = () => {
     const drawings = this.controller.getDrawings();
-    const renderedDrawings = drawings.map((d, i) => {
+    const renderedDrawings = this.renderDrawings(drawings);
+
+    return (
+      <svg viewBox="0 0 100 100" height="300" width="300" style={{backgroundColor: "#888888"}}>
+        {renderedDrawings}
+      </svg>
+    );
+  }
+
+  private renderDrawings = (drawings: Drawing[]) => {
+    return drawings.map((d, i) => {
       switch (d.drawingType) {
         case DrawingVariant.CIRCLE:
           return <circle key={`d-${i}`} cx={d.center.x} cy={d.center.y} r={d.radius} fill={d.fill} />;
@@ -31,15 +41,15 @@ export class DrawingView extends BaseComponent<Props> {
         case DrawingVariant.PATH:
           const path = `M${d.center.x},${d.center.y} ${d.path}`;
           return <path key={`d-${i}`} d={path} fill={d.fill} />;
+        case DrawingVariant.COLLECTION:
+          return (
+            <g key={`d-${i}`}>
+              {this.renderDrawings(d.drawings)}
+            </g>
+          );
         default:
           return assertUnreachable(d);
       }
     });
-
-    return (
-      <svg viewBox="0 0 100 100" height="300" width="300" style={{backgroundColor: "#888888"}}>
-        {renderedDrawings}
-      </svg>
-    );
   }
 }

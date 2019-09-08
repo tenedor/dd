@@ -8,8 +8,8 @@ import {Drawing, drawingsAreEqual, DrawingVariant} from './drawing_value';
 import {FormulaEnvironment} from './formula_environment';
 import {NameResolver} from './name_resolver';
 import {Parser} from './parser';
-import {DictType, DrawingType, GridIdentifier, GridType, Identifier, LambdaType,
-        ListType, PartialRowType, PrimitiveType, RowIdentifier, RowType,
+import {BoundingType, DictType, DrawingType, GridIdentifier, GridType, Identifier,
+        LambdaType, ListType, PartialRowType, PrimitiveType, RowIdentifier, RowType,
         SchemaIdentifier, SupportsLiteralsType, Type, TypeUtils} from './types';
 
 interface BaseValue<T extends Type = Type> {
@@ -129,6 +129,10 @@ export class ValueUtils {
 
   public static listOf = <T extends Type> (list: Array<Value<T>>, itemType: T): ListValue<T> => {
     return {list, type: TypeUtils.ListOf(itemType)};
+  }
+
+  public static emptyList = (): ListValue<BoundingType.BOTTOM> => {
+    return {list: [], type: TypeUtils.EmptyList};
   }
 
   public static partialRowOf = <I extends Identifier> (dict: RODictionary<Value>, id: I): PartialRowValue<I> => {

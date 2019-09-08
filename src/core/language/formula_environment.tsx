@@ -38,6 +38,11 @@ export class FormulaEnvironment {
     return namespace || (this.parent && this.parent.resolveNamespace(objectId));
   }
 
+  private get allGrids(): Dictionary<Grid> {
+    const parentGrids = this.parent ? this.parent.allGrids : {};
+    return _.defaults({}, this.grids, parentGrids);
+  }
+
   public addBuiltInFormula = (formula: BuiltInFormula) => {
     this.builtInFormulasByGridId[formula.id] = formula;
     const formulaRef = ReferenceUtils.buildReferenceForConstructor(formula);
@@ -59,7 +64,7 @@ export class FormulaEnvironment {
   }
 
   public getAllowedColumnTypes = (): Type[] => {
-    const constructableRowTypes = _.values(this.grids).map(g => TypeUtils.RowOf(g.id));
+    const constructableRowTypes = Object.values(this.allGrids).map(g => TypeUtils.RowOf(g.id));
     return TypeUtils.atomicTypes.concat(constructableRowTypes);
   }
 
@@ -74,13 +79,13 @@ export class FormulaEnvironment {
   }
 
   public getGridByName = (gridName: string): Grid => {
-    const grid = Object.values(this.grids).find(g => g.name === gridName);
+    const grid = Object.values(this.allGrids).find(g => g.name === gridName);
     assert(grid !== undefined, `Unrecognized grid ${gridName}.`);
     return grid!;
   }
 
   public getGridForType = (gridType: GridType): Grid => {
-    const grid = this.grids[gridType.schemaId.gridId];
+    const grid = this.allGrids[gridType.schemaId.gridId];
     assert(grid !== undefined, `Unrecognized grid type ${TypeUtils.toString(gridType)}.`);
     return grid!;
   }

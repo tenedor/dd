@@ -166,9 +166,13 @@ export class NameResolver {
     });
   }
 
+  public resolverWith = (valueNamespace: ValueNamespace): NameResolver => {
+    return new NameResolver(this.namespaceResolver, this.constructorNamespace, valueNamespace, this.environment);
+  }
+
   public resolverFor = (dict: DictType): NameResolver => {
     const valueNamespace = this.resolveNamespace(dict.schemaId.gridId);
-    return new NameResolver(this.namespaceResolver, this.constructorNamespace, valueNamespace, this.environment);
+    return this.resolverWith(valueNamespace);
   }
 
   public extendWith = (dict: DictType): NameResolver => {

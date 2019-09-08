@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 
+import {DRAWING_COLUMN_ID, getDrawing} from '@core/drawing_grid_utilities';
 import {Drawing} from '@language/drawing_value';
-import {TypeUtils} from '@language/types';
 import {DrawingValue} from '@language/values';
 import {Grid} from '@models/domain_specific/grid';
 import {ROArray} from '@utils/types';
@@ -18,9 +18,6 @@ export class DrawingViewModel {
   }
 
   private getDrawingsForGrid = (grid: Grid): Drawing[] => {
-    const {columns, rows} = grid;
-    const drawingColumns = columns.a.filter(c => TypeUtils.isDrawing(c.type));
-    const rowDrawings = rows.a.map(row => drawingColumns.map(c => (row.cells.d[c.columnId].value as DrawingValue).drawing));
-    return _.flatten(rowDrawings);
+    return grid.rows.a.map(row => getDrawing(row.asValue()));
   }
 }

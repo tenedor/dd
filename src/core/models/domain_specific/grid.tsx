@@ -1,7 +1,10 @@
 import * as _ from 'lodash';
 
+import {DRAWING_COLUMN_ID} from '@core/drawing_grid_utilities';
+import {ExpressionRes} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver, ValueNamespace} from '@language/name_resolver';
+import {Parser} from '@language/parser';
 import {RelativeValueReference} from '@language/reference';
 import {Identifier, Type, TypeUtils} from '@language/types';
 import {GridValue} from '@language/values';
@@ -28,6 +31,7 @@ export interface GridData {
   formulaEnvironment: FormulaEnvironment;
   name: string,
   parentGrid?: Grid,
+  disableDrawingColumn?: boolean;
 }
 
 export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {}
@@ -37,6 +41,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   private _name: string;
   private readonly formulaEnvironment: FormulaEnvironment;
   private readonly parent?: Grid;
+  private readonly disableDrawingColumn: boolean;
   public readonly columns: GridColumns;
   public readonly rows: Rows;
   public readonly namespace: ValueNamespace;
@@ -44,24 +49,74 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
 
   constructor(
     updateManager: UpdateManager,
-    {formulaEnvironment, name, parentGrid}: GridData,
+    {disableDrawingColumn, formulaEnvironment, name, parentGrid}: GridData,
     modelType: ModelType = ModelType.GRID,
   ) {
-    // TODO need to set up default row
     super(updateManager, modelType);
     this._name = name;
     this.formulaEnvironment = formulaEnvironment;
+    this.disableDrawingColumn = !!disableDrawingColumn;
     if (parentGrid) {
       this.parent = parentGrid;
       this.parent.listenForUpdate(this, this.onParentGridUpdated);
     }
-    this.columns = new FunctionalKeyedArray(updateManager, [], 'columnId');
+
+    // configure grid enough to add to formula environment
+    this.columns = new FunctionalKeyedArray(updateManager, this.getDefaultColumns(), 'columnId');
+    this.namespace = Grid.buildNamespace(this.getColumnByName, this.getColumnById);
+
+    // add to formula environment
+    formulaEnvironment.addGrid(this);
+
+    // finish configuring grid. can now resolve internal references with formula environment.
+    this.configureSystemColumns();
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
     this.rows = new FunctionalArrayM(updateManager, [this.buildDefaultRow()]);
     this.rows.listenForUpdate(this, this.onRowsUpdated);
-    this.namespace = Grid.buildNamespace(this.getColumnByName, this.getColumnById);
     this.gridConstructor = this.buildConstructor();
     this.gridConstructor.listenForUpdate(this, this.onGridConstructorUpdated);
+  }
+
+  private getDefaultColumns = (): GridColumn[] => {
+    return this.parent ?
+      this.parent.columns.a.map(c => GridColumn.fromParent(c, {grid: this, type: c.type})) :
+      this.makeSystemColumns();
+  }
+
+  private makeSystemColumns = (): GridColumn[] => {
+    const drawingColumn = this.makeGridColumn(Column.getDrawingColumn(this.updateManager));
+    return [drawingColumn];
+  }
+
+  private configureSystemColumns = () => {
+    this.updateSystemColumns();
+  }
+
+  private updateSystemColumns = () => {
+    this.updateDrawingColumn();
+  }
+
+  private updateDrawingColumn = () => {
+    const drawingColumn = this.getDrawingColumn();
+    const otherColumns = this.columns.a.filter(c => c !== drawingColumn);
+    const columnRefExprs = otherColumns.map(c => Parser.identToText(c.name));
+    const columnsExpr = `[${columnRefExprs.join(", ")}]`;
+    const expression = `DrawDrawings(Values = ${this.disableDrawingColumn ? '[]' : columnsExpr})`;
+    const ast = this.resolveExpression(expression);
+    drawingColumn.setExpression(ast);
+  }
+
+  private getDrawingColumn = (): GridColumn => {
+    return this.columns.getByKey(DRAWING_COLUMN_ID)!;
+  }
+
+  private resolveExpression = (expression: string): ExpressionRes => {
+    const resolver = this.formulaEnvironment.nameResolver.resolverWith(this.namespace);
+    const parseResult = Parser.parseExpression(expression);
+    if (!parseResult.succeeded) {
+      throw new Error(`Bad formula: ${expression}`);
+    }
+    return parseResult.ast.resolve(resolver);
   }
 
   private buildDefaultRow = (): Row => {
@@ -135,20 +190,26 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
 
   public addColumns = (columns: GridColumn[]) => {
     this.columns.pushAll(columns);
+    this.updateSystemColumns();
   }
 
   public addNewColumn = (type: Type) => {
-    const {formulaEnvironment, updateManager} = this;
+    const {updateManager} = this;
     const name = this.getDefaultNameForColumnOfType(type);
     const column = new Column(updateManager, {name, type});
-    const gridColumn = new GridColumn(updateManager, {
+    const gridColumn = this.makeGridColumn(column);
+    this.addColumns([gridColumn]);
+  }
+
+  private makeGridColumn = (column: Column): GridColumn => {
+    const {formulaEnvironment, updateManager} = this;
+    return new GridColumn(updateManager, {
       column,
       formulaEnvironment,
       grid: this,
-      type,
+      type: column.type,
       width: DEFAULT_COLUMN_WIDTH,
     });
-    this.addColumns([gridColumn]);
   }
 
   private getDefaultNameForColumnOfType = (type: Type): string => {
