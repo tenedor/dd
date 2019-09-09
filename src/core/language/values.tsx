@@ -213,9 +213,8 @@ export class ValueUtils {
   public static get defaultDrawing() {
     const drawingType = DrawingVariant.CIRCLE;
     const radius = 10;
-    const center = {x: 50, y: 50};
     const fill = "black";
-    return ValueUtils.drawingOf({drawingType, radius, center, fill});
+    return ValueUtils.drawingOf({drawingType, radius, fill});
   }
 
   public static defaultListOfType = <T extends Type> (itemType: T) => ValueUtils.listOf([], itemType)

@@ -29,42 +29,42 @@ describe('Standard Library', () => {
   });
 
   describe('DrawCircle', () => {
-    const circleOf = ({radius = 10, x = 0, y = 0, fill = "black"}: {
-      radius?: number, x?: number, y?: number, fill?: string,
+    const circleOf = ({radius = 10, fill = "black"}: {
+      radius?: number, fill?: string,
     } = {}) => ValueUtils.drawingOf({
-      drawingType: DrawingVariant.CIRCLE, radius, center: {x, y}, fill,
+      drawingType: DrawingVariant.CIRCLE, radius, fill,
     });
 
     expectResults('results', [
       {formula: "DrawCircle()", result: circleOf()},
       {
-        formula: "DrawCircle(Radius = 1, X = 2, Y = 3, Fill = \"green\")",
-        result: circleOf({radius: 1, x: 2, y: 3, fill: 'green'}),
+        formula: "DrawCircle(Radius = 1, Fill = \"green\")",
+        result: circleOf({radius: 1, fill: 'green'}),
       },
     ]);
   });
 
   describe('DrawEllipse', () => {
-    const ellipseOf = ({radius1 = 15, radius2 = 10, x = 0, y = 0, fill = "black"}: {
-      radius1?: number, radius2?: number, x?: number, y?: number, fill?: string,
+    const ellipseOf = ({radius1 = 15, radius2 = 10, fill = "black"}: {
+      radius1?: number, radius2?: number, fill?: string,
     } = {}) => ValueUtils.drawingOf({
-      drawingType: DrawingVariant.ELLIPSE, radius1, radius2, center: {x, y}, fill,
+      drawingType: DrawingVariant.ELLIPSE, radius1, radius2, fill,
     });
 
     expectResults('results', [
       {formula: "DrawEllipse()", result: ellipseOf()},
       {
-        formula: "DrawEllipse(Radius1 = 0, Radius2 = 1, X = 2, Y = 3, Fill = \"green\")",
-        result: ellipseOf({radius1: 0, radius2: 1, x: 2, y: 3, fill: 'green'}),
+        formula: "DrawEllipse(Radius1 = 0, Radius2 = 1, Fill = \"green\")",
+        result: ellipseOf({radius1: 0, radius2: 1, fill: 'green'}),
       },
     ]);
   });
 
   describe('DrawPath', () => {
-    const pathOf = ({path = "m -15 9, c 10 -25, 20 -25, 30 0 z", x = 0, y = 0, fill = "black"}: {
-      path?: string, x?: number, y?: number, fill?: string,
+    const pathOf = ({path = "m -15 9, c 10 -25, 20 -25, 30 0 z", fill = "black"}: {
+      path?: string, fill?: string,
     } = {}) => ValueUtils.drawingOf({
-      drawingType: DrawingVariant.PATH, path, center: {x, y}, fill,
+      drawingType: DrawingVariant.PATH, path, fill,
     });
 
     const trianglePath = "m -10 0, l 10 10, l 10 -10 z";
@@ -72,7 +72,7 @@ describe('Standard Library', () => {
       {formula: "DrawPath()", result: pathOf()},
       {
         formula: `DrawPath(Path = "${trianglePath}", X = 2, Y = 3, Fill = "green")`,
-        result: pathOf({path: trianglePath, x: 2, y: 3, fill: 'green'}),
+        result: pathOf({path: trianglePath, fill: 'green'}),
       },
     ]);
   });

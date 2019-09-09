@@ -90,6 +90,12 @@ export class FormulaEnvironment {
     return grid!;
   }
 
+  public getGridById(gridId: Identifier) {
+    const grid = this.allGrids[gridId];
+    assert(grid !== undefined, `Unrecognized grid id ${gridId}.`);
+    return grid!;
+  }
+
   public isAssignableTo = (t1: GridType, t2: GridType): boolean => {
     const g1 = this.getGridForType(t1);
     const g2 = this.getGridForType(t2);

@@ -1,8 +1,7 @@
 import * as _ from 'lodash';
 
-import {DRAWING_COLUMN_ID, getDrawing} from '@core/drawing_grid_utilities';
+import {getDrawing} from '@core/drawing_grid_utilities';
 import {Drawing} from '@language/drawing_value';
-import {DrawingValue} from '@language/values';
 import {Grid} from '@models/domain_specific/grid';
 import {ROArray} from '@utils/types';
 

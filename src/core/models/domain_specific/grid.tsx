@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {DRAWING_COLUMN_ID} from '@core/drawing_grid_utilities';
+import {COORDINATE_SYSTEM_COLUMN_ID, DRAWING_COLUMN_ID} from '@core/drawing_grid_utilities';
 import {ExpressionRes} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver, ValueNamespace} from '@language/name_resolver';
@@ -85,7 +85,12 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
 
   private makeSystemColumns = (): GridColumn[] => {
     const drawingColumn = this.makeGridColumn(Column.getDrawingColumn(this.updateManager));
-    return [drawingColumn];
+    if (this.disableDrawingColumn) {
+      return [drawingColumn];
+    }
+    const getGridIdByName = (gridName: string) => this.formulaEnvironment.getGridByName(gridName).id;
+    const coordinateSystemColumn = this.makeGridColumn(Column.getCoordinateSystemColumn(this.updateManager, getGridIdByName));
+    return [drawingColumn, coordinateSystemColumn];
   }
 
   private configureSystemColumns = () => {
@@ -98,16 +103,28 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
 
   private updateDrawingColumn = () => {
     const drawingColumn = this.getDrawingColumn();
-    const otherColumns = this.columns.a.filter(c => c !== drawingColumn);
-    const columnRefExprs = otherColumns.map(c => Parser.identToText(c.name));
-    const columnsExpr = `[${columnRefExprs.join(", ")}]`;
-    const expression = `DrawDrawings(Values = ${this.disableDrawingColumn ? '[]' : columnsExpr})`;
+    const expression = this.disableDrawingColumn ? 'DrawDrawings()' : this.buildDrawingColumnExpression();
     const ast = this.resolveExpression(expression);
     drawingColumn.setExpression(ast);
   }
 
+  private buildDrawingColumnExpression = (): string => {
+    const drawingColumn = this.getDrawingColumn();
+    const coordinateSystemColumn = this.getCoordinateSystemColumn();
+    const csRefExpr = Parser.identToText(coordinateSystemColumn.name);
+    const csExpr = `[${csRefExpr}]`;
+    const otherColumns = this.columns.a.filter(c => c !== drawingColumn && c !== coordinateSystemColumn);
+    const otherColumnRefExprs = otherColumns.map(c => Parser.identToText(c.name));
+    const columnsExpr = `[${otherColumnRefExprs.join(", ")}]`;
+    return `DrawDrawings('Coordinate System' = ${csExpr}, Values = ${columnsExpr})`;
+  }
+
   private getDrawingColumn = (): GridColumn => {
     return this.columns.getByKey(DRAWING_COLUMN_ID)!;
+  }
+
+  private getCoordinateSystemColumn = (): GridColumn => {
+    return this.columns.getByKey(COORDINATE_SYSTEM_COLUMN_ID)!;
   }
 
   private resolveExpression = (expression: string): ExpressionRes => {

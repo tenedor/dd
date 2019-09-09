@@ -2,11 +2,18 @@ import * as _ from 'lodash';
 
 import {Drawing, isEmptyDrawing} from '@language/drawing_value';
 import {DrawingValue, RowValue, Value, ValueUtils} from '@language/values';
-import {Type, TypeUtils} from './language/types';
+import {Identifier, Type, TypeUtils} from './language/types';
 
-// This should match the UID pattern for columns. It cannot be calculated since it is
-// used to specify a TS type.
+const drawingColumnName = "DRAWING_GROUP";
+export const coordinateSystemColumnName = "Transform";
+export const COORDINATE_SYSTEM_GRID_NAME = 'Coordinate System';
+const builtInDrawingColumnName = "BUILT_IN_DRAWING";
+
+// These ids should match the UID pattern for columns. They cannot be calculated since
+// they are used to specify TS types.
 export const DRAWING_COLUMN_ID = 'col-_DRAWING_';
+export const COORDINATE_SYSTEM_COLUMN_ID = 'col-_COORDINATE_SYSTEM_';
+const BUILT_IN_DRAWING_COLUMN_ID = 'col-_BUILT_IN_DRAWING_';
 
 type ValueWithDrawing = DrawingValue | RowValue;
 
@@ -19,5 +26,20 @@ export const getDrawing = (v: ValueWithDrawing): Drawing => getDrawingValue(v).d
 export const hasNonEmptyDrawing = (v: Value): v is ValueWithDrawing => hasDrawing(v) && !isEmptyDrawing(getDrawing(v));
 
 export const getDrawingColumnData = (): {id: string, name: string, type: Type} => {
-  return {id: DRAWING_COLUMN_ID, name: "DRAWING_COLUMN", type: TypeUtils.Drawing};
+  return {id: DRAWING_COLUMN_ID, name: drawingColumnName, type: TypeUtils.Drawing};
+}
+
+export const getCoordinateSystemColumnData = (
+  getGridIdByName: (gridName: string) => Identifier,
+): {id: string, name: string, type: Type} => {
+  const coordinateSystemGridId = getGridIdByName(COORDINATE_SYSTEM_GRID_NAME);
+  return {
+    id: COORDINATE_SYSTEM_COLUMN_ID,
+    name: coordinateSystemColumnName,
+    type: TypeUtils.RowOf(coordinateSystemGridId),
+  };
+}
+
+export const getBuiltInDrawingColumnData = (): {id: string, name: string, type: Type} => {
+  return {id: BUILT_IN_DRAWING_COLUMN_ID, name: builtInDrawingColumnName, type: TypeUtils.Drawing};
 }

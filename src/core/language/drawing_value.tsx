@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {Scalar, Vector} from '@core/geometry';
+import {CoordinateSystem, Scalar} from '@core/geometry';
 
 // for now, use these stand-in types
 type Color = string;
@@ -14,13 +14,11 @@ export enum DrawingVariant {
   // POLYGON = "POLYGON",
   // POLYLINE = "POLYLINE",
   // RECT = "RECT",
-  COLLECTION = "COLLECTION",
+  GROUP = "GROUP",
 }
 
 interface BaseDrawing {
   drawingType: DrawingVariant,
-  center: Vector,
-  // rotation: Rotation,
 }
 
 interface BaseShapeDrawing extends BaseDrawing {
@@ -45,21 +43,22 @@ interface Path extends BaseShapeDrawing {
   path: SVGPathString,
 }
 
-interface Collection extends BaseDrawing {
-  drawingType: DrawingVariant.COLLECTION,
+interface Group extends BaseDrawing {
+  drawingType: DrawingVariant.GROUP,
   drawings: Drawing[],
+  coordinateSystem: CoordinateSystem,
 }
 
-export type Drawing = Circle | Ellipse | Path | Collection;
+export type Drawing = Circle | Ellipse | Path | Group;
 
 export function drawingsAreEqual(d1: Drawing, d2: Drawing): boolean {
   return _.isEqual(d1, d2);
 }
 
-export function isCollection(v: Drawing): v is Collection {
-  return v.drawingType === DrawingVariant.COLLECTION;
+export function isGroup(v: Drawing): v is Group {
+  return v.drawingType === DrawingVariant.GROUP;
 }
 
 export function isEmptyDrawing(v: Drawing): boolean {
-  return isCollection(v) && v.drawings.length === 0;
+  return isGroup(v) && v.drawings.length === 0;
 }

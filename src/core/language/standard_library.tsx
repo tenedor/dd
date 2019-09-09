@@ -2,6 +2,7 @@ import * as _ from 'lodash';
 
 import {loadBuiltInGrids} from '@core/built_in_grids';
 import {getDrawing, hasNonEmptyDrawing} from '@core/drawing_grid_utilities';
+import {CoordinateSystem, defaultCoordinateSystem} from '@core/geometry';
 import {UpdateManager} from '@models/core/update_manager';
 import {BuiltInFormula} from '@models/domain_specific/constructor';
 import {RODictionary} from '@utils/types';
@@ -9,8 +10,8 @@ import {DrawingVariant} from './drawing_value';
 import {FormulaEnvironment} from './formula_environment';
 import {BoundingType, Identifier, ListOfAnyType, PrimitiveType, Type, TypeUtils}
         from './types';
-import {DrawingValue, ListValue, PartialRowValue, PrimitiveValue, Value,
-        ValueUtils} from './values';
+import {DrawingValue, ListValue, NumberValue, PartialRowValue, PrimitiveValue, RowValue,
+        Value, ValueUtils} from './values';
 
 type BuiltInEval<R extends Type = Type, I extends Identifier = Identifier> = (parameters: PartialRowValue<I>) => Value<R>;
 
@@ -67,9 +68,7 @@ class ParameterUtils {
     return {type: TypeUtils.ListOfAny, defaultValue};
   }
 
-  public static readonly baseDrawing = {
-    X: ParameterUtils.number(0),
-    Y: ParameterUtils.number(0),
+  public static readonly baseShapeDrawing = {
     Fill: ParameterUtils.string("black"),
   }
 }
@@ -178,56 +177,58 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
   },
   DrawCircle: {
     returnType: TypeUtils.Drawing,
-    parameters: _.extend({}, ParameterUtils.baseDrawing, {
+    parameters: _.extend({}, ParameterUtils.baseShapeDrawing, {
       Radius: ParameterUtils.number(10),
     }),
     eval: ({
-      Radius: radius, X: x, Y: y, Fill: fill,
+      Radius: radius, Fill: fill,
     }: {Radius: number} & BaseDrawingParameters): DrawingValue => {
       const drawingType = DrawingVariant.CIRCLE;
-      const center = {x, y};
-      return ValueUtils.drawingOf({drawingType, radius, center, fill});
+      return ValueUtils.drawingOf({drawingType, radius, fill});
     },
   },
   DrawEllipse: {
     returnType: TypeUtils.Drawing,
-    parameters: _.extend({}, ParameterUtils.baseDrawing, {
+    parameters: _.extend({}, ParameterUtils.baseShapeDrawing, {
       Radius1: ParameterUtils.number(15),
       Radius2: ParameterUtils.number(10),
     }),
     eval: ({
-      Radius1: radius1, Radius2: radius2, X: x, Y: y, Fill: fill,
+      Radius1: radius1, Radius2: radius2, Fill: fill,
     }: {Radius1: number, Radius2: number} & BaseDrawingParameters): DrawingValue => {
       const drawingType = DrawingVariant.ELLIPSE;
-      const center = {x, y};
-      return ValueUtils.drawingOf({drawingType, radius1, radius2, center, fill});
+      return ValueUtils.drawingOf({drawingType, radius1, radius2, fill});
     },
   },
   DrawPath: {
     returnType: TypeUtils.Drawing,
-    parameters: _.extend({}, ParameterUtils.baseDrawing, {
+    parameters: _.extend({}, ParameterUtils.baseShapeDrawing, {
       Path: ParameterUtils.string("m -15 9, c 10 -25, 20 -25, 30 0 z"),
     }),
     eval: ({
-      Path: path, X: x, Y: y, Fill: fill,
+      Path: path, Fill: fill,
     }: {Path: string} & BaseDrawingParameters): DrawingValue => {
       const drawingType = DrawingVariant.PATH;
-      const center = {x, y};
-      return ValueUtils.drawingOf({drawingType, path, center, fill});
+      return ValueUtils.drawingOf({drawingType, path, fill});
     },
   },
   DrawDrawings: {
     returnType: TypeUtils.Drawing,
     parameters: {
+      // TODO: encode coordinate system as something less idiotic than a list
+      'Coordinate System': ParameterUtils.listOfAny(ValueUtils.emptyList()),
       Values: ParameterUtils.listOfAny(ValueUtils.emptyList()),
     },
     eval: ({
+      'Coordinate System': coordinateSystemList,
       Values: values,
-    }: {Values: ListValue}): DrawingValue => {
-      const drawingType = DrawingVariant.COLLECTION;
+    }: {'Coordinate System': ListValue, Values: ListValue}): DrawingValue => {
+      const drawingType = DrawingVariant.GROUP;
       const drawings = values.list.filter(hasNonEmptyDrawing).map(getDrawing);
-      const center = {x: 0, y: 0};
-      return ValueUtils.drawingOf({drawingType, drawings, center});
+      const coordinateSystem = coordinateSystemList.list.length ?
+        getCoordinateSystemData(coordinateSystemList.list[0] as RowValue) :
+        defaultCoordinateSystem;
+      return ValueUtils.drawingOf({drawingType, drawings, coordinateSystem});
     },
   },
 };
@@ -239,6 +240,7 @@ const builtInFormulas: RODictionary<BuiltInFormula> = _.mapValues(formulaDefs, (
 
 export const loadStandardLibrary = (updateManager: UpdateManager): FormulaEnvironment => {
   const environment = new FormulaEnvironment();
+  formulaEnvironmentReference.set(environment);
   Object.values(builtInFormulas).map(environment.addBuiltInFormula);
   loadBuiltInGrids(updateManager, environment);
   return environment;
@@ -247,4 +249,38 @@ export const loadStandardLibrary = (updateManager: UpdateManager): FormulaEnviro
 export const getExampleFormulaForTesting = (): BuiltInFormula => {
   const spec = generateFormulaSpec(formulaDefs.Power, "Power");
   return new BuiltInFormula(spec);
+}
+
+
+// TODO clean this up
+const formulaEnvironmentReference = (() => {
+  let env: FormulaEnvironment;
+  return {
+    set: (environment: FormulaEnvironment) => { env = environment; },
+    get: () => env,
+  };
+})();
+
+const getCoordinateSystemData = (rowValue: RowValue): CoordinateSystem => {
+  const environment = formulaEnvironmentReference.get();
+  const centerValue = project(rowValue, 'Center', environment) as RowValue;
+  const xValue = project(centerValue, 'X', environment) as NumberValue;
+  const yValue = project(centerValue, 'Y', environment) as NumberValue;
+  const scaleValue = project(rowValue, 'Scale', environment) as NumberValue;
+  const rotationValue = project(rowValue, 'Rotation', environment) as RowValue;
+  const ccwValue = project(rotationValue, 'Rotation CCW', environment) as NumberValue;
+  const x = xValue.value;
+  const y = yValue.value;
+  const center = {x, y}
+  const scale = scaleValue.value;
+  const ccw = ccwValue.value;
+  const rotation = {ccw};
+  return {center, scale, rotation};
+}
+
+const project = (rowValue: RowValue, columnName: string, environment: FormulaEnvironment): Value => {
+  const grid = environment.getGridById(rowValue.type.schemaId.gridId);
+  const ns = grid.namespace;
+  const columnId = ns.getReferenceForName(columnName)!.id;
+  return rowValue.dict[columnId];
 }
