@@ -54,6 +54,48 @@ input, textarea, select, button {
   .button-static-style();
 }
 
+.add-button() {
+  .button-style();
+  position: relative;
+
+  &::after {
+    content: '+';
+    display: inline-block;
+    font-weight: bold;
+    line-height: 18px;
+    padding: 4px 0;
+    text-align: center;
+  }
+}
+
+.add-menu-item() {
+  .button-static-style();
+
+  .add-menu-item {
+    .button-hover-style();
+    padding: 3px 6px;
+
+    &:first-child {
+      padding-top: 6px;
+    }
+
+    &:last-child {
+      padding-bottom: 6px;
+    }
+  }
+}
+
+.menu-item-divider {
+  border-top: 1px solid #ddd;
+}
+
+.menu-item-hint {
+    color: #aaa;
+    font-size: 12px;
+    font-style: italic;
+    margin-left: 8px;
+}
+
 .pop-up-view-pixel {
   height: 0px;
   position: absolute;
@@ -64,6 +106,27 @@ input, textarea, select, button {
     position: absolute;
     top: 0px;
     z-index: @z-index-pop-up;
+  }
+}
+
+.add-grid {
+  margin-top: 24px;
+  position: relative;
+  width: 110px;
+
+  .add-grid-click-target {
+    .add-button();
+    box-sizing: border-box;
+    height: 100%;
+
+    &:after {
+      content: '+ Add Grid';
+      width: 100%;
+    }
+  }
+
+  .add-grid-menu {
+    .add-menu-item();
   }
 }
 
@@ -98,26 +161,12 @@ input, textarea, select, button {
   }
 }
 
-.add-row-or-column() {
-  .button-style();
-  position: relative;
-
-  &::after {
-    content: '+';
-    display: inline-block;
-    font-weight: bold;
-    line-height: 18px;
-    padding: 4px 0;
-    text-align: center;
-  }
-}
-
 .add-column {
   grid-area: addColumn;
   position: relative;
 
   .add-column-click-target {
-    .add-row-or-column();
+    .add-button();
     box-sizing: border-box;
     height: 100%;
 
@@ -127,25 +176,12 @@ input, textarea, select, button {
   }
 
   .add-column-menu {
-    .button-static-style();
-
-    .add-column-menu-item {
-      .button-hover-style();
-      padding: 3px 6px;
-
-      &:first-child {
-        padding-top: 6px;
-      }
-
-      &:last-child {
-        padding-bottom: 6px;
-      }
-    }
+    .add-menu-item();
   }
 }
 
 .add-row {
-  .add-row-or-column();
+  .add-button();
   grid-area: addRow;
 
   &:after {

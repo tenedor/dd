@@ -34,14 +34,36 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
     addDemoGrids(this, this.updateManager, this.formulaEnvironment);
   }
 
-  public createGrid = (gridData: GridData): Grid => {
+  public addGridFromGridData = (gridData: GridData, index?: number): Grid => {
     const grid = new Grid(this.updateManager, gridData);
-    this.grids.push(grid);
+    index === undefined ? this.grids.push(grid) : this.grids.insert(grid, index);
     return grid;
+  }
+
+  public addGrid = ({name, parentGrid, index}: {name?: string, parentGrid?: Grid, index?: number} = {}): Grid => {
+    const {formulaEnvironment} = this;
+    const _name = name || this.getDefaultNameForGrid();
+    return this.addGridFromGridData({name: _name, formulaEnvironment, parentGrid}, index)
   }
 
   public getAllGridsFunctionally = (): ROArray<Grid> => {
     return this.grids.a;
+  }
+
+  private getGridByName = (name: string): Grid | undefined => {
+    return this.grids.a.find(g => g.name === name);
+  }
+
+  private getDefaultNameForGrid = (): string => {
+    const baseName = "Grid";
+    let i = 1;
+    while (true) {
+      const name = `${baseName} ${i}`;
+      if (this.getGridByName(name) === undefined) {
+        return name;
+      }
+      i++;
+    }
   }
 
   private onGridsUpdated = (epoch: number, updates: Array<ArrayUD<GridUpdateDescriptor>>): DocumentUpdateDescriptor[] => {

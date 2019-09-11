@@ -39,22 +39,32 @@ class BaseFunctionalArray<
     // for overriding
   }
 
-  public set = (index: number, value: T): void => {
-    assert(index >= 0, "Index out of bounds.");
+  private set = (index: number, value: T): void => {
+    assert(0 <= index && index < this.length, "Index out of bounds.");
     const oldValue = this.array[index];
     if (oldValue === value) {
       return;
     }
-    const isInsert = index >= this.length;
     this.array = this.array.slice();
     this.array[index] = value;
-    if (!isInsert) {
-      this.onValueRemoved(oldValue);
-    }
+    this.onValueRemoved(oldValue);
     this.onValueAdded(value);
     const descriptor = {
       index,
-      type: isInsert ? ArrayUpdateType.ELEMENT_INSERTED : ArrayUpdateType.ELEMENT_UPDATED,
+      type: ArrayUpdateType.ELEMENT_UPDATED,
+      elementDescriptors: [],
+    };
+    this.onSelfMutated([descriptor]);
+  }
+
+  public insert = (value: T, index: number): void => {
+    assert(index >= 0, "Index out of bounds.");
+    this.array = this.array.slice();
+    this.array.splice(index, 0, value);
+    this.onValueAdded(value);
+    const descriptor = {
+      index,
+      type: ArrayUpdateType.ELEMENT_INSERTED,
       elementDescriptors: [],
     };
     this.onSelfMutated([descriptor]);
@@ -66,7 +76,7 @@ class BaseFunctionalArray<
   }
 
   public push = (value: T): void => {
-    this.set(this.length, value);
+    this.insert(value, this.length);
   }
 
   public pushAll = (values: T[]): void => {

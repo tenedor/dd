@@ -248,7 +248,7 @@ export class TableView extends BaseComponent<Props, State> {
       return (
         // Disable linting for now as a placeholder to defer implementing more UI. TODO fix this.
         // tslint:disable-next-line:jsx-no-lambda
-        <div key={name} className="add-column-menu-item" onClick={e => this.onClickAddColumnOfType(type, e)}>
+        <div key={name} className="add-column-menu-item add-menu-item" onClick={e => this.onClickAddColumnOfType(type, e)}>
           {name}
         </div>
       );

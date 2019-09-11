@@ -335,7 +335,7 @@ function addDemoArithmeticGrid(
 ) {
   const {nameResolver} = formulaEnvironment;
 
-  const grid = document.createGrid({name: "Radius Calculator", formulaEnvironment});
+  const grid = document.addGridFromGridData({name: "Radius Calculator", formulaEnvironment});
 
   const columns = generateColumns(updateManager, [
     {name: 'In', type: TypeUtils.Number},
@@ -360,7 +360,7 @@ function addDemoDerivativeGrid(
 ) {
   const {nameResolver} = formulaEnvironment;
 
-  const grid = document.createGrid({name: "Derivative", formulaEnvironment});
+  const grid = document.addGridFromGridData({name: "Derivative", formulaEnvironment});
 
   const instanceType = formulaEnvironment.nameResolver.resolveConstructorReference("Radius Calculator").model.returnType;
   const columns = generateColumns(updateManager, [
@@ -411,7 +411,7 @@ function addDemoShapeGrids(
     {column: columns.Path},
     {column: columns.Shape, width: 150, expressionString: "'Path Shape'(Path=Path,Fill=Fill,Transform='Coordinate System'(Center=Vector(X=X,Y=Y)))"},
   ];
-  const grid1 = document.createGrid({name: "Shapes", formulaEnvironment});
+  const grid1 = document.addGridFromGridData({name: "Shapes", formulaEnvironment});
   const grid1Columns = generateGridColumns(updateManager, formulaEnvironment, grid1, grid1ColumnsData);
   grid1.addColumns(grid1Columns);
   setColumnExpressions(grid1, grid1ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid1.id)));
@@ -423,7 +423,7 @@ function addDemoShapeGrids(
     }
     return {parentGridColumn}
   });
-  const grid2 = document.createGrid({name: "More Shapes", parentGrid: grid1, formulaEnvironment});
+  const grid2 = document.addGridFromGridData({name: "More Shapes", parentGrid: grid1, formulaEnvironment});
   const grid2Columns = generateGridColumns(updateManager, formulaEnvironment, grid2, grid2ColumnsData);
   grid2.addColumns(grid2Columns);
   setColumnExpressions(grid2, grid2ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid2.id)));
