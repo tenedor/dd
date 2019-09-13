@@ -71,7 +71,7 @@ describe('Standard Library', () => {
     expectResults('results', [
       {formula: "DrawPath()", result: pathOf()},
       {
-        formula: `DrawPath(Path = "${trianglePath}", X = 2, Y = 3, Fill = "green")`,
+        formula: `DrawPath(Path = "${trianglePath}", Fill = "green")`,
         result: pathOf({path: trianglePath, fill: 'green'}),
       },
     ]);
