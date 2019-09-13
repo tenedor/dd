@@ -68,8 +68,9 @@ input, textarea, select, button {
   }
 }
 
-.add-menu-item() {
+.add-menu() {
   .button-static-style();
+  user-select: none;
 
   .add-menu-item {
     .button-hover-style();
@@ -109,6 +110,27 @@ input, textarea, select, button {
   }
 }
 
+.title-editor-view {
+  margin-bottom: 14px;
+
+  input {
+    .title-text();
+    box-sizing: content-box;
+    border: 0;
+    font-weight: 700;
+    max-width: 300px;
+    overflow: hidden;
+    padding: 0;
+    text-overflow: ellipsis;
+  }
+
+  &.editing input {
+    border-bottom: 2px solid deepskyblue;
+    // Use negative margin instead of border-box to avoid offsetting content
+    margin-bottom: -2px;
+  }
+}
+
 .add-grid {
   margin-top: 24px;
   position: relative;
@@ -125,19 +147,17 @@ input, textarea, select, button {
     }
   }
 
-  .add-grid-menu {
-    .add-menu-item();
+  .add-grid-menu-pop-up {
+    width: 170px;
+
+    .add-grid-menu {
+      .add-menu();
+    }
   }
 }
 
 .grid {
   margin-top: 24px;
-
-  .grid-name {
-    .title-text();
-    font-weight: 700;
-    margin-bottom: 14px;
-  }
 }
 
 .table-view {
@@ -175,8 +195,12 @@ input, textarea, select, button {
     }
   }
 
-  .add-column-menu {
-    .add-menu-item();
+  .add-column-menu-pop-up {
+    width: 170px;
+
+    .add-column-menu {
+      .add-menu();
+    }
   }
 }
 

@@ -50,8 +50,8 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
     return this.grids.a;
   }
 
-  private getGridByName = (name: string): Grid | undefined => {
-    return this.grids.a.find(g => g.name === name);
+  public getAllExtensibleGrids = (): ROArray<Grid> => {
+    return this.formulaEnvironment.getAllExtensibleGrids();
   }
 
   private getDefaultNameForGrid = (): string => {
@@ -59,7 +59,7 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
     let i = 1;
     while (true) {
       const name = `${baseName} ${i}`;
-      if (this.getGridByName(name) === undefined) {
+      if (!this.formulaEnvironment.existsGridWithName(name)) {
         return name;
       }
       i++;

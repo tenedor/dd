@@ -7,6 +7,7 @@ import {ROArray} from '@utils/types';
 import {BaseComponent, BaseProps} from './base_component';
 import {DrawingView} from './drawing_view';
 import {TableView} from './table_view';
+import {TitleEditorView} from './title_editor_view';
 import {PopUpView} from './utilities/pop_up_view';
 
 interface Props extends BaseProps {
@@ -58,7 +59,7 @@ export class DocumentView extends BaseComponent<Props, State> {
 
   private renderAddGridMenuContent = () => {
     const {document} = this.props;
-    const grids = document.getAllGridsFunctionally();
+    const grids = document.getAllExtensibleGrids();
     const newGridMenuItem = this.renderGridMenuItem("New Grid", e => this.onClickAddNewGrid(e));
     const extendGridMenuItems = grids.map(grid =>
       this.renderGridMenuItem(grid.name, e => this.onClickAddGridExtending(grid, e)));
@@ -85,7 +86,7 @@ export class DocumentView extends BaseComponent<Props, State> {
   private renderTables = (epoch: number, grids: ROArray<Grid>) => {
     return grids.map(grid =>
       <div key={`grid-${grid.id}`} className="grid">
-        <div className="grid-name">{grid.name}</div>
+        <TitleEditorView key='title' title={grid.name} onSetTitle={grid.setName} epoch={epoch} />
         <TableView key={`table-${grid.id}`} epoch={epoch} grid={grid} />
       </div>
     );
@@ -98,6 +99,7 @@ export class DocumentView extends BaseComponent<Props, State> {
       const {offsetX: x, offsetY: y} = e.nativeEvent;
       this.openAddGridMenu({x, y});
     }
+    e.stopPropagation();
   }
 
   private onClickAddNewGrid = (e: React.MouseEvent) => {

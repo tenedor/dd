@@ -177,6 +177,14 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     return this._name;
   }
 
+  public setName = (name: string) => {
+    if (!this.formulaEnvironment.existsGridWithName(name)) {
+      this._name = name;
+      const descriptor = {type: GridUpdateType.NAME_UPDATED};
+      this.onSelfMutated([descriptor]);
+    }
+  }
+
   public get value(): GridValue {
     // TODO fix this
     return {type: TypeUtils.GridOf(this.id), dict: {}, list: []};

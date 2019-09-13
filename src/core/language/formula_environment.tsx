@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 
 import {BuiltInFormula} from '@models/domain_specific/constructor'; // only a type dependency
 import {Grid} from '@models/domain_specific/grid'; // only a type dependency
-import {Dictionary} from '@utils/types';
+import {Dictionary, ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
 import {buildNamespace, ConstructorNamespace, NameResolver, ValueNamespace} from './name_resolver';
 import {ReferenceUtils} from './reference';
@@ -78,6 +78,11 @@ export class FormulaEnvironment {
     return TypeUtils.toString(t);
   }
 
+  public existsGridWithName = (gridName: string): boolean => {
+    const grid = Object.values(this.allGrids).find(g => g.name === gridName);
+    return !!grid;
+  }
+
   public getGridByName = (gridName: string): Grid => {
     const grid = Object.values(this.allGrids).find(g => g.name === gridName);
     assert(grid !== undefined, `Unrecognized grid ${gridName}.`);
@@ -94,6 +99,10 @@ export class FormulaEnvironment {
     const grid = this.allGrids[gridId];
     assert(grid !== undefined, `Unrecognized grid id ${gridId}.`);
     return grid!;
+  }
+
+  public getAllExtensibleGrids = (): ROArray<Grid> => {
+    return Object.values(this.allGrids);
   }
 
   public isAssignableTo = (t1: GridType, t2: GridType): boolean => {
