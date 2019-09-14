@@ -78,9 +78,24 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private getDefaultColumns = (): GridColumn[] => {
-    return this.parent ?
+    const parentColumns = this.parent ?
       this.parent.columns.a.map(c => GridColumn.fromParent(c, {grid: this, type: c.type})) :
-      this.makeSystemColumns();
+      [];
+    const systemColumns = this.makeSystemColumns();
+    return Grid.defaultsById(parentColumns.concat(systemColumns), 'columnId');
+  }
+
+  private static defaultsById = <T extends any> (list: T[], id: string): T[] => {
+    const defaults: T[] = [];
+    const observedIds = {};
+    list.forEach(t => {
+      const tId = t[id];
+      if (!observedIds[tId]) {
+        observedIds[tId] = true;
+        defaults.push(t);
+      }
+    });
+    return defaults;
   }
 
   private makeSystemColumns = (): GridColumn[] => {
