@@ -227,14 +227,14 @@ function addVectorGrid(
   const columns = generateColumns(updateManager, [
     {name: 'X', type: TypeUtils.Number},
     {name: 'Y', type: TypeUtils.Number},
-    {name: 'R', type: TypeUtils.Number},
-    {name: 'Theta', type: directionType},
+    {name: '_R', type: TypeUtils.Number},
+    {name: '_Theta', type: directionType},
   ]);
   const gridColumnsData: GridColumnData[] = [
     {column: columns.X},
     {column: columns.Y},
-    {column: columns.R, expressionString: "Sqrt(Value = X * X + Y * Y)"},
-    {column: columns.Theta, expressionString: "Direction('Rotation From Up' = Rotation('Rotation CW' = Atan2(X = Y, Y = X) / (2 * Pi())))"},
+    {column: columns._R, expressionString: "Sqrt(Value = X * X + Y * Y)"},
+    {column: columns._Theta, expressionString: "Direction('Rotation From Up' = Rotation('Rotation CW' = Atan2(X = Y, Y = X) / (2 * Pi())))"},
   ];
   const disableDrawingColumn = true;
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, disableDrawingColumn});
@@ -300,6 +300,46 @@ function addCoAliasGrid(
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
 }
 
+function addPoVecAliasGrid(
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const name = "PoVec";
+  const columns = generateColumns(updateManager, [
+    {name: 'R', type: TypeUtils.Number},
+    {name: 'Theta', type: TypeUtils.Number},
+  ]);
+  const parentGrid = environment.getGridByName("Vector");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {column: columns.R},
+    {column: columns.Theta},
+    {parentGridColumn: parentColumns.X, expressionString: "R * Sin(Radians = Theta * 2 * Pi())"},
+    {parentGridColumn: parentColumns.Y, expressionString: "R * Cos(Radians = Theta * 2 * Pi())"},
+  ];
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+}
+
+function addPoCoAliasGrid(
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const name = "PoCo";
+  const columns = generateColumns(updateManager, [
+    {name: 'R', type: TypeUtils.Number},
+    {name: 'Theta', type: TypeUtils.Number},
+  ]);
+  const parentGrid = environment.getGridByName("Co");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {column: columns.R},
+    {column: columns.Theta},
+    {parentGridColumn: parentColumns.X, expressionString: "R * Sin(Radians = Theta * 2 * Pi())"},
+    {parentGridColumn: parentColumns.Y, expressionString: "R * Cos(Radians = Theta * 2 * Pi())"},
+  ];
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+}
+
 function addTrigonometryGrids(
   updateManager: UpdateManager,
   environment: FormulaEnvironment,
@@ -310,6 +350,8 @@ function addTrigonometryGrids(
   addCoordinateSystemGrid(updateManager, environment);
   addRotAliasGrid(updateManager, environment);
   addCoAliasGrid(updateManager, environment);
+  addPoVecAliasGrid(updateManager, environment);
+  addPoCoAliasGrid(updateManager, environment);
 }
 
 function addShapeGrid(

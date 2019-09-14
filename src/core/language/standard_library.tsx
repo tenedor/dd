@@ -167,6 +167,27 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     parameters: {},
     eval: ({}: {}): number => Math.PI,
   },
+  Sin: {
+    returnType: TypeUtils.Number,
+    parameters: {
+      Radians: ParameterUtils.number(0),
+    },
+    eval: ({Radians: radians}: {Radians: number}): number => Math.sin(radians),
+  },
+  Cos: {
+    returnType: TypeUtils.Number,
+    parameters: {
+      Radians: ParameterUtils.number(0),
+    },
+    eval: ({Radians: radians}: {Radians: number}): number => Math.cos(radians),
+  },
+  Tan: {
+    returnType: TypeUtils.Number,
+    parameters: {
+      Radians: ParameterUtils.number(0),
+    },
+    eval: ({Radians: radians}: {Radians: number}): number => Math.tan(radians),
+  },
   Atan2: {
     returnType: TypeUtils.Number,
     parameters: {
