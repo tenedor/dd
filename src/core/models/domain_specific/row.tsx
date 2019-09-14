@@ -70,13 +70,20 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
   private static getColumnsOrderedByDependency = (columns: GridColumns): GridColumn[] => {
     // Must order cell construction by formula dependencies
     const dependenciesMap = Row.getColumnDependenciesMap(columns);
-    const sortedColumns = columns.a.slice(0);
-    sortedColumns.sort((c1, c2) => {
-      const id1 = c1.columnId;
-      const id2 = c2.columnId;
-      const cell2DependsOnCell1 = dependenciesMap[id2].indexOf(id1) > -1;
-      return cell2DependsOnCell1 ? -1 : (dependenciesMap[id1].indexOf(id2) > -1 ? 1 : 0);
-    });
+    const sortedColumns: GridColumn[] = [];
+    let remainingColumnIds = Object.keys(columns.d);
+    const hasOutstandingDependency = (id: string) => {
+      const deps = dependenciesMap[id];
+      return _.some(deps, depId => remainingColumnIds.includes(depId));
+    };
+    while (remainingColumnIds.length) {
+      const freeId = _.find(remainingColumnIds, id => !hasOutstandingDependency(id));
+      if (freeId === undefined) {
+        throw new Error("Dependency cycle encountered in row construction");
+      }
+      sortedColumns.push(columns.getByKey(freeId)!);
+      remainingColumnIds = _.without(remainingColumnIds, freeId);
+    }
     return sortedColumns;
   }
 
