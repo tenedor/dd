@@ -261,6 +261,45 @@ function addCoordinateSystemGrid(
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, disableDrawingColumn});
 }
 
+function addRotAliasGrid(
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const name = "Rot";
+  const columns = generateColumns(updateManager, [
+    {name: 'Rot', type: TypeUtils.Number},
+  ]);
+  const parentGrid = environment.getGridByName("Rotation");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {column: columns.Rot},
+    {parentGridColumn: parentColumns['Rotation CW'], expressionString: "Rot"},
+  ];
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+}
+
+function addCoAliasGrid(
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const name = "Co";
+  const columns = generateColumns(updateManager, [
+    {name: 'X', type: TypeUtils.Number},
+    {name: 'Y', type: TypeUtils.Number},
+    {name: 'Rot', type: TypeUtils.Number},
+  ]);
+  const parentGrid = environment.getGridByName("Coordinate System");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {column: columns.X},
+    {column: columns.Y},
+    {column: columns.Rot},
+    {parentGridColumn: parentColumns.Center, expressionString: "Vector(X=X,Y=Y)"},
+    {parentGridColumn: parentColumns.Rotation, expressionString: "Rotation('Rotation CW'=Rot)"},
+  ];
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+}
+
 function addTrigonometryGrids(
   updateManager: UpdateManager,
   environment: FormulaEnvironment,
@@ -269,6 +308,8 @@ function addTrigonometryGrids(
   addDirectionGrid(updateManager, environment);
   addVectorGrid(updateManager, environment);
   addCoordinateSystemGrid(updateManager, environment);
+  addRotAliasGrid(updateManager, environment);
+  addCoAliasGrid(updateManager, environment);
 }
 
 function addShapeGrid(
