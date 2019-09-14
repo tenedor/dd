@@ -1,8 +1,9 @@
 import * as _ from 'lodash';
 
+import {ExpressionRes} from '@language/ast';
+import {LanguageError} from '@language/language_errors';
 import {Parser} from '@language/parser';
 import {TypeUtils} from '@language/types';
-import {ValueUtils} from '@language/values';
 import {Cell} from '@models/domain_specific/cell';
 import {GridColumn} from '@models/domain_specific/grid_column';
 
@@ -75,7 +76,16 @@ export abstract class CellEditorViewModel {
       const parseResult = Parser.parseExpression(unparsedExpression);
       if (parseResult.succeeded) {
         const {formulaEnvironment, nameResolver} = column;
-        const ast = parseResult.ast.resolve(nameResolver);
+        let ast: ExpressionRes;
+        try {
+          ast = parseResult.ast.resolve(nameResolver);
+        } catch (e) {
+          if (e instanceof LanguageError) {
+            console.warn(`Formula edit failed due to ${e.name}: ${e.message}`);
+            return false;
+          }
+          throw e;
+        }
         if (!TypeUtils.isAssignableTo(ast.type, column.type, formulaEnvironment)) {
           // TODO: inform the user of the type issue
           return false;
