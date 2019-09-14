@@ -1,5 +1,6 @@
 import {ExpressionRes} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
+import {TypeError} from '@language/language_errors';
 import {NameResolver} from '@language/name_resolver';
 import {Reference} from '@language/reference';
 import {Type, TypeUtils} from '@language/types';
@@ -76,7 +77,7 @@ export class FormulaExpression<T extends Type = Type, P extends Type = Type> ext
 
   public setExpression = (expression: ExpressionRes<T> | undefined) => {
     if (expression && !TypeUtils.isAssignableTo(expression.type, this.type, this.environment)) {
-      throw new Error("A formula expression must be assignable to its column's type");
+      throw new TypeError("A formula expression must be assignable to its column's type");
     }
     this._expression = expression;
     const descriptor = {type: FormulaExpressionUpdateType.FORMULA_EXPRESSION_UPDATED};

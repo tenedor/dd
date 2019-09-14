@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 
 import {assertUnreachable} from '@utils/utils';
+import {DivideByZeroError, TypeError} from './language_errors';
 import {Type, TypeUtils} from './types';
 import {BooleanValue, Value, ValueUtils} from './values';
 
@@ -48,7 +49,7 @@ const assertOpTypes = (valid: boolean, op: string, requirement: string) => {
   }
 }
 
-const throwRuntimeError = (message: string) => {throw new Error(message)};
+const throwError = (error: Error): never => { throw error };
 
 export class BinaryOpUtils {
 
@@ -111,7 +112,7 @@ export class BinaryOpUtils {
     const v1 = v1Thunk();
     const v2 = v2Thunk();
     if (!ValueUtils.isPrimitive(v1) || !ValueUtils.isPrimitive(v2)) {
-      throw new Error("Binary operations are not supported on non-primitive values");
+      throw new TypeError("Binary operations are not supported on non-primitive values");
     } else if (BinaryOpUtils.isTTB(op)) {
       return ValueUtils.booleanOf(BinaryOpUtils.evalTTB(op, v1.value, v2.value));
     } else if (BinaryOpUtils.isTTT(op)) {
@@ -175,7 +176,7 @@ export class BinaryOpUtils {
     const n1 = v1 as number;
     switch (op) {
       case BinaryOpTNT.TIMES: return n1 * n2;
-      case BinaryOpTNT.DIV: return n2 === 0 ? throwRuntimeError('divide by zero') : n1 / n2;
+      case BinaryOpTNT.DIV: return n2 === 0 ? throwError(new DivideByZeroError()) : n1 / n2;
       default:
         return assertUnreachable(op);
     }

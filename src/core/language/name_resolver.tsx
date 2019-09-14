@@ -3,6 +3,7 @@ import * as _ from 'lodash';
 import {Grid} from '@models/domain_specific/grid'; // Only a type dependency
 import {RODictionary} from '@utils/types';
 import {FormulaEnvironment} from './formula_environment';
+import {ObjectResolutionError, TypeError, ValueResolutionError} from './language_errors';
 import {ConstructorReference, Reference, ReferenceUtils, ValueReference} from './reference';
 import {DictType, Identifier, RowType, Type, TypeUtils} from './types';
 
@@ -98,7 +99,7 @@ export class NameResolver {
   public resolveValueReference = (name: string): ValueReference => {
     const ref = this.valueNamespace.getReferenceForName(name);
     if (!ref) {
-      throw new TypeError(`No value with name '${name}' exists in this scope`);
+      throw new ValueResolutionError(`No value with name '${name}' exists in this scope`);
     }
     return ref;
   }
@@ -106,7 +107,7 @@ export class NameResolver {
   public resolveConstructorReference = (name: string): ConstructorReference => {
     const ref = this.constructorNamespace.getReferenceForName(name);
     if (!ref) {
-      throw new TypeError(`No formula or grid exists with name '${name}'`);
+      throw new NameResolutionError(`No formula or grid exists with name '${name}'`);
     }
     return ref;
   }
@@ -114,7 +115,7 @@ export class NameResolver {
   public resolveGridConstructorFromId = <I extends Identifier> (gridId: I): ConstructorReference<RowType<I>, I> => {
     const ref = this.constructorNamespace.getReferenceForGridId(gridId);
     if (!ref) {
-      throw new TypeError(`No constructor exists for grid with id '${gridId}'`);
+      throw new NameResolutionError(`No constructor exists for grid with id '${gridId}'`);
     }
     return ref;
   }
@@ -122,7 +123,7 @@ export class NameResolver {
   private resolveNamespace = (id: Identifier): ValueNamespace => {
     const namespace = this.namespaceResolver.resolveNamespace(id);
     if (!namespace) {
-      throw new Error(`No namespace found for id ${id}`);
+      throw new NameResolutionError(`No namespace found for id ${id}`);
     }
     return namespace;
   }
@@ -182,5 +183,11 @@ export class NameResolver {
       getReferenceForName: (name: string) => namespace.getReferenceForName(name) || parentNamespace.getReferenceForName(name),
       getNameForReference: (refId: Identifier) => namespace.getNameForReference(refId) || parentNamespace.getNameForReference(refId),
     }
+  }
+}
+
+class NameResolutionError extends ObjectResolutionError {
+  constructor(message: string = "", errorClass: typeof NameResolutionError = NameResolutionError) {
+    super(message, errorClass);
   }
 }

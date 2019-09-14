@@ -3,6 +3,7 @@ import * as _ from 'lodash';
 import {COORDINATE_SYSTEM_COLUMN_ID, DRAWING_COLUMN_ID} from '@core/drawing_grid_utilities';
 import {ExpressionRes} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
+import {ParseError} from '@language/language_errors';
 import {NameResolver, ValueNamespace} from '@language/name_resolver';
 import {Parser} from '@language/parser';
 import {RelativeValueReference} from '@language/reference';
@@ -146,7 +147,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     const resolver = this.formulaEnvironment.nameResolver.resolverWith(this.namespace);
     const parseResult = Parser.parseExpression(expression);
     if (!parseResult.succeeded) {
-      throw new Error(`Bad formula: ${expression}`);
+      throw new ParseError(`Bad formula: ${expression}`);
     }
     return parseResult.ast.resolve(resolver);
   }

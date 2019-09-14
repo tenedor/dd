@@ -4,6 +4,7 @@ import {BuiltInFormula} from '@models/domain_specific/constructor'; // only a ty
 import {Grid} from '@models/domain_specific/grid'; // only a type dependency
 import {Dictionary, ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
+import {ObjectResolutionError} from './language_errors';
 import {buildNamespace, ConstructorNamespace, NameResolver, ValueNamespace} from './name_resolver';
 import {ReferenceUtils} from './reference';
 import {GridType, Identifier, ListOfAnyType, Type, TypeUtils} from './types';
@@ -81,19 +82,19 @@ export class FormulaEnvironment {
 
   public getGridByName = (gridName: string): Grid => {
     const grid = Object.values(this.allGrids).find(g => g.name === gridName);
-    assert(grid !== undefined, `Unrecognized grid ${gridName}.`);
+    assert(grid !== undefined, new ObjectResolutionError(`Unrecognized grid ${gridName}.`));
     return grid!;
   }
 
   public getGridForType = (gridType: GridType): Grid => {
     const grid = this.allGrids[gridType.schemaId.gridId];
-    assert(grid !== undefined, `Unrecognized grid type ${TypeUtils.toString(gridType)}.`);
+    assert(grid !== undefined, new ObjectResolutionError(`Unrecognized grid type ${TypeUtils.toString(gridType)}.`));
     return grid!;
   }
 
   public getGridById(gridId: Identifier) {
     const grid = this.allGrids[gridId];
-    assert(grid !== undefined, `Unrecognized grid id ${gridId}.`);
+    assert(grid !== undefined, new ObjectResolutionError(`Unrecognized grid id ${gridId}.`));
     return grid!;
   }
 

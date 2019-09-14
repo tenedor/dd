@@ -3,6 +3,7 @@ import * as _ from 'lodash';
 import {Constructor} from '@models/domain_specific/constructor'; // Only a type dependency
 import {ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
+import {OutOfBoundsError, TypeError} from './language_errors';
 import {NameResolver} from './name_resolver';
 import {Parser} from './parser';
 import {ConstructorReference, Reference, ReferenceUtils, ValueReference}
@@ -349,7 +350,7 @@ export class IndexRes<R extends Type = Type>
     }
     const oneIndexedIndex = idxV.value;
     if (oneIndexedIndex < 1 || oneIndexedIndex > listV.list.length) {
-      throw new Error(`Index ${oneIndexedIndex} is out of bounds`);
+      throw new OutOfBoundsError(`Index ${oneIndexedIndex} is out of bounds`);
     }
     return listV.list[oneIndexedIndex - 1] as Value<R>;
   }

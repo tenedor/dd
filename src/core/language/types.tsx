@@ -3,6 +3,7 @@ import * as _ from 'lodash';
 import {ROArray} from '@utils/types';
 import {assertUnreachable, capitalizeFirstLetter} from '@utils/utils';
 import {FormulaEnvironment} from './formula_environment';
+import {TypeError} from './language_errors';
 
 export type Identifier = string;
 

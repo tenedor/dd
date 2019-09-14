@@ -6,6 +6,7 @@ import {assertUnreachable} from '@utils/utils';
 import {CallRes, ResolvedAST} from './ast';
 import {Drawing, drawingsAreEqual, DrawingVariant} from './drawing_value';
 import {FormulaEnvironment} from './formula_environment';
+import {TypeError} from './language_errors';
 import {NameResolver} from './name_resolver';
 import {Parser} from './parser';
 import {BoundingType, DictType, DrawingType, GridIdentifier, GridType, Identifier,

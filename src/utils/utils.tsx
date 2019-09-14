@@ -2,9 +2,9 @@ import * as _deepEqual from 'deep-equal';
 import * as _ from 'lodash';
 import * as shallow from 'shallow-equals';
 
-export function assert(e: any, message?: string): true {
+export function assert(e: any, message?: string | Error): true {
   if (!e) {
-    throw new Error(message);
+    throw message instanceof Error ? message : new Error(message);
   }
   return true;
 }

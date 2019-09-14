@@ -8,6 +8,7 @@ import {BuiltInFormula} from '@models/domain_specific/constructor';
 import {RODictionary} from '@utils/types';
 import {DrawingVariant} from './drawing_value';
 import {FormulaEnvironment} from './formula_environment';
+import {TypeError} from './language_errors';
 import {BoundingType, Identifier, ListOfAnyType, PrimitiveType, Type, TypeUtils}
         from './types';
 import {DrawingValue, ListValue, NumberValue, PartialRowValue, PrimitiveValue, RowValue,

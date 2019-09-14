@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 
 import {assertUnreachable} from '@utils/utils';
+import {TypeError} from './language_errors';
 import {Type, TypeUtils} from './types';
 import {Value, ValueUtils} from './values';
 
@@ -54,7 +55,7 @@ export class UnaryOpUtils {
 
   public static evalOp = (op: UnaryOp, v: Value): Value => {
     if (!ValueUtils.isPrimitive(v) || !ValueUtils.isPrimitive(v)) {
-      throw new Error("Unary operations are not supported on non-primitive values");
+      throw new TypeError("Unary operations are not supported on non-primitive values");
     } else if (UnaryOpUtils.isBB(op)) {
       return ValueUtils.booleanOf(UnaryOpUtils.evalBB(op, v.value as boolean));
     } else if (UnaryOpUtils.isTT(op)) {
