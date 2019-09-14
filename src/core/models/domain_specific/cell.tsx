@@ -292,7 +292,8 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     if (this.defaultValue) {
       return this.defaultValue.rawValue;
     } else if (TypeUtils.supportsLiterals(type)) {
-      return ValueUtils.getDefaultValue(type, nameResolver);
+      // Unclear why TS can't figure this one out in some environments...
+      return ValueUtils.getDefaultValue(type, nameResolver) as ValueOrAST<T>;
     }
     throw new Error(`Default value is not supported for type ${type}`);
   }

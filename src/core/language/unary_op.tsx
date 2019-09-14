@@ -17,6 +17,8 @@ enum UnaryOpTT {
 
 export type UnaryOp = UnaryOpBB | UnaryOpTT;
 
+type UnaryOpEnum = typeof UnaryOpBB | typeof UnaryOpTT;
+
 const assertOpTypes = (valid: boolean, op: string, requirement: string) => {
   if (!valid) {
     throw new TypeError(`Operation \`${op}\` is only supported on ${requirement}.`);
@@ -29,8 +31,10 @@ export class UnaryOpUtils {
   // Type Guards
   // ===========
 
-  private static isBB = (op: UnaryOp): op is UnaryOpBB => Object.values(UnaryOpBB).includes(op)
-  private static isTT = (op: UnaryOp): op is UnaryOpTT => Object.values(UnaryOpTT).includes(op)
+  private static subtypeIncludes = (subtype: UnaryOpEnum, op: UnaryOp): boolean => Object.values(subtype).includes(op)
+
+  private static isBB = (op: UnaryOp): op is UnaryOpBB => UnaryOpUtils.subtypeIncludes(UnaryOpBB, op)
+  private static isTT = (op: UnaryOp): op is UnaryOpTT => UnaryOpUtils.subtypeIncludes(UnaryOpTT, op)
 
   public static isUnaryOp = (op: string): op is UnaryOp => {
     const _op = op as UnaryOp;

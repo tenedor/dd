@@ -40,6 +40,8 @@ enum BinaryOpNNN {
 
 export type BinaryOp = BinaryOpBBB | BinaryOpTTB | BinaryOpTTT | BinaryOpTNT | BinaryOpNNN;
 
+type BinaryOpEnum = typeof BinaryOpBBB | typeof BinaryOpTTB | typeof BinaryOpTTT | typeof BinaryOpTNT | typeof BinaryOpNNN;
+
 
 type primitiveValue = number | boolean | string;
 
@@ -57,11 +59,13 @@ export class BinaryOpUtils {
   // Type Guards
   // ===========
 
-  public static isBBB = (op: BinaryOp): op is BinaryOpBBB => Object.values(BinaryOpBBB).includes(op)
-  public static isTTB = (op: BinaryOp): op is BinaryOpTTB => Object.values(BinaryOpTTB).includes(op)
-  public static isTTT = (op: BinaryOp): op is BinaryOpTTT => Object.values(BinaryOpTTT).includes(op)
-  public static isTNT = (op: BinaryOp): op is BinaryOpTNT => Object.values(BinaryOpTNT).includes(op)
-  public static isNNN = (op: BinaryOp): op is BinaryOpNNN => Object.values(BinaryOpNNN).includes(op)
+  private static subtypeIncludes = (subtype: BinaryOpEnum, op: BinaryOp): boolean => Object.values(subtype).includes(op)
+
+  public static isBBB = (op: BinaryOp): op is BinaryOpBBB => BinaryOpUtils.subtypeIncludes(BinaryOpBBB, op)
+  public static isTTB = (op: BinaryOp): op is BinaryOpTTB => BinaryOpUtils.subtypeIncludes(BinaryOpTTB, op)
+  public static isTTT = (op: BinaryOp): op is BinaryOpTTT => BinaryOpUtils.subtypeIncludes(BinaryOpTTT, op)
+  public static isTNT = (op: BinaryOp): op is BinaryOpTNT => BinaryOpUtils.subtypeIncludes(BinaryOpTNT, op)
+  public static isNNN = (op: BinaryOp): op is BinaryOpNNN => BinaryOpUtils.subtypeIncludes(BinaryOpNNN, op)
 
   public static isBinaryOp = (op: string): op is BinaryOp => {
     const _op = op as BinaryOp;
