@@ -15,13 +15,11 @@ export type ValueNamespace = Namespace<ValueReference>;
 
 
 export class ConstructorNamespace implements Namespace<ConstructorReference> {
-  private readonly parent?: ConstructorNamespace;
   private readonly nameToReferenceMap: {[name: string]: ConstructorReference};
   private readonly idToNameMap: {[id: string]: string};
   private readonly grids: {[id: string]: Grid};
 
-  constructor(parent?: ConstructorNamespace) {
-    this.parent = parent;
+  constructor() {
     this.nameToReferenceMap = {};
     this.idToNameMap = {};
     this.grids = {};
@@ -31,22 +29,20 @@ export class ConstructorNamespace implements Namespace<ConstructorReference> {
     const grid = Object.values(this.grids).find(g => g.name === name);
     return grid ?
       ReferenceUtils.buildReferenceForConstructor(grid.gridConstructor) :
-      this.nameToReferenceMap[name] || (this.parent && this.parent.getReferenceForName(name));
+      this.nameToReferenceMap[name];
   }
 
   // TODO - in the case of grids, this is using the grid id not the reference id
   public getNameForReference = (refId: Identifier): string | undefined => {
     const grid = this.grids[refId];
-    return grid ?
-      grid.name :
-      this.idToNameMap[refId] || (this.parent && this.parent.getNameForReference(refId));
+    return grid ? grid.name : this.idToNameMap[refId];
   }
 
   public getReferenceForGridId = <I extends Identifier> (gridId: I): ConstructorReference<RowType<I>, I> | undefined => {
     const grid = this.grids[gridId as string] as Grid<I>;
     return grid ?
       ReferenceUtils.buildReferenceForConstructor(grid.gridConstructor) :
-      (this.parent && this.parent.getReferenceForGridId(gridId));
+      undefined;
   }
 
   public addBuiltInFormula = (name: string, ref: ConstructorReference) => {

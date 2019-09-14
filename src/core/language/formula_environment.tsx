@@ -9,20 +9,17 @@ import {ReferenceUtils} from './reference';
 import {GridType, Identifier, ListOfAnyType, Type, TypeUtils} from './types';
 
 export class FormulaEnvironment {
-  private readonly parent?: FormulaEnvironment;
   private readonly builtInFormulasByGridId: Dictionary<BuiltInFormula>;
   private readonly grids: Dictionary<Grid>;
   private readonly valueNamespace: ValueNamespace;
   private readonly constructorNamespace: ConstructorNamespace;
   private readonly _nameResolver: NameResolver;
 
-  constructor(parent?: FormulaEnvironment) {
-    this.parent = parent;
+  constructor() {
     this.builtInFormulasByGridId = {};
     this.grids = {};
     this.valueNamespace = buildNamespace({});
-    const parentNamespace = parent && parent.constructorNamespace;
-    this.constructorNamespace = new ConstructorNamespace(parentNamespace);
+    this.constructorNamespace = new ConstructorNamespace();
     this._nameResolver = this.buildNameResolver();
   }
 
@@ -35,12 +32,11 @@ export class FormulaEnvironment {
   private resolveNamespace = (objectId: Identifier): ValueNamespace | undefined => {
     const object = (this.grids[objectId] || this.builtInFormulasByGridId[objectId]) as Grid | BuiltInFormula | undefined;
     const namespace = object && object.namespace;
-    return namespace || (this.parent && this.parent.resolveNamespace(objectId));
+    return namespace;
   }
 
   private get allGrids(): Dictionary<Grid> {
-    const parentGrids = this.parent ? this.parent.allGrids : {};
-    return _.defaults({}, this.grids, parentGrids);
+    return this.grids;
   }
 
   public addBuiltInFormula = (formula: BuiltInFormula) => {

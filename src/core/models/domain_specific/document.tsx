@@ -25,7 +25,7 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
     super(updateManager, modelType);
 
     const standardLibrary = loadStandardLibrary(updateManager);
-    this.formulaEnvironment = new FormulaEnvironment(standardLibrary);
+    this.formulaEnvironment = standardLibrary;
     this.grids = new FunctionalArrayM(this.updateManager, []);
     this.grids.listenForUpdate(this, this.onGridsUpdated);
   }
