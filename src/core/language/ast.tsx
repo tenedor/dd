@@ -4,15 +4,15 @@ import {Constructor} from '@models/domain_specific/constructor'; // Only a type 
 import {ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
 import {OutOfBoundsError, TypeError} from './language_errors';
-import {NameResolver} from './name_resolver';
+import {buildNamespace, NameResolver, ValueNamespace} from './name_resolver';
 import {Parser} from './parser';
-import {ConstructorReference, Reference, ReferenceUtils, ValueReference}
-        from './reference';
+import {ConstructorReference, Reference, ReferenceUtils, RelativeValueReference,
+        ValueReference} from './reference';
 import {DictType, GridType, Identifier, LambdaType, ListType, PartialRowType,
         PrimitiveType, RowType, Type, TypeUtils} from './types';
 import {UnaryOp, UnaryOpUtils} from './unary_op';
 import {ValueResolver} from './value_resolver';
-import {ListValue, PartialRowValue, Value, ValueUtils} from './values';
+import {LambdaValue, ListValue, PartialRowValue, Value, ValueUtils} from './values';
 
 enum ASTNodeType {
   EXPRESSION = "EXPRESSION",
@@ -161,39 +161,61 @@ abstract class LambdaAST<A extends AST, AI extends A = A, AE extends A = A>
     this.e = e;
   }
 
+  protected getNameResolver(resolver: NameResolver): NameResolver {
+    return resolver;
+  }
+
   public toText = (resolver: NameResolver): string => {
-    return `${this.ident.toText(resolver)} -> ${this.e.toText(resolver)}`;
+    const res = this.getNameResolver(resolver);
+    return `${this.ident.toText(res)} -> ${this.e.toText(res)}`;
   }
 }
 
-export class LambdaUnres extends LambdaAST<UnresolvedAST> implements UnresolvedAST<ASTNodeType.LAMBDA> {
+export class LambdaUnres
+    extends LambdaAST<UnresolvedAST, IdentifierUnres, UnresolvedAST>
+    implements UnresolvedAST<ASTNodeType.LAMBDA> {
   public resolve = (resolver: NameResolver) => {
-    // TODO
-    throw new Error("not implemented");
+    const identName = this.ident.getName();
+    const iteratorType: Type = resolver.getIteratorType();
+    const iteratorRef = RelativeValueReference.buildForIteratorVariable(iteratorType, identName);
+    const iteratorNamespace = buildNamespace({[identName]: iteratorRef});
+    const res = resolver.extendWithNamespace(iteratorNamespace);
+    const identR = new IdentifierRes(iteratorRef);
+    const eR = this.e.resolve(res);
+    const type = TypeUtils.LambdaOf(identR.type, eR.type);
+    return new LambdaRes(identR, eR, type, iteratorNamespace);
   }
 }
 
-// TODO
-/*
 export class LambdaRes<RI extends Type = Type, RO extends Type = Type>
-    extends LambdaAST<ResolvedAST, ResolvedAST<RI>, ResolvedAST<RO>>
-    implements ResolvedAST<LambdaTypeT<RI, RO>, ASTNodeType.LAMBDA> {
-  public readonly type: LambdaTypeT<RI, RO>;
+    extends LambdaAST<ResolvedAST, IdentifierRes<RI>, ResolvedAST<RO>>
+    implements ResolvedAST<LambdaType<RI, RO>, ASTNodeType.LAMBDA> {
+  public readonly type: LambdaType<RI, RO>;
   public readonly externalDependencies: ROArray<Reference>;
   public readonly isLiteral = false;
+  private readonly iteratorNamespace: ValueNamespace;
 
-  constructor(ident: ResolvedAST<RI>, e: ResolvedAST<RO>, type: LambdaTypeT<RI, RO>) {
+  constructor(ident: IdentifierRes<RI>, e: ResolvedAST<RO>, type: LambdaType<RI, RO>, identNamespace: ValueNamespace) {
     super(ident, e);
     this.type = type;
     this.externalDependencies = e.externalDependencies;
+    this.iteratorNamespace = identNamespace;
   }
 
   public eval = (valueResolver: ValueResolver): LambdaValue<RI, RO> => {
-    // TODO
-    throw new Error("not implemented");
+    const lambda = (input: Value<RI>): Value<RO> => {
+      const iteratorValueLookup = {[this.ident.getRef().id]: input};
+      const iteratorResolver = valueResolver.resolverFor(iteratorValueLookup);
+      const res = valueResolver.extendWith(iteratorResolver);
+      return this.e.eval(res);
+    }
+    return ValueUtils.lambdaOf(lambda, this.type);
+  }
+
+  protected getNameResolver(resolver: NameResolver): NameResolver {
+    return resolver.extendWithNamespace(this.iteratorNamespace);
   }
 }
-*/
 
 
 // =============
@@ -415,7 +437,7 @@ export class ProjectRes<R extends Type = Type> extends ProjectAST<ResolvedAST<Di
     if (!ValueUtils.isDict(dictV)) {
       throw new TypeError("Can only project values from grids and rows");
     }
-    const refV = this.ref.eval(valueResolver.contextOf(dictV.dict));
+    const refV = this.ref.eval(valueResolver.resolverFor(dictV.dict));
     return refV;
   }
 
@@ -535,12 +557,18 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
   public resolveForConstructor = (resolver: NameResolver, constructorRef: ConstructorReference) => {
     const type = constructorRef.model.assignmentsType;
     const nameResolver = resolver.resolverFor(type);
-    const namesResolved = _.mapKeys(this.asmts, (_e, name) => nameResolver.resolveValueReference(name).id);
-    const asmtsR = _.mapValues(namesResolved, e => e.resolve(resolver));
+    const referencesByName = _.mapValues(this.asmts, (_e, name) => nameResolver.resolveValueReference(name));
+    const asmtsRByName = _.mapValues(this.asmts, (e, name) => AssignmentsUnres.resolve(e, resolver, referencesByName[name].type));
+    const asmtsR = _.mapKeys(asmtsRByName, (_e, name) => referencesByName[name].id);
     const asmtTypes = _.mapValues(asmtsR, asmt => asmt.type);
     resolver.validateConstructorAssignments(constructorRef, asmtTypes);
     const asmtOrderR = this.asmtOrder.map(name => nameResolver.resolveValueReference(name).id);
     return new AssignmentsRes(asmtsR, asmtOrderR, constructorRef, type);
+  }
+
+  private static resolve = (e: UnresolvedAST, resolver: NameResolver, type: Type): ResolvedAST => {
+    const res = TypeUtils.isLambda(type) ? resolver.extendWithIteratorType(type) : resolver;
+    return e.resolve(res);
   }
 }
 
@@ -599,6 +627,10 @@ export class IdentifierUnres extends IdentifierAST implements UnresolvedAST<ASTN
     return new IdentifierRes(refR);
   }
 
+  public getName = (): string => {
+    return this.name;
+  }
+
   public toText = (resolver: NameResolver): string => {
     return Parser.identToText(this.name);
   }
@@ -620,6 +652,10 @@ export class IdentifierRes<R extends Type = Type> extends IdentifierAST
 
   public eval = (valueResolver: ValueResolver): Value<R> => {
     return this.ref.eval(valueResolver);
+  }
+
+  public getRef = (): ValueReference<R> => {
+    return this.ref;
   }
 
   public toText = (resolver: NameResolver): string => {

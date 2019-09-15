@@ -296,7 +296,10 @@ describe('Language', () => {
 
 
   describe('Lambdas', () => {
-    // not yet implemented
+    expectResults('lambdas', [
+      {formula: "N -> N * 2", lambdaArg: 8, result: 16},
+      {formula: "B -> !B", lambdaArg: false, result: true},
+    ], formulaEnvironment.nameResolver);
   });
 
 

@@ -149,9 +149,11 @@ export class ValueUtils {
     throw new Error("Constructing a grid value with Value.gridOf is not allowed.");
   }
 
-  public static lambdaOf = <I extends Type, O extends Type> (lambda: (input: Value<I>) => Value<O>,
-      inputType: I, outputType: O): LambdaValue<I, O> => {
-    return {lambda, type: TypeUtils.LambdaOf(inputType, outputType)};
+  public static lambdaOf = <I extends Type, O extends Type>(
+    lambda: (input: Value<I>) => Value<O>,
+    type: LambdaType<I, O>,
+  ): LambdaValue<I, O> => {
+    return {lambda, type};
   }
 
 

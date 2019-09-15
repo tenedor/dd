@@ -5,6 +5,7 @@ import {FormulaEnvironment} from '../formula_environment';
 import {NameResolver} from '../name_resolver';
 import {Parser} from '../parser';
 import {ValueResolver} from '../value_resolver';
+import {Value, ValueUtils} from '../values';
 
 enum FailureStage {
   FAILS_PARSE = "FAILS_PARSE",
@@ -16,6 +17,7 @@ enum FailureStage {
 interface FormulaTestInput {
   formula: string,
   result?: ConvertibleToValue,
+  lambdaArg?: ConvertibleToValue,
   error?: JestErrorMatcher,
   asText?: string,
 }
@@ -44,7 +46,7 @@ const testFormulas = (name: string, formulas: FormulaTestInput[], environment: F
   const {failureStage, nameResolver, valueResolver} = _.defaults({}, config, makeTestConfigDefaults(environment));
 
   it(name, () => {
-    formulas.forEach(({formula, result: expectedResult, error: expectedError, asText: expectedText}) => {
+    formulas.forEach(({formula, result: expectedResult, lambdaArg, error: expectedError, asText: expectedText}) => {
       // parse
       const parseResult = Parser.parseExpression(formula);
       if (failureStage === FailureStage.FAILS_PARSE) {
@@ -53,10 +55,13 @@ const testFormulas = (name: string, formulas: FormulaTestInput[], environment: F
       }
       expect(parseResult.succeeded).toBe(true);
 
+      const lambdaArgV = lambdaArg === undefined ? undefined : TestUtils.asValue(lambdaArg, environment);
+
       if (parseResult.succeeded) {
         // resolve
         const {ast} = parseResult;
-        const resolve = () => ast.resolve(nameResolver);
+        const extendedNameResolver = lambdaArgV ? nameResolver.extendWithIteratorType(lambdaArgV.type) : nameResolver;
+        const resolve = () => ast.resolve(extendedNameResolver);
         if (failureStage === FailureStage.FAILS_RESOLUTION) {
           expect(resolve).toThrow(expectedError);
           return;
@@ -75,7 +80,8 @@ const testFormulas = (name: string, formulas: FormulaTestInput[], environment: F
           expect(evaluate).toThrow(expectedError);
           return;
         }
-        const result = evaluate();
+        const _result = evaluate();
+        const result = lambdaArgV && ValueUtils.isLambda(_result) ? _result.lambda(lambdaArgV) : _result;
 
         // result
         if (expectedResult !== undefined) {
@@ -115,7 +121,7 @@ const expectEvaluationErrors = (
 
 const expectResults = (
   name: string,
-  formulas: Array<{formula: string, result: ConvertibleToValue}>,
+  formulas: Array<{formula: string, result: ConvertibleToValue, lambdaArg?: ConvertibleToValue}>,
   environment: FormulaEnvironment,
   nameResolver?: NameResolver,
   valueResolver?: ValueResolver,
@@ -156,7 +162,7 @@ export const buildLanguageTestHelpers = (environment: FormulaEnvironment) => {
     expectEvaluationErrors: (name: string, formulas: string[], nameResolver?: NameResolver, valueResolver?: ValueResolver) => {
       expectEvaluationErrors(name, formulas, environment, nameResolver, valueResolver);
     },
-    expectResults: (name: string, formulas: Array<{formula: string, result: ConvertibleToValue}>, nameResolver?: NameResolver, valueResolver?: ValueResolver) => {
+    expectResults: (name: string, formulas: Array<{formula: string, result: ConvertibleToValue, lambdaArg?: ConvertibleToValue}>, nameResolver?: NameResolver, valueResolver?: ValueResolver) => {
       expectResults(name, formulas, environment, nameResolver, valueResolver);
     },
     expectToTextIrregular: (name: string, formulas: Array<{formula: string, asText: string}>, nameResolver?: NameResolver, valueResolver?: ValueResolver) => {

@@ -3,7 +3,9 @@ import * as _ from 'lodash';
 import {Model} from '@models/core/model'; // Only a type dependency
 import {Constructor} from '@models/domain_specific/constructor'; // Only a type dependency
 import {Grid} from '@models/domain_specific/grid'; // Only a type dependency
+import {IdentifierPrefix} from '@utils/identifier_prefixes';
 import {NameResolver} from './name_resolver';
+import {Parser} from './parser';
 import {GridType, Identifier, Type, TypeUtils} from './types';
 import {ValueResolver} from './value_resolver';
 import {Value} from './values';
@@ -61,6 +63,11 @@ export class RelativeValueReference<T extends Type = Type>
 
   constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string) {
     super(id, type, getName, ReferenceType.RELATIVE_VALUE);
+  }
+
+  public static buildForIteratorVariable = <T extends Type> (type: T, name: string): RelativeValueReference<T> => {
+    const id = `${IdentifierPrefix.ITERATOR}-${Parser.identToText(name)}`;
+    return new RelativeValueReference(id, type, () => name);
   }
 }
 

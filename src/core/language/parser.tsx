@@ -140,7 +140,8 @@ export class Parser {
         return new ExpressionUnres(e.toAST());
       },
       LambdaExp_lambda(id, _a, e) {
-        return new LambdaUnres(id.toAST(), e.toAST());
+        const ident = new IdentifierUnres(id.toAST());
+        return new LambdaUnres(ident, e.toAST());
       },
       AndOrExp_and: createBinaryOpUnres,
       AndOrExp_or: createBinaryOpUnres,

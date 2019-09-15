@@ -5,7 +5,7 @@ import {RODictionary} from '@utils/types';
 import {FormulaEnvironment} from './formula_environment';
 import {ObjectResolutionError, TypeError, ValueResolutionError} from './language_errors';
 import {ConstructorReference, Reference, ReferenceUtils, ValueReference} from './reference';
-import {DictType, Identifier, RowType, Type, TypeUtils} from './types';
+import {BoundingType, DictType, Identifier, RowType, Type, TypeUtils} from './types';
 
 interface Namespace<R extends Reference> {
   getReferenceForName(name: string): R | undefined;
@@ -72,6 +72,12 @@ export const buildNamespace = <R extends Reference> (nameToReferenceMap: {[name:
 }
 
 
+class NameResolutionError extends ObjectResolutionError {
+  constructor(message: string = "", errorClass: typeof NameResolutionError = NameResolutionError) {
+    super(message, errorClass);
+  }
+}
+
 export interface NamespaceResolver {
   resolveNamespace(id: Identifier): ValueNamespace | undefined;
 }
@@ -82,6 +88,7 @@ export class NameResolver {
   private readonly valueNamespace: ValueNamespace;
   // TODO clarify the role of NameResolver vs FormulaEnvironment
   public readonly environment: FormulaEnvironment;
+  private readonly iteratorType: Type;
   private static MISSING_NAME_PLACEHOLDER = "missing_name";
 
   constructor(
@@ -89,11 +96,13 @@ export class NameResolver {
     constructorNamespace: ConstructorNamespace,
     valueNamespace: ValueNamespace,
     environment: FormulaEnvironment,
+    iteratorType: Type = BoundingType.BOTTOM,
   ) {
     this.namespaceResolver = namespaceResolver;
     this.constructorNamespace = constructorNamespace;
     this.valueNamespace = valueNamespace;
     this.environment = environment;
+    this.iteratorType = iteratorType;
   }
 
   public resolveValueReference = (name: string): ValueReference => {
@@ -126,6 +135,10 @@ export class NameResolver {
       throw new NameResolutionError(`No namespace found for id ${id}`);
     }
     return namespace;
+  }
+
+  public getIteratorType = (): Type => {
+    return this.iteratorType;
   }
 
   public nameForIdInConstructor = (id: Identifier, constructor: ConstructorReference): string => {
@@ -172,9 +185,13 @@ export class NameResolver {
     return this.resolverWith(valueNamespace);
   }
 
-  public extendWith = (dict: DictType): NameResolver => {
-    const localNamespace = this.resolveNamespace(dict.schemaId.gridId);
-    const stackedNamespace = NameResolver.extendNamespace(this.valueNamespace, localNamespace);
+  public extendWithDict = (dict: DictType): NameResolver => {
+    const namespace = this.resolveNamespace(dict.schemaId.gridId);
+    return this.extendWithNamespace(namespace);
+  }
+
+  public extendWithNamespace = (namespace: ValueNamespace): NameResolver => {
+    const stackedNamespace = NameResolver.extendNamespace(this.valueNamespace, namespace);
     return new NameResolver(this.namespaceResolver, this.constructorNamespace, stackedNamespace, this.environment);
   }
 
@@ -184,10 +201,8 @@ export class NameResolver {
       getNameForReference: (refId: Identifier) => namespace.getNameForReference(refId) || parentNamespace.getNameForReference(refId),
     }
   }
-}
 
-class NameResolutionError extends ObjectResolutionError {
-  constructor(message: string = "", errorClass: typeof NameResolutionError = NameResolutionError) {
-    super(message, errorClass);
+  public extendWithIteratorType = (iteratorType: Type) => {
+    return new NameResolver(this.namespaceResolver, this.constructorNamespace, this.valueNamespace, this.environment, iteratorType);
   }
 }

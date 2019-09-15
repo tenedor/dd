@@ -26,7 +26,12 @@ export class ValueResolver {
     return value as Value<T>;
   }
 
-  public contextOf = (dict: RODictionary<Value>): ValueResolver => {
+  public resolverFor = (dict: RODictionary<Value>): ValueResolver => {
     return new ValueResolver(dict, this.environment);
+  }
+
+  public extendWith = (resolver: ValueResolver): ValueResolver => {
+    const dict = _.extend({}, this.valueLookupTable, resolver.valueLookupTable);
+    return this.resolverFor(dict);
   }
 }
