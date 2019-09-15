@@ -9,10 +9,10 @@ import {RODictionary} from '@utils/types';
 import {DrawingVariant} from './drawing_value';
 import {FormulaEnvironment} from './formula_environment';
 import {TypeError} from './language_errors';
-import {BoundingType, Identifier, ListOfAnyType, PrimitiveType, Type, TypeUtils}
-        from './types';
-import {DrawingValue, ListValue, NumberValue, PartialRowValue, PrimitiveValue, RowValue,
-        Value, ValueUtils} from './values';
+import {BoundingType, Identifier, LambdaOfAnyType, ListOfAnyType, PrimitiveType, Type,
+        TypeUtils} from './types';
+import {DrawingValue, LambdaValue, ListValue, NumberValue, PartialRowValue,
+        PrimitiveValue, RowValue, Value, ValueUtils} from './values';
 
 type BuiltInEval<R extends Type = Type, I extends Identifier = Identifier> = (parameters: PartialRowValue<I>) => Value<R>;
 
@@ -32,7 +32,7 @@ export interface BuiltInFormulaSpec<R extends Type = Type, I extends Identifier 
 }
 
 type Primitive = number | boolean | string;
-type MaterializedValue = Primitive | DrawingValue | ListValue;
+type MaterializedValue = Primitive | DrawingValue | ListValue | LambdaValue;
 type MaterializedEval = (parameters: {[name: string]: MaterializedValue}) => MaterializedValue;
 
 interface ParameterGenerator<T extends Type = Type> {
@@ -69,6 +69,10 @@ class ParameterUtils {
     return {type: TypeUtils.ListOfAny, defaultValue};
   }
 
+  public static lambdaOfAny = (defaultValue: LambdaValue = ValueUtils.lambdaOf(v => v, TypeUtils.LambdaOfAny)): ParameterGenerator<LambdaOfAnyType> => {
+    return {type: TypeUtils.LambdaOfAny, defaultValue};
+  }
+
   public static readonly baseShapeDrawing = {
     Fill: ParameterUtils.string("black"),
   }
@@ -80,12 +84,14 @@ const getParameterUID = (formulaId: Identifier, parameterName: string) => `${for
 const dematerializeValue = <T extends Type = Type> (value: MaterializedValue, type: T): Value<T> => {
   if (TypeUtils.isDrawing(type)) {
     return value as DrawingValue & Value<T>;
+  } else if (TypeUtils.isLambda(type)) {
+    return value as LambdaOfAnyType & Value<T>;
   } else if (TypeUtils.isList(type)) {
     return value as ListValue<BoundingType.TOP> & Value<T>;
   } else if (TypeUtils.isPrimitive(type)) {
     return ValueUtils.primitiveOf(value as Primitive, type);
   }
-  throw new TypeError("Can only dematerialize values for primitive types and drawings currently");
+  throw new TypeError(`Cannot dematerialize values for ${type.toString()} types currently`);
 }
 
 const materializeValue = (value: PrimitiveValue | DrawingValue | ListValue): MaterializedValue => {
@@ -141,6 +147,18 @@ const generateFormulaSpec = (formulaDef: FormulaGenerator, name: string): BuiltI
 }
 
 const formulaDefs: {[name: string]: FormulaGenerator} = {
+  /**
+   * Functional Formulas
+   */
+  Map: {
+    returnType: TypeUtils.ListOfAny,
+    parameters: {
+      Values: ParameterUtils.listOfAny(),
+      Fn: ParameterUtils.lambdaOfAny(),
+    },
+    eval: ({Values: values}: {Values: LambdaValue}): LambdaValue => values,
+  },
+
   /**
    * Arithmetic Formulas
    */

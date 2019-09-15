@@ -86,6 +86,7 @@ export enum BoundingType {
 
 export type EmptyListType = ListType<BoundingType.BOTTOM>;
 export type ListOfAnyType = ListType<BoundingType.TOP>;
+export type LambdaOfAnyType = LambdaType<BoundingType.TOP, BoundingType.BOTTOM>;
 
 // ListType only supports literals if its item type is Bottom or is a
 // SupportsLiteralsType, but TypeScript's types cannot express this concept.
@@ -109,6 +110,7 @@ export class TypeUtils {
   public static readonly Top: BoundingType.TOP = BoundingType.TOP;
   public static readonly EmptyList: EmptyListType = {itemType: BoundingType.BOTTOM};
   public static readonly ListOfAny: ListOfAnyType = {itemType: BoundingType.TOP};
+  public static readonly LambdaOfAny: LambdaOfAnyType = {inputType: BoundingType.TOP, outputType: BoundingType.BOTTOM};
 
   public static ListOf = <T extends Type> (itemType: T): ListType<T> => {
     return {itemType};
