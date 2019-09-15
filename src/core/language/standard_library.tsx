@@ -65,7 +65,7 @@ class ParameterUtils {
     return {type: TypeUtils.String, defaultValue};
   }
 
-  public static listOfAny = (defaultValue: ListValue): ParameterGenerator<ListOfAnyType> => {
+  public static listOfAny = (defaultValue: ListValue = ValueUtils.emptyList()): ParameterGenerator<ListOfAnyType> => {
     return {type: TypeUtils.ListOfAny, defaultValue};
   }
 
@@ -141,6 +141,9 @@ const generateFormulaSpec = (formulaDef: FormulaGenerator, name: string): BuiltI
 }
 
 const formulaDefs: {[name: string]: FormulaGenerator} = {
+  /**
+   * Arithmetic Formulas
+   */
   Square: {
     returnType: TypeUtils.Number,
     parameters: {
@@ -163,6 +166,23 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({Base: base, Exponent: exponent}: {Base: number, Exponent: number}): number => Math.pow(base, exponent),
   },
+  Log: {
+    returnType: TypeUtils.Number,
+    parameters: {
+      Value: ParameterUtils.number(1),
+      Base: ParameterUtils.number(2),
+    },
+    eval: ({Value: value, Base: base}: {Value: number, Base: number}): number => Math.log(value) / Math.log(base),
+  },
+  E: {
+    returnType: TypeUtils.Number,
+    parameters: {},
+    eval: ({}: {}): number => Math.E,
+  },
+
+  /**
+   * Trigonometry Formulas
+   */
   Pi: {
     returnType: TypeUtils.Number,
     parameters: {},
@@ -197,6 +217,10 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({X: x, Y: y}: {X: number, Y: number}): number => Math.atan2(y, x),
   },
+
+  /**
+   * Drawing Formulas
+   */
   DrawCircle: {
     returnType: TypeUtils.Drawing,
     parameters: _.extend({}, ParameterUtils.baseShapeDrawing, {
@@ -238,8 +262,8 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     returnType: TypeUtils.Drawing,
     parameters: {
       // TODO: encode coordinate system as something less idiotic than a list
-      'Coordinate System': ParameterUtils.listOfAny(ValueUtils.emptyList()),
-      Values: ParameterUtils.listOfAny(ValueUtils.emptyList()),
+      'Coordinate System': ParameterUtils.listOfAny(),
+      Values: ParameterUtils.listOfAny(),
     },
     eval: ({
       'Coordinate System': coordinateSystemList,
