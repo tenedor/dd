@@ -1,11 +1,13 @@
 import * as _ from 'lodash';
 
+import {LambdaUnres} from '@language/ast';
 import {buildNamespace, ValueNamespace} from '@language/name_resolver';
 import {RelativeValueReference} from '@language/reference';
-import {BuiltInFormulaSpec} from '@language/standard_library';
-import {Identifier, PartialRowType, RowType, Type, TypeUtils} from '@language/types';
+import {Identifier, LambdaType, PartialRowType, RowType, Type, TypeUtils}
+        from '@language/types';
 import {ValueResolver} from '@language/value_resolver';
-import {PartialRowValue, RowValue, Value} from '@language/values';
+import {LambdaValue, PartialRowValue, RowValue, Value} from '@language/values';
+import {RODictionary} from '@utils/types';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
 import {Constant} from '../core/constant';
 import {Model, ModelType} from '../core/model';
@@ -16,6 +18,12 @@ import {GridColumns} from './grid';
 import {GridColumnUpdateDescriptor} from './grid_column';
 import {Row, RowUpdateDescriptor} from './row';
 
+export interface ResolutionTimeTypeHelper {
+  lambdaAsmtName: string,
+  lambdaAsmtDefaultValue: LambdaUnres,
+  resolveLambdaType: (nonLambdaTypesByName: RODictionary<Type>) => LambdaType,
+}
+
 interface BaseConstructor<R extends Type, I extends Identifier = Identifier> {
   readonly id: string,
   readonly isConstructorLiteral: boolean,
@@ -24,6 +32,7 @@ interface BaseConstructor<R extends Type, I extends Identifier = Identifier> {
   namespace: ValueNamespace,
   assignmentsType: PartialRowType<I>,
   eval: (valueResolver: ValueResolver, asmts: PartialRowValue<I>) => Value<R>;
+  resolutionTimeTypeHelper?: ResolutionTimeTypeHelper,
 }
 
 export type Constructor<R extends Type = Type, I extends Identifier = Identifier> = BaseConstructor<R, I> & Model;
@@ -121,6 +130,25 @@ export class GridConstructor<I extends Identifier = Identifier>
   }
 }
 
+
+export type BuiltInEval<R extends Type = Type, I extends Identifier = Identifier> = (parameters: PartialRowValue<I>) => Value<R>;
+
+export interface Parameter<T extends Type = Type> {
+  readonly id: Identifier,
+  readonly name: string,
+  readonly type: T,
+  readonly defaultValue: Value<T>,
+}
+
+export interface BuiltInFormulaSpec<R extends Type = Type, I extends Identifier = Identifier> {
+  readonly id: I,
+  readonly name: string,
+  readonly returnType: R,
+  readonly parameters: Readonly<{[id: string]: Parameter}>,
+  readonly eval: BuiltInEval<R, I>,
+  readonly resolutionTimeTypeHelper?: ResolutionTimeTypeHelper,
+}
+
 export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identifier>
     extends Constant implements BaseConstructor<R, I> {
   public readonly name: string;
@@ -129,6 +157,7 @@ export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identi
   public readonly namespace: ValueNamespace;
   public readonly assignmentsType: PartialRowType<I>;
   public readonly eval: (valueResolver: ValueResolver, asmts: PartialRowValue<I>) => Value<R>;
+  public readonly resolutionTimeTypeHelper?: ResolutionTimeTypeHelper;
 
   constructor(formula: BuiltInFormulaSpec<R, I>) {
     super(formula.id);
@@ -137,6 +166,7 @@ export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identi
     this.namespace = BuiltInFormula.buildNamespace(formula);
     this.assignmentsType = TypeUtils.PartialRowOf(formula.id);
     this.eval = (valueResolver: ValueResolver, asmts: PartialRowValue<I>) => formula.eval(asmts);
+    this.resolutionTimeTypeHelper = formula.resolutionTimeTypeHelper;
   }
 
   private static buildNamespace = (formula: BuiltInFormulaSpec): ValueNamespace => {

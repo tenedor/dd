@@ -4,32 +4,18 @@ import {loadBuiltInGrids} from '@core/built_in_grids';
 import {getDrawing, hasNonEmptyDrawing} from '@core/drawing_grid_utilities';
 import {CoordinateSystem, defaultCoordinateSystem} from '@core/geometry';
 import {UpdateManager} from '@models/core/update_manager';
-import {BuiltInFormula} from '@models/domain_specific/constructor';
+import {BuiltInEval, BuiltInFormula, BuiltInFormulaSpec, Parameter,
+        ResolutionTimeTypeHelper} from '@models/domain_specific/constructor';
 import {RODictionary} from '@utils/types';
+import {LambdaUnres} from './ast';
 import {DrawingVariant} from './drawing_value';
 import {FormulaEnvironment} from './formula_environment';
-import {TypeError} from './language_errors';
-import {BoundingType, Identifier, LambdaOfAnyType, ListOfAnyType, PrimitiveType, Type,
-        TypeUtils} from './types';
+import {ParseError, TypeError} from './language_errors';
+import {Parser} from './parser';
+import {BoundingType, Identifier, LambdaOfAnyType, ListOfAnyType, ListType,
+        PrimitiveType, Type, TypeUtils} from './types';
 import {DrawingValue, LambdaValue, ListValue, NumberValue, PartialRowValue,
         PrimitiveValue, RowValue, Value, ValueUtils} from './values';
-
-type BuiltInEval<R extends Type = Type, I extends Identifier = Identifier> = (parameters: PartialRowValue<I>) => Value<R>;
-
-export interface Parameter<T extends Type = Type> {
-  readonly id: Identifier,
-  readonly name: string,
-  readonly type: T,
-  readonly defaultValue: Value<T>,
-}
-
-export interface BuiltInFormulaSpec<R extends Type = Type, I extends Identifier = Identifier> {
-  readonly id: I,
-  readonly name: string,
-  readonly returnType: R,
-  readonly parameters: Readonly<{[id: string]: Parameter}>,
-  readonly eval: BuiltInEval<R, I>,
-}
 
 type Primitive = number | boolean | string;
 type MaterializedValue = Primitive | DrawingValue | ListValue | LambdaValue;
@@ -44,6 +30,7 @@ interface FormulaGenerator<R extends Type = Type> {
   returnType: R,
   parameters: {[name: string]: ParameterGenerator};
   eval: MaterializedEval,
+  resolutionTimeTypeHelper?: ResolutionTimeTypeHelper,
 }
 
 interface BaseDrawingParameters {
@@ -53,6 +40,9 @@ interface BaseDrawingParameters {
 }
 
 class ParameterUtils {
+  public static readonly defaultListValue = ValueUtils.emptyList();
+  public static readonly defaultLambdaValue = ValueUtils.lambdaOf(v => v, TypeUtils.LambdaOfAny);
+
   public static number = (defaultValue: number): ParameterGenerator<PrimitiveType.NUMBER> => {
     return {type: TypeUtils.Number, defaultValue};
   }
@@ -65,11 +55,11 @@ class ParameterUtils {
     return {type: TypeUtils.String, defaultValue};
   }
 
-  public static listOfAny = (defaultValue: ListValue = ValueUtils.emptyList()): ParameterGenerator<ListOfAnyType> => {
+  public static listOfAny = (defaultValue: ListValue = ParameterUtils.defaultListValue): ParameterGenerator<ListOfAnyType> => {
     return {type: TypeUtils.ListOfAny, defaultValue};
   }
 
-  public static lambdaOfAny = (defaultValue: LambdaValue = ValueUtils.lambdaOf(v => v, TypeUtils.LambdaOfAny)): ParameterGenerator<LambdaOfAnyType> => {
+  public static lambdaOfAny = (defaultValue: LambdaValue = ParameterUtils.defaultLambdaValue): ParameterGenerator<LambdaOfAnyType> => {
     return {type: TypeUtils.LambdaOfAny, defaultValue};
   }
 
@@ -134,7 +124,7 @@ const dematerializeEval = <R extends Type = Type> (
 }
 
 const generateFormulaSpec = (formulaDef: FormulaGenerator, name: string): BuiltInFormulaSpec => {
-  const {returnType} = formulaDef;
+  const {returnType, resolutionTimeTypeHelper} = formulaDef;
   const id = getUID(name);
   const parameters = generateParameters(id, formulaDef.parameters);
   return {
@@ -143,7 +133,16 @@ const generateFormulaSpec = (formulaDef: FormulaGenerator, name: string): BuiltI
     returnType,
     parameters,
     eval: dematerializeEval(formulaDef.eval, parameters, returnType),
+    resolutionTimeTypeHelper,
   };
+}
+
+const buildLambdaUnres = (unparsed: string): LambdaUnres => {
+  const parseResult = Parser.parseLambda('V -> V');
+  if (parseResult.succeeded) {
+    return parseResult.ast as LambdaUnres;
+  }
+  throw new ParseError(`Failed to parse standard library lambda ${unparsed}`);
 }
 
 const formulaDefs: {[name: string]: FormulaGenerator} = {
@@ -151,12 +150,22 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
    * Functional Formulas
    */
   Map: {
-    returnType: TypeUtils.ListOfAny,
+    returnType: TypeUtils.ListOf(BoundingType.BOTTOM),
     parameters: {
       Values: ParameterUtils.listOfAny(),
       Fn: ParameterUtils.lambdaOfAny(),
     },
-    eval: ({Values: values}: {Values: LambdaValue}): LambdaValue => values,
+    eval: ({Values: values, Fn: fn}: {Values: ListValue, Fn: LambdaValue}): ListValue => {
+      const {lambda, type} = fn;
+      const mappedValues = values.list.map(lambda);
+      return ValueUtils.listOf(mappedValues, TypeUtils.ListOf(type.outputType));
+    },
+    resolutionTimeTypeHelper: {
+      lambdaAsmtName: "Fn",
+      lambdaAsmtDefaultValue: buildLambdaUnres('V -> V'),
+      resolveLambdaType: ({Values: valuesType}: RODictionary<Type>) =>
+          TypeUtils.LambdaOf((valuesType as ListType).itemType, BoundingType.BOTTOM),
+    },
   },
 
   /**

@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
 
-import {Constructor} from '@models/domain_specific/constructor'; // Only a type dependency
-import {ROArray, RODictionary} from '@utils/types';
+import {Constructor, ResolutionTimeTypeHelper} from '@models/domain_specific/constructor'; // Only a type dependency
+import {Dictionary, ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
-import {OutOfBoundsError, TypeError} from './language_errors';
+import {OutOfBoundsError, TypeError, ValueResolutionError} from './language_errors';
 import {buildNamespace, NameResolver, ValueNamespace} from './name_resolver';
 import {Parser} from './parser';
 import {ConstructorReference, Reference, ReferenceUtils, RelativeValueReference,
@@ -555,20 +555,52 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
   }
 
   public resolveForConstructor = (resolver: NameResolver, constructorRef: ConstructorReference) => {
-    const type = constructorRef.model.assignmentsType;
-    const nameResolver = resolver.resolverFor(type);
+    // On resolution-time types:
+    // A lambda's type is T -> U but T (and usually U) cannot be resolved in isolation
+    // For now, a constructor has a resolveLambdaType method exactly if it uses a lambda
+    // For now, a constructor can use at most one lambda
+    // For now, this is the only place a lambda can be used:
+    //     a lambda value is not first-class; it can't be returned or put in a list
+    // Therefore, neither T nor U is a lambda type
+    // Therefore, can resolve lambda input type T by resolving the column(s) specifying T
+    // Therefore, can resolve all non-lambda columns first and from them get lambda input type
+    const {assignmentsType, resolutionTimeTypeHelper} = constructorRef.model;
+    const nameResolver = resolver.resolverFor(assignmentsType);
     const referencesByName = _.mapValues(this.asmts, (_e, name) => nameResolver.resolveValueReference(name));
-    const asmtsRByName = _.mapValues(this.asmts, (e, name) => AssignmentsUnres.resolve(e, resolver, referencesByName[name].type));
+    const asmtsRByName = resolutionTimeTypeHelper === undefined ? 
+      _.mapValues(this.asmts, (e, name) => AssignmentsUnres.resolve(e, resolver, referencesByName[name].type)) :
+      AssignmentsUnres.resolveForResolutionTimeTypes(this.asmts, resolver, referencesByName, resolutionTimeTypeHelper);
     const asmtsR = _.mapKeys(asmtsRByName, (_e, name) => referencesByName[name].id);
     const asmtTypes = _.mapValues(asmtsR, asmt => asmt.type);
     resolver.validateConstructorAssignments(constructorRef, asmtTypes);
     const asmtOrderR = this.asmtOrder.map(name => nameResolver.resolveValueReference(name).id);
-    return new AssignmentsRes(asmtsR, asmtOrderR, constructorRef, type);
+    return new AssignmentsRes(asmtsR, asmtOrderR, constructorRef, assignmentsType);
   }
 
   private static resolve = (e: UnresolvedAST, resolver: NameResolver, type: Type): ResolvedAST => {
-    const res = TypeUtils.isLambda(type) ? resolver.extendWithIteratorType(type) : resolver;
+    const res = TypeUtils.isLambda(type) ? resolver.extendWithIteratorType(type.inputType) : resolver;
     return e.resolve(res);
+  }
+
+  private static resolveForResolutionTimeTypes(
+    asmts: RODictionary<UnresolvedAST>,
+    resolver: NameResolver,
+    referencesByName: RODictionary<ValueReference>,
+    {lambdaAsmtDefaultValue, lambdaAsmtName, resolveLambdaType}: ResolutionTimeTypeHelper,
+  ): RODictionary<ResolvedAST> {
+    const nonLambdaAsmtsR: Dictionary<ResolvedAST> = {};
+    _.forEach(asmts, (e, name) => {
+      if (name !== lambdaAsmtName) {
+        nonLambdaAsmtsR[name] = AssignmentsUnres.resolve(e, resolver, referencesByName[name].type);
+      }
+    });
+    const nonLambdaTypes = _.mapValues(nonLambdaAsmtsR, (e: ResolvedAST, name) => e.type);
+    const lambdaType = resolveLambdaType(nonLambdaTypes);
+    const lambdaAsmt = asmts[lambdaAsmtName] || lambdaAsmtDefaultValue;
+    const lambdaAsmtR = {
+      [lambdaAsmtName]: AssignmentsUnres.resolve(lambdaAsmt, resolver, lambdaType),
+    };
+    return _.extend(nonLambdaAsmtsR, lambdaAsmtR);
   }
 }
 

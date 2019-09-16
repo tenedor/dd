@@ -22,6 +22,7 @@ interface SuccessfulExpressionParseResult extends SuccessfulParseResult {
 
 interface ParseFailure {
   readonly succeeded: false;
+  readonly message: string;
 }
 
 export type ValueParseResult = SuccessfulParseResult | ParseFailure;
@@ -32,10 +33,13 @@ export class Parser {
   private static _grammar: Namespace;
   private static formulaGrammar: Grammar;
   private static formulaSemantics: Semantics;
-  private static readonly failure: ParseFailure = {succeeded: false};
 
   private static success = (ast: UnresolvedAST): SuccessfulParseResult => {
     return {ast, succeeded: true};
+  }
+
+  private static failureOf = (message: string): ParseFailure => {
+    return {succeeded: false, message};
   }
 
   private static expressionSuccess = (ast: ExpressionUnres): SuccessfulExpressionParseResult => {
@@ -45,14 +49,14 @@ export class Parser {
   private static parseNumber = (unparsed: string): ValueParseResult => {
       const v = parseFloat(unparsed);
       if (isNaN(v)) {
-        return Parser.failure;
+        return Parser.failureOf(`${unparsed} is not a number`);
       }
       return Parser.success(new PrimitiveUnres(v, TypeUtils.Number));
   }
 
   private static parseBoolean = (unparsed: string): ValueParseResult => {
     if (unparsed !== "true" && unparsed !== "false") {
-      return Parser.failure;
+      return Parser.failureOf(`${unparsed} is not a boolean`);
     }
     const v = unparsed === "true";
     return Parser.success(new PrimitiveUnres(v, TypeUtils.Boolean));
@@ -69,12 +73,12 @@ export class Parser {
       const ast = Parser.formulaSemantics(match).toAST() as CallUnres;
       return Parser.success(ast);
     }
-    return Parser.failure;
+    return Parser.failureOf(match.message || `Failed to parse row literal ${unparsed}`);
   }
 
   public static parseLiteral = (unparsed: string, type: Type): ValueParseResult => {
     if (!TypeUtils.supportsLiterals(type)) {
-      return Parser.failure;
+      return Parser.failureOf(`Literal ${type} values are not supported.`);
     } else if (TypeUtils.isNumber(type)) {
       return Parser.parseNumber(unparsed);
     } else if (TypeUtils.isBoolean(type)) {
@@ -83,15 +87,25 @@ export class Parser {
       return Parser.parseString(unparsed);
     } else if (TypeUtils.isDrawing(type)) {
       // for now
-      return Parser.failure;
+      return Parser.failureOf(`Literal ${type} values are not currently supported.`);
     } else if (TypeUtils.isList(type)) {
       // for now
-      return Parser.failure;
+      return Parser.failureOf(`Literal ${type} values are not currently supported.`);
     } else if (TypeUtils.isRow(type)) {
       return Parser.parseRowLiteral(unparsed);
     } else {
       return assertUnreachable(type);
     }
+  }
+
+  public static parseLambda = (unparsed: string): ValueParseResult => {
+    Parser.ensureInitialized();
+    const match = Parser.formulaGrammar.match(unparsed, "LambdaExp");
+    if (match.succeeded()) {
+      const ast = Parser.formulaSemantics(match).toAST() as LambdaUnres;
+      return Parser.success(ast);
+    }
+    return Parser.failureOf(match.message || `Failed to parse lambda ${unparsed}`);
   }
 
   public static parseExpression = (unparsed: string): ExpressionParseResult => {
@@ -101,7 +115,7 @@ export class Parser {
       const ast = Parser.formulaSemantics(match).toAST() as ExpressionUnres;
       return Parser.expressionSuccess(ast);
     }
-    return Parser.failure;
+    return Parser.failureOf(match.message || `Failed to parse expression ${unparsed}`);
   }
 
   private static isValidUnquotedIdent = (ident: string): boolean => {
