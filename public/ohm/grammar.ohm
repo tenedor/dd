@@ -82,7 +82,7 @@ Formula {
     = "false" ~identChar
 
   string
-    = "\"" stringChar+ "\""
+    = "\"" stringChar* "\""
 
   stringChar
     = ~stringReservedChar any  -- char
