@@ -68,10 +68,11 @@ export abstract class CellEditorViewModel {
   // Returns true if value is a valid value to set given the column and edit mode
   public abstract setValue(value: string | undefined): boolean;
 
-  private static logSetFormulaError = (message: string) => {
+  private static logSetFormulaError = (message: string, unparsedExpression?: string) => {
     // TODO: inform the user of the error through the GUI
     // TODO: persist broken formulas
-    console.warn(`Formula edit failed due to ${message}`);
+    const period = message[message.length - 1] === "." ? "" : ".";
+    console.warn(`Formula edit failed due to ${message}${period} ${unparsedExpression || ""}`);
   }
 
   protected setFormulaExpression = (value: string | undefined): boolean => {
@@ -87,14 +88,14 @@ export abstract class CellEditorViewModel {
           ast = parseResult.ast.resolve(nameResolver);
         } catch (e) {
           if (e instanceof LanguageError) {
-            CellEditorViewModel.logSetFormulaError(`${e.name}: ${e.message}`);
+            CellEditorViewModel.logSetFormulaError(`${e.name}: ${e.message}`, unparsedExpression);
             return false;
           }
           throw e;
         }
         if (!TypeUtils.isAssignableTo(ast.type, column.type, formulaEnvironment)) {
           CellEditorViewModel.logSetFormulaError(`incompatible types: cannot assign ` +
-            `${ast.type.toString()} to ${column.type.toString()}`);
+            `${ast.type.toString()} to ${column.type.toString()}`, unparsedExpression);
           return false;
         }
         column.setExpression(ast);

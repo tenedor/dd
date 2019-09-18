@@ -98,16 +98,6 @@ export class Parser {
     }
   }
 
-  public static parseLambda = (unparsed: string): ValueParseResult => {
-    Parser.ensureInitialized();
-    const match = Parser.formulaGrammar.match(unparsed, "LambdaExp");
-    if (match.succeeded()) {
-      const ast = Parser.formulaSemantics(match).toAST() as LambdaUnres;
-      return Parser.success(ast);
-    }
-    return Parser.failureOf(match.message || `Failed to parse lambda ${unparsed}`);
-  }
-
   public static parseExpression = (unparsed: string): ExpressionParseResult => {
     Parser.ensureInitialized();
     const match = Parser.formulaGrammar.match(unparsed);

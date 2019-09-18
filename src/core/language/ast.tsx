@@ -474,8 +474,16 @@ export class CallUnres extends CallAST<AssignmentsUnres> implements UnresolvedAS
 
   public resolve = (resolver: NameResolver) => {
     const constructorR = resolver.resolveConstructorReference(this.name);
-    const asmtsR = this.asmts.resolveForConstructor(resolver, constructorR);
-    return new CallRes(constructorR, asmtsR, constructorR.model.returnType);
+    const {returnType, resolutionTimeTypeHelper} = constructorR.model;
+    if (resolutionTimeTypeHelper === undefined) {
+      const asmtsR = this.asmts.resolveForConstructor(resolver, constructorR);
+      return new CallRes(constructorR, asmtsR, returnType);
+    } else {
+      const {asmtsR, asmtTypesByName} = this.asmts.resolveForConstructorWithResolutionTimeTypes(
+          resolver, constructorR, resolutionTimeTypeHelper);
+      const _returnType = resolutionTimeTypeHelper.resolveCallReturnType(asmtTypesByName);
+      return new CallRes(constructorR, asmtsR, _returnType);
+    }
   }
 
   public toText = (resolver: NameResolver): string => {
@@ -514,6 +522,7 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
     return `${Parser.identToText(constructorName)}(${this.asmts.toText(resolver)})`;
   }
 
+  // TODO update this given resolution-time types
   public static buildDefaultConstructorCall = <R extends Type, I extends Identifier> (
     constructorRef: ConstructorReference<R, I>,
   ): CallRes<R, I> => {
@@ -554,7 +563,22 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
     throw new Error("Calling resolve is not supported. Call resolveForConstructor instead.");
   }
 
-  public resolveForConstructor = (resolver: NameResolver, constructorRef: ConstructorReference) => {
+  public resolveForConstructor = (
+    resolver: NameResolver,
+    constructorRef: ConstructorReference,
+  ): AssignmentsRes => {
+    const {assignmentsType} = constructorRef.model;
+    const nameResolver = resolver.resolverFor(assignmentsType);
+    const referencesByName = _.mapValues(this.asmts, (_e, name) => nameResolver.resolveValueReference(name));
+    const asmtsRByName = _.mapValues(this.asmts, (e, name) => AssignmentsUnres.resolveAsmt(e, resolver, referencesByName[name].type));
+    return this.resolveFromResolvedAsmtsByName(asmtsRByName, referencesByName, nameResolver, constructorRef);
+  }
+
+  public resolveForConstructorWithResolutionTimeTypes = (
+    resolver: NameResolver,
+    constructorRef: ConstructorReference,
+    resolutionTimeTypeHelper: ResolutionTimeTypeHelper,
+  ): {asmtsR: AssignmentsRes, asmtTypesByName: RODictionary<Type>} => {
     // On resolution-time types:
     // A lambda's type is T -> U but T (and usually U) cannot be resolved in isolation
     // For now, a constructor has a resolveLambdaType method exactly if it uses a lambda
@@ -564,43 +588,55 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
     // Therefore, neither T nor U is a lambda type
     // Therefore, can resolve lambda input type T by resolving the column(s) specifying T
     // Therefore, can resolve all non-lambda columns first and from them get lambda input type
-    const {assignmentsType, resolutionTimeTypeHelper} = constructorRef.model;
+    const {assignmentsType} = constructorRef.model;
     const nameResolver = resolver.resolverFor(assignmentsType);
-    const referencesByName = _.mapValues(this.asmts, (_e, name) => nameResolver.resolveValueReference(name));
-    const asmtsRByName = resolutionTimeTypeHelper === undefined ? 
-      _.mapValues(this.asmts, (e, name) => AssignmentsUnres.resolve(e, resolver, referencesByName[name].type)) :
-      AssignmentsUnres.resolveForResolutionTimeTypes(this.asmts, resolver, referencesByName, resolutionTimeTypeHelper);
-    const asmtsR = _.mapKeys(asmtsRByName, (_e, name) => referencesByName[name].id);
-    const asmtTypes = _.mapValues(asmtsR, asmt => asmt.type);
-    resolver.validateConstructorAssignments(constructorRef, asmtTypes);
-    const asmtOrderR = this.asmtOrder.map(name => nameResolver.resolveValueReference(name).id);
-    return new AssignmentsRes(asmtsR, asmtOrderR, constructorRef, assignmentsType);
+    const asmts = _.defaults({}, this.asmts, resolutionTimeTypeHelper.resolutionTimeAsmtDefaultValues);
+    const referencesByName = _.mapValues(asmts, (_e, name) => nameResolver.resolveValueReference(name));
+    const asmtsRByName = AssignmentsUnres.resolveForResolutionTimeTypes(
+        asmts, resolver, referencesByName, resolutionTimeTypeHelper);
+    const asmtsR = this.resolveFromResolvedAsmtsByName(asmtsRByName, referencesByName, nameResolver, constructorRef);
+    const asmtTypesByName = _.mapValues(asmtsRByName, e => e.type);
+    return {asmtsR, asmtTypesByName};
   }
 
-  private static resolve = (e: UnresolvedAST, resolver: NameResolver, type: Type): ResolvedAST => {
-    const res = TypeUtils.isLambda(type) ? resolver.extendWithIteratorType(type.inputType) : resolver;
-    return e.resolve(res);
+  private resolveFromResolvedAsmtsByName = (
+    asmtsRByName: RODictionary<ResolvedAST>,
+    referencesByName: RODictionary<ValueReference>,
+    nameResolver: NameResolver,
+    constructorRef: ConstructorReference,
+  ): AssignmentsRes => {
+    const {assignmentsType} = constructorRef.model;
+    const asmtsR = _.mapKeys(asmtsRByName, (_e, name) => referencesByName[name].id);
+    const asmtTypes = _.mapValues(asmtsR, asmt => asmt.type);
+    nameResolver.validateConstructorAssignments(constructorRef, asmtTypes);
+    const asmtOrderR = this.asmtOrder.map(name => nameResolver.resolveValueReference(name).id);
+    return new AssignmentsRes(asmtsR, asmtOrderR, constructorRef, assignmentsType);
   }
 
   private static resolveForResolutionTimeTypes(
     asmts: RODictionary<UnresolvedAST>,
     resolver: NameResolver,
     referencesByName: RODictionary<ValueReference>,
-    {lambdaAsmtDefaultValue, lambdaAsmtName, resolveLambdaType}: ResolutionTimeTypeHelper,
+    {lambdaAsmtName, resolveLambdaType}: ResolutionTimeTypeHelper,
   ): RODictionary<ResolvedAST> {
     const nonLambdaAsmtsR: Dictionary<ResolvedAST> = {};
     _.forEach(asmts, (e, name) => {
       if (name !== lambdaAsmtName) {
-        nonLambdaAsmtsR[name] = AssignmentsUnres.resolve(e, resolver, referencesByName[name].type);
+        nonLambdaAsmtsR[name] = AssignmentsUnres.resolveAsmt(e, resolver, referencesByName[name].type);
       }
     });
     const nonLambdaTypes = _.mapValues(nonLambdaAsmtsR, (e: ResolvedAST, name) => e.type);
     const lambdaType = resolveLambdaType(nonLambdaTypes);
-    const lambdaAsmt = asmts[lambdaAsmtName] || lambdaAsmtDefaultValue;
-    const lambdaAsmtR = {
-      [lambdaAsmtName]: AssignmentsUnres.resolve(lambdaAsmt, resolver, lambdaType),
+    const lambdaAsmt = asmts[lambdaAsmtName];
+    const lambdaAsmtR = lambdaAsmt === undefined ? {} : {
+      [lambdaAsmtName]: AssignmentsUnres.resolveAsmt(lambdaAsmt, resolver, lambdaType),
     };
     return _.extend(nonLambdaAsmtsR, lambdaAsmtR);
+  }
+
+  private static resolveAsmt = (e: UnresolvedAST, resolver: NameResolver, type: Type): ResolvedAST => {
+    const res = TypeUtils.isLambda(type) ? resolver.extendWithIteratorType(type.inputType) : resolver;
+    return e.resolve(res);
   }
 }
 
@@ -632,6 +668,10 @@ export class AssignmentsRes<I extends Identifier = Identifier>
   protected asmtIdToText(asmtId: string, resolver: NameResolver): string {
     const name = resolver.nameForIdInConstructor(asmtId, this.constructorRef);
     return Parser.identToText(name);
+  }
+
+  public getAsmtTypes = (): RODictionary<Type> => {
+    return _.mapValues(this.asmts, e => e.type);
   }
 }
 

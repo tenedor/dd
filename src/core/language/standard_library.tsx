@@ -7,12 +7,12 @@ import {UpdateManager} from '@models/core/update_manager';
 import {BuiltInEval, BuiltInFormula, BuiltInFormulaSpec, Parameter,
         ResolutionTimeTypeHelper} from '@models/domain_specific/constructor';
 import {RODictionary} from '@utils/types';
-import {LambdaUnres} from './ast';
+import {LambdaUnres, UnresolvedAST} from './ast';
 import {DrawingVariant} from './drawing_value';
 import {FormulaEnvironment} from './formula_environment';
 import {ParseError, TypeError} from './language_errors';
 import {Parser} from './parser';
-import {BoundingType, Identifier, LambdaOfAnyType, ListOfAnyType, ListType,
+import {BoundingType, Identifier, LambdaOfAnyType, LambdaType, ListOfAnyType, ListType,
         PrimitiveType, Type, TypeUtils} from './types';
 import {DrawingValue, LambdaValue, ListValue, NumberValue, PartialRowValue,
         PrimitiveValue, RowValue, Value, ValueUtils} from './values';
@@ -137,12 +137,12 @@ const generateFormulaSpec = (formulaDef: FormulaGenerator, name: string): BuiltI
   };
 }
 
-const buildLambdaUnres = (unparsed: string): LambdaUnres => {
-  const parseResult = Parser.parseLambda('V -> V');
+const buildDefaultAsmtUnres = (unparsed: string): UnresolvedAST => {
+  const parseResult = Parser.parseExpression(unparsed);
   if (parseResult.succeeded) {
-    return parseResult.ast as LambdaUnres;
+    return parseResult.ast;
   }
-  throw new ParseError(`Failed to parse standard library lambda ${unparsed}`);
+  throw new ParseError(`Failed to parse standard library default assignment ${unparsed}`);
 }
 
 const formulaDefs: {[name: string]: FormulaGenerator} = {
@@ -162,9 +162,14 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     resolutionTimeTypeHelper: {
       lambdaAsmtName: "Fn",
-      lambdaAsmtDefaultValue: buildLambdaUnres('V -> V'),
+      resolutionTimeAsmtDefaultValues: {
+        Values: buildDefaultAsmtUnres('[]'),
+        Fn: buildDefaultAsmtUnres('V -> V'),
+      },
       resolveLambdaType: ({Values: valuesType}: RODictionary<Type>) =>
           TypeUtils.LambdaOf((valuesType as ListType).itemType, BoundingType.BOTTOM),
+      resolveCallReturnType: ({Fn: fnType}: RODictionary<Type>) =>
+          TypeUtils.ListOf((fnType as LambdaType).outputType),
     },
   },
 

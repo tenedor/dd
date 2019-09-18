@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {LambdaUnres} from '@language/ast';
+import {LambdaUnres, UnresolvedAST} from '@language/ast';
 import {buildNamespace, ValueNamespace} from '@language/name_resolver';
 import {RelativeValueReference} from '@language/reference';
 import {Identifier, LambdaType, PartialRowType, RowType, Type, TypeUtils}
@@ -20,8 +20,9 @@ import {Row, RowUpdateDescriptor} from './row';
 
 export interface ResolutionTimeTypeHelper {
   lambdaAsmtName: string,
-  lambdaAsmtDefaultValue: LambdaUnres,
-  resolveLambdaType: (nonLambdaTypesByName: RODictionary<Type>) => LambdaType,
+  resolutionTimeAsmtDefaultValues: RODictionary<UnresolvedAST>,
+  resolveLambdaType: (nonLambdaAsmtTypesByName: RODictionary<Type>) => LambdaType,
+  resolveCallReturnType: (asmtTypesByName: RODictionary<Type>) => Type,
 }
 
 interface BaseConstructor<R extends Type, I extends Identifier = Identifier> {
