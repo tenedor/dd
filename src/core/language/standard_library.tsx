@@ -147,8 +147,33 @@ const buildDefaultAsmtUnres = (unparsed: string): UnresolvedAST => {
 
 const formulaDefs: {[name: string]: FormulaGenerator} = {
   /**
-   * Functional Formulas
+   * List Processing Formulas
    */
+
+  Size: {
+    returnType: TypeUtils.Number,
+    parameters: {
+      List: ParameterUtils.listOfAny(),
+    },
+    eval: ({List: list}: {List: ListValue}): number => list.list.length,
+  },
+
+  Range: {
+    returnType: TypeUtils.ListOf(TypeUtils.Number),
+    parameters: {
+      N: ParameterUtils.number(3),
+      Start: ParameterUtils.number(1),
+      Step: ParameterUtils.number(1),
+    },
+    eval: ({N: n, Start: start, Step: step}: {
+      N: number, Start: number, Step: number,
+    }): ListValue<PrimitiveType.NUMBER> => {
+      const end = start + n * step;
+      const list = _.range(start, end, step).map(ValueUtils.numberOf);
+      return ValueUtils.listOf(list, PrimitiveType.NUMBER);
+    },
+  },
+
   Map: {
     returnType: TypeUtils.ListOf(BoundingType.BOTTOM),
     parameters: {
@@ -176,6 +201,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
   /**
    * Arithmetic Formulas
    */
+
   Square: {
     returnType: TypeUtils.Number,
     parameters: {
@@ -183,6 +209,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({Value: value}: {Value: number}): number => value * value,
   },
+
   Sqrt: {
     returnType: TypeUtils.Number,
     parameters: {
@@ -190,6 +217,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({Value: value}: {Value: number}): number => Math.sqrt(value),
   },
+
   Power: {
     returnType: TypeUtils.Number,
     parameters: {
@@ -198,6 +226,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({Base: base, Exponent: exponent}: {Base: number, Exponent: number}): number => Math.pow(base, exponent),
   },
+
   Log: {
     returnType: TypeUtils.Number,
     parameters: {
@@ -206,6 +235,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({Value: value, Base: base}: {Value: number, Base: number}): number => Math.log(value) / Math.log(base),
   },
+
   E: {
     returnType: TypeUtils.Number,
     parameters: {},
@@ -215,11 +245,13 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
   /**
    * Trigonometry Formulas
    */
+
   Pi: {
     returnType: TypeUtils.Number,
     parameters: {},
     eval: ({}: {}): number => Math.PI,
   },
+
   Sin: {
     returnType: TypeUtils.Number,
     parameters: {
@@ -227,6 +259,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({Radians: radians}: {Radians: number}): number => Math.sin(radians),
   },
+
   Cos: {
     returnType: TypeUtils.Number,
     parameters: {
@@ -234,6 +267,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({Radians: radians}: {Radians: number}): number => Math.cos(radians),
   },
+
   Tan: {
     returnType: TypeUtils.Number,
     parameters: {
@@ -241,6 +275,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({Radians: radians}: {Radians: number}): number => Math.tan(radians),
   },
+
   Atan2: {
     returnType: TypeUtils.Number,
     parameters: {
@@ -253,6 +288,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
   /**
    * Drawing Formulas
    */
+
   DrawCircle: {
     returnType: TypeUtils.Drawing,
     parameters: _.extend({}, ParameterUtils.baseShapeDrawing, {
@@ -265,6 +301,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
       return ValueUtils.drawingOf({drawingType, radius, fill});
     },
   },
+
   DrawEllipse: {
     returnType: TypeUtils.Drawing,
     parameters: _.extend({}, ParameterUtils.baseShapeDrawing, {
@@ -278,6 +315,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
       return ValueUtils.drawingOf({drawingType, radius1, radius2, fill});
     },
   },
+
   DrawPath: {
     returnType: TypeUtils.Drawing,
     parameters: _.extend({}, ParameterUtils.baseShapeDrawing, {
@@ -290,6 +328,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
       return ValueUtils.drawingOf({drawingType, path, fill});
     },
   },
+
   DrawDrawings: {
     returnType: TypeUtils.Drawing,
     parameters: {
