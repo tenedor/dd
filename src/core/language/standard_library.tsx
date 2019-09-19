@@ -183,7 +183,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     eval: ({Values: values, Fn: fn}: {Values: ListValue, Fn: LambdaValue}): ListValue => {
       const {lambda, type} = fn;
       const mappedValues = values.list.map(lambda);
-      return ValueUtils.listOf(mappedValues, TypeUtils.ListOf(type.outputType));
+      return ValueUtils.listOf(mappedValues, type.outputType);
     },
     resolutionTimeTypeHelper: {
       lambdaAsmtName: "Fn",
