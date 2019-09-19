@@ -1,28 +1,22 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
+import {getDrawing} from '@core/drawing_grid_utilities';
 import {CoordinateSystem} from '@core/geometry';
 import {Drawing, DrawingVariant} from '@language/drawing_value';
 import {Grid} from '@models/domain_specific/grid';
 import {ROArray} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
-import {DrawingViewModel} from './drawing_view_model';
 
 interface Props extends BaseProps {
   grids: ROArray<Grid>,
 }
 
 export class DrawingView extends BaseComponent<Props> {
-  private controller: DrawingViewModel;
-
-  constructor(props: Props) {
-    super(props);
-    this.controller = new DrawingViewModel(props.grids);
-  }
 
   public render = () => {
-    const drawings = this.controller.getDrawings();
+    const drawings = this.getDrawings();
     const renderedDrawings = this.renderDrawings(drawings);
 
     return (
@@ -52,6 +46,14 @@ export class DrawingView extends BaseComponent<Props> {
           return assertUnreachable(d);
       }
     });
+  }
+
+  public getDrawings = (): Drawing[] => {
+    return _.flatten(this.props.grids.map(this.getDrawingsForGrid));
+  }
+
+  private getDrawingsForGrid = (grid: Grid): Drawing[] => {
+    return grid.rows.a.map(row => getDrawing(row.asValue()));
   }
 
   private getTransformForCoordinateSystem = ({center, scale, rotation}: CoordinateSystem): string => {
