@@ -1,7 +1,9 @@
 import * as _ from 'lodash';
 
-import {Drawing, isEmptyDrawing} from '@language/drawing_value';
-import {DrawingValue, RowValue, Value, ValueUtils} from '@language/values';
+import {Drawing, DrawingVariant, isEmptyDrawing} from '@language/drawing_value';
+import {DrawingValue, ListValue, RowValue, Value, ValueUtils} from '@language/values';
+import {assertUnreachable} from '@utils/utils';
+import {CoordinateSystem, defaultCoordinateSystem} from './geometry';
 import {Identifier, Type, TypeUtils} from './language/types';
 
 const drawingColumnName = "DRAWING_GROUP";
@@ -15,11 +17,27 @@ export const DRAWING_COLUMN_ID = 'col-_DRAWING_';
 export const COORDINATE_SYSTEM_COLUMN_ID = 'col-_COORDINATE_SYSTEM_';
 const BUILT_IN_DRAWING_COLUMN_ID = 'col-_BUILT_IN_DRAWING_';
 
-type ValueWithDrawing = DrawingValue | RowValue;
+type ValueWithDrawing = DrawingValue | ListValue | RowValue;
 
-const hasDrawing = (v: Value): v is ValueWithDrawing => ValueUtils.isDrawing(v) || (ValueUtils.isRow(v));
+const hasDrawing = (v: Value): v is ValueWithDrawing => {
+  const baseType = TypeUtils.getBaseType(v.type);
+  return TypeUtils.isDrawing(baseType) || TypeUtils.isRow(baseType);
+}
 
-const getDrawingValue = (v: ValueWithDrawing): DrawingValue => ValueUtils.isDrawing(v) ? v : (v.dict[DRAWING_COLUMN_ID] as DrawingValue);
+const getDrawingValue = (v: ValueWithDrawing): DrawingValue => {
+  if (ValueUtils.isDrawing(v)) {
+    return v;
+  } else if (ValueUtils.isRow(v)) {
+    return v.dict[DRAWING_COLUMN_ID] as DrawingValue;
+  } else if (ValueUtils.isList(v)) {
+    const flattenedList = ValueUtils.deepFlattenList(v);
+    const valuesWithDrawings = flattenedList.list as ValueWithDrawing[];
+    const drawingValues = valuesWithDrawings.map(getDrawingValue);
+    const drawings = drawingValues.map(d => d.drawing);
+    return makeDrawingGroupValue(drawings);
+  }
+  return assertUnreachable(v);
+}
 
 export const getDrawing = (v: ValueWithDrawing): Drawing => getDrawingValue(v).drawing;
 
@@ -42,4 +60,14 @@ export const getCoordinateSystemColumnData = (
 
 export const getBuiltInDrawingColumnData = (): {id: string, name: string, type: Type} => {
   return {id: BUILT_IN_DRAWING_COLUMN_ID, name: builtInDrawingColumnName, type: TypeUtils.Drawing};
+}
+
+export const makeDrawingGroup = (drawings: Drawing[], coordinateSystem?: CoordinateSystem): Drawing => {
+  const drawingType = DrawingVariant.GROUP;
+  const _coordinateSystem = coordinateSystem || defaultCoordinateSystem;
+  return {drawingType, drawings, coordinateSystem: _coordinateSystem};
+}
+
+export const makeDrawingGroupValue = (drawings: Drawing[], coordinateSystem?: CoordinateSystem): DrawingValue => {
+  return ValueUtils.drawingOf(makeDrawingGroup(drawings, coordinateSystem));
 }

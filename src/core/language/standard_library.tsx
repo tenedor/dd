@@ -1,13 +1,13 @@
 import * as _ from 'lodash';
 
 import {loadBuiltInGrids} from '@core/built_in_grids';
-import {getDrawing, hasNonEmptyDrawing} from '@core/drawing_grid_utilities';
-import {CoordinateSystem, defaultCoordinateSystem} from '@core/geometry';
+import {getDrawing, hasNonEmptyDrawing, makeDrawingGroupValue} from '@core/drawing_grid_utilities';
+import {CoordinateSystem} from '@core/geometry';
 import {UpdateManager} from '@models/core/update_manager';
 import {BuiltInEval, BuiltInFormula, BuiltInFormulaSpec, Parameter,
         ResolutionTimeTypeHelper} from '@models/domain_specific/constructor';
 import {RODictionary} from '@utils/types';
-import {LambdaUnres, UnresolvedAST} from './ast';
+import {UnresolvedAST} from './ast';
 import {DrawingVariant} from './drawing_value';
 import {FormulaEnvironment} from './formula_environment';
 import {ParseError, TypeError} from './language_errors';
@@ -340,12 +340,11 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
       'Coordinate System': coordinateSystemList,
       Values: values,
     }: {'Coordinate System': ListValue, Values: ListValue}): DrawingValue => {
-      const drawingType = DrawingVariant.GROUP;
       const drawings = values.list.filter(hasNonEmptyDrawing).map(getDrawing);
       const coordinateSystem = coordinateSystemList.list.length ?
         getCoordinateSystemData(coordinateSystemList.list[0] as RowValue) :
-        defaultCoordinateSystem;
-      return ValueUtils.drawingOf({drawingType, drawings, coordinateSystem});
+        undefined;
+      return makeDrawingGroupValue(drawings, coordinateSystem);
     },
   },
 };

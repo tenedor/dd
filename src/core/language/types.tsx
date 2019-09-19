@@ -141,53 +141,34 @@ export class TypeUtils {
   // ===========
 
   public static isPartialRowIdentifier= (id: SchemaIdentifier): id is RowIdentifier =>
-    id.identifierType === SchemaIdentifierType.PARTIAL_ROW || TypeUtils.isRowIdentifier(id)
-
+      id.identifierType === SchemaIdentifierType.PARTIAL_ROW || TypeUtils.isRowIdentifier(id)
   public static isRowIdentifier= (id: SchemaIdentifier): id is RowIdentifier =>
-    id.identifierType === SchemaIdentifierType.ROW
-
+      id.identifierType === SchemaIdentifierType.ROW
   public static isGridIdentifier= (id: SchemaIdentifier): id is GridIdentifier =>
-    id.identifierType === SchemaIdentifierType.GRID
-
+      id.identifierType === SchemaIdentifierType.GRID
   public static isNumber = (t: Type): t is PrimitiveType.NUMBER => t === PrimitiveType.NUMBER
-
   public static isBoolean = (t: Type): t is PrimitiveType.BOOLEAN => t === PrimitiveType.BOOLEAN
-
   public static isString = (t: Type): t is PrimitiveType.STRING => t === PrimitiveType.STRING
-
   public static isDrawing = (t: Type): t is DrawingType => t === DrawingType.DRAWING
-
   public static isList = (t: Type): t is ListType => !TypeUtils.isAtomic(t) && 'itemType' in t
-
+  public static isListOfList = (t: ListType): t is ListType<ListType> => TypeUtils.isList(t.itemType)
   public static isDict = (t: Type): t is DictType => !TypeUtils.isAtomic(t) && 'schemaId' in t
-
   public static isPartialRow = (t: Type): t is PartialRowType => TypeUtils.isDict(t) &&
-    TypeUtils.isPartialRowIdentifier(t.schemaId)
-
+      TypeUtils.isPartialRowIdentifier(t.schemaId)
   public static isRow = (t: Type): t is RowType => TypeUtils.isDict(t) &&
-    TypeUtils.isRowIdentifier(t.schemaId)
-
+      TypeUtils.isRowIdentifier(t.schemaId)
   public static isGrid = (t: Type): t is GridType => TypeUtils.isList(t) && TypeUtils.isRow(t.itemType) &&
-    TypeUtils.isDict(t) && TypeUtils.isGridIdentifier(t.schemaId)
-
+      TypeUtils.isDict(t) && TypeUtils.isGridIdentifier(t.schemaId)
   public static isLambda = (t: Type): t is LambdaType => !TypeUtils.isAtomic(t) &&
-    'inputType' in t && 'outputType' in t
-
+      'inputType' in t && 'outputType' in t
   public static isTop = (t: Type): t is BoundingType.TOP => t === BoundingType.TOP
-
   public static isBottom = (t: Type): t is BoundingType.BOTTOM => t === BoundingType.BOTTOM
-
-  public static isPrimitive = (t: Type): t is PrimitiveType => {
-    return TypeUtils.isNumber(t) || TypeUtils.isBoolean(t) || TypeUtils.isString(t);
-  }
-
-  public static isBoundingType = (t: Type): t is BoundingType => {
-    return TypeUtils.isTop(t) || TypeUtils.isBottom(t);
-  }
-
-  private static isAtomic = (t: Type): t is PrimitiveType | DrawingType | BoundingType => {
-    return TypeUtils.isPrimitive(t) || TypeUtils.isDrawing(t) || TypeUtils.isBoundingType(t);
-  }
+  public static isPrimitive = (t: Type): t is PrimitiveType =>
+      TypeUtils.isNumber(t) || TypeUtils.isBoolean(t) || TypeUtils.isString(t)
+  public static isBoundingType = (t: Type): t is BoundingType =>
+      TypeUtils.isTop(t) || TypeUtils.isBottom(t)
+  private static isAtomic = (t: Type): t is PrimitiveType | DrawingType | BoundingType =>
+      TypeUtils.isPrimitive(t) || TypeUtils.isDrawing(t) || TypeUtils.isBoundingType(t)
 
   public static supportsLiterals = (t: Type): t is SupportsLiteralsType => {
     return TypeUtils.isPrimitive(t) || TypeUtils.isDrawing(t) || TypeUtils.isRow(t) ||
@@ -405,6 +386,10 @@ export class TypeUtils {
 
   public static getListBaseType = (t: ListType): Type => {
     return TypeUtils.isList(t.itemType) ? TypeUtils.getListBaseType(t.itemType) : t.itemType;
+  }
+
+  public static getBaseType = (t: Type): Type => {
+    return TypeUtils.isList(t) ? TypeUtils.getListBaseType(t) : t;
   }
 
   public static readonly atomicTypes: ROArray<Type> = [

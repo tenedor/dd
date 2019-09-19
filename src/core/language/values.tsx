@@ -167,6 +167,7 @@ export class ValueUtils {
   public static isPrimitive = (v: Value): v is PrimitiveValue => TypeUtils.isPrimitive(v.type)
   public static isDrawing = (v: Value): v is DrawingValue => TypeUtils.isDrawing(v.type)
   public static isList = (v: Value): v is ListValue => TypeUtils.isList(v.type)
+  public static isListOfList = (v: ListValue): v is ListValue<ListType> => TypeUtils.isListOfList(v.type)
   public static isDict = (v: Value): v is DictValue => TypeUtils.isDict(v.type)
   public static isPartialRow = (v: Value): v is PartialRowValue => TypeUtils.isPartialRow(v.type)
   public static isRow = (v: Value): v is RowValue => TypeUtils.isRow(v.type)
@@ -243,6 +244,15 @@ export class ValueUtils {
     } else {
       return assertUnreachable(type);
     }
+  }
+
+  public static deepFlattenList = (v: ListValue): ListValue => {
+    if (ValueUtils.isListOfList(v)) {
+      const baseType = TypeUtils.getListBaseType(v.type);
+      const flattened = _.flatten(v.list.map(vv => ValueUtils.deepFlattenList(vv as ListValue).list));
+      return ValueUtils.listOf(flattened, baseType);
+    }
+    return v;
   }
 
   public static toString = (v: Value, resolver: NameResolver): string => {
