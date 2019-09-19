@@ -384,9 +384,27 @@ export class TypeUtils {
   public static toString = (t: Type): string => {
     if (TypeUtils.isAtomic(t)) {
       return capitalizeFirstLetter(t.toLowerCase());
+    } else if (TypeUtils.isList(t)) {
+      return TypeUtils.listToString(t, TypeUtils.toString);
     }
     // TODO
     return `${t}`;
+  }
+
+  public static listToString = (t: ListType, baseTypeToString: (tt: Type) => string): string => {
+    const depth = TypeUtils.getListDepth(t);
+    const baseType = TypeUtils.getListBaseType(t);
+    const prefix = depth > 1 ? `${depth}-Deep ` : '';
+    const baseName = baseTypeToString(baseType);
+    return `${prefix}List of ${baseName}`;
+  }
+
+  public static getListDepth = (t: ListType): number => {
+    return 1 + (TypeUtils.isList(t.itemType) ? TypeUtils.getListDepth(t.itemType) : 0);
+  }
+
+  public static getListBaseType = (t: ListType): Type => {
+    return TypeUtils.isList(t.itemType) ? TypeUtils.getListBaseType(t.itemType) : t.itemType;
   }
 
   public static readonly atomicTypes: ROArray<Type> = [

@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
-import {Type} from '@language/types';
+import {Type, TypeUtils} from '@language/types';
 import {Cell} from '@models/domain_specific/cell';
 import {CellIndex, Grid} from '@models/domain_specific/grid';
 import {Row} from '@models/domain_specific/row';
@@ -28,13 +28,14 @@ interface Props extends BaseProps {
 interface State {
   selectedCell: TableIndex,
   showAddColumnMenu?: {x: number, y: number},
+  listDepthForNewColumnType: number,
 }
 
 export class TableView extends BaseComponent<Props, State> {
   constructor(props: Props) {
     super(props);
 
-    this.state = {selectedCell: {row: 0, column: 0}};
+    this.state = {selectedCell: {row: 0, column: 0}, listDepthForNewColumnType: 0};
   }
 
   public render = () => {
@@ -53,9 +54,8 @@ export class TableView extends BaseComponent<Props, State> {
     const addColumnMenu = this.renderAddColumnMenu();
 
     return (
-      <div className="table-view">
-        <div className="table-view-content" style={tableStyles} tabIndex={0} onKeyDown={this.onKeyDown}
-          onMouseDown={this.onMouseDown}>
+      <div className="table-view" tabIndex={0} onKeyDown={this.onKeyDown} onKeyUp={this.onKeyUp}>
+        <div className="table-view-content" style={tableStyles} onMouseDown={this.onMouseDown}>
           {columnHeaders}
           {renderedRows}
           {cellEditor}
@@ -108,7 +108,18 @@ export class TableView extends BaseComponent<Props, State> {
     }
   }
 
+  private onKeyUp = (e: React.KeyboardEvent) => {
+    if (this.state.showAddColumnMenu) {
+      this.onAddColumnMenuKeyChange(e, {isKeyUp: true});
+      return;
+    }
+  }
+
   private onKeyDown = (e: React.KeyboardEvent) => {
+    if (this.state.showAddColumnMenu) {
+      this.onAddColumnMenuKeyChange(e);
+      return;
+    }
     switch(e.keyCode) {
       case KeyCode.ARROW_DOWN:
         this.moveSelection({right: 0, down: 1});
@@ -134,6 +145,19 @@ export class TableView extends BaseComponent<Props, State> {
     e.preventDefault();
   }
 
+  private onAddColumnMenuKeyChange = (e: React.KeyboardEvent, {isKeyUp}: {isKeyUp?: boolean} = {}) => {
+    let listDepthForNewColumnType = 0;
+    if (e.shiftKey) {
+      listDepthForNewColumnType = isKeyUp ? 1 : TableView.getListDepth(e.keyCode);
+    }
+    this.setState({listDepthForNewColumnType});
+  }
+
+  private static getListDepth = (keyCode: number): number => {
+    const isDigit = KeyCode[0] <= keyCode && keyCode <= KeyCode[9];
+    return isDigit ? keyCode - KeyCode[0] : 1;
+  }
+
   private onClickAddColumn = (e: React.MouseEvent) => {
     if (this.columnMenuIsOpen()) {
       this.closeAddColumnMenu();
@@ -144,7 +168,13 @@ export class TableView extends BaseComponent<Props, State> {
   }
 
   private onClickAddColumnOfType = (type: Type, e: React.MouseEvent) => {
-    this.props.grid.addNewColumn(type);
+    const {grid} = this.props;
+    const {listDepthForNewColumnType} = this.state;
+    let wrappedType = type;
+    for (let i = 0; i < listDepthForNewColumnType; i++) {
+      wrappedType = TypeUtils.ListOf(wrappedType);
+    }
+    grid.addNewColumn(wrappedType);
     this.closeAddColumnMenu();
   }
 
@@ -157,7 +187,7 @@ export class TableView extends BaseComponent<Props, State> {
   }
 
   private openAddColumnMenu = (position: {x: number, y: number}) => {
-    this.setState({showAddColumnMenu: position});
+    this.setState({showAddColumnMenu: position, listDepthForNewColumnType: 0});
   }
 
   private closeAddColumnMenu = () => {
@@ -228,12 +258,12 @@ export class TableView extends BaseComponent<Props, State> {
 
   private renderAddColumnMenu = () => {
     const {epoch} = this.props;
-    const {showAddColumnMenu} = this.state;
+    const {showAddColumnMenu, listDepthForNewColumnType} = this.state;
     if (showAddColumnMenu === undefined) {
       return;
     }
     const pos = showAddColumnMenu;
-    const content = this.renderAddColumnMenuContent();
+    const content = this.renderAddColumnMenuContent(listDepthForNewColumnType);
     return (
       <PopUpView epoch={epoch} className="add-column-menu-pop-up" position={pos}>
         {content}
@@ -241,15 +271,17 @@ export class TableView extends BaseComponent<Props, State> {
     );
   }
 
-  private renderAddColumnMenuContent = () => {
+  private renderAddColumnMenuContent = (listDepth: number) => {
     const {grid} = this.props;
+    const pref = listDepth <= 0 ? '' : '[';
+    const post = listDepth <= 0 ? '' : (listDepth === 1 ? ']' : `](${listDepth})`);
     const types = grid.getAllowedColumnTypes();
     const menuItems = types.map(({name, type}) => {
       return (
         // Disable linting for now as a placeholder to defer implementing more UI. TODO fix this.
         // tslint:disable-next-line:jsx-no-lambda
         <div key={name} className="add-column-menu-item add-menu-item" onClick={e => this.onClickAddColumnOfType(type, e)}>
-          {name}
+          {`${pref}${name}${post}`}
         </div>
       );
     });

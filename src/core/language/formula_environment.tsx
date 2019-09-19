@@ -71,6 +71,8 @@ export class FormulaEnvironment {
       if (name !== undefined) {
         return name;
       }
+    } else if (TypeUtils.isList(t)) {
+      return TypeUtils.listToString(t, this.getNameForType);
     }
     return TypeUtils.toString(t);
   }

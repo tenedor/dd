@@ -81,7 +81,7 @@ const dematerializeValue = <T extends Type = Type> (value: MaterializedValue, ty
   } else if (TypeUtils.isPrimitive(type)) {
     return ValueUtils.primitiveOf(value as Primitive, type);
   }
-  throw new TypeError(`Cannot dematerialize values for ${type.toString()} types currently`);
+  throw new TypeError(`Cannot dematerialize values for ${TypeUtils.toString(type)} types currently`);
 }
 
 const materializeValue = (value: PrimitiveValue | DrawingValue | ListValue): MaterializedValue => {

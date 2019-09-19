@@ -257,7 +257,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     const baseName = this.formulaEnvironment.getNameForType(type);
     let i = 1;
     while (true) {
-      const name = `${baseName} ${i}`;
+      const name = i === 1 ? baseName : `${baseName} ${i}`;
       if (this.getColumnByName(name) === undefined) {
         return name;
       }

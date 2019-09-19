@@ -95,7 +95,7 @@ export abstract class CellEditorViewModel {
         }
         if (!TypeUtils.isAssignableTo(ast.type, column.type, formulaEnvironment)) {
           CellEditorViewModel.logSetFormulaError(`incompatible types: cannot assign ` +
-            `${ast.type.toString()} to ${column.type.toString()}`, unparsedExpression);
+            `${TypeUtils.toString(ast.type)} to ${TypeUtils.toString(column.type)}`, unparsedExpression);
           return false;
         }
         column.setExpression(ast);
