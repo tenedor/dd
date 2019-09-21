@@ -4,10 +4,11 @@ import {loadBuiltInGrids} from '@core/built_in_grids';
 import {getDrawing, hasNonEmptyDrawing, makeDrawingGroupValue} from '@core/drawing_grid_utilities';
 import {CoordinateSystem} from '@core/geometry';
 import {UpdateManager} from '@models/core/update_manager';
-import {BuiltInEval, BuiltInFormula, BuiltInFormulaSpec, Parameter,
-        ResolutionTimeTypeHelper} from '@models/domain_specific/constructor';
+import {BuiltInEval, BuiltInFormula, BuiltInFormulaSpec, Parameter}
+        from '@models/domain_specific/constructor';
 import {RODictionary} from '@utils/types';
-import {UnresolvedAST} from './ast';
+import {ResolutionTimeTypeHelper, ResolutionTimeTypeHelperVariant, UnresolvedAST}
+        from './ast';
 import {DrawingVariant} from './drawing_value';
 import {FormulaEnvironment} from './formula_environment';
 import {ParseError, TypeError} from './language_errors';
@@ -19,7 +20,7 @@ import {DrawingValue, LambdaValue, ListValue, NumberValue, PartialRowValue,
 
 type Primitive = number | boolean | string;
 type MaterializedValue = Primitive | DrawingValue | ListValue | LambdaValue;
-type MaterializedEval = (parameters: {[name: string]: MaterializedValue}) => MaterializedValue;
+type MaterializedEval = (parameters: {[name: string]: MaterializedValue}, resolvedReturnType: Type) => MaterializedValue;
 
 interface ParameterGenerator<T extends Type = Type> {
   type: T,
@@ -32,6 +33,9 @@ interface FormulaGenerator<R extends Type = Type> {
   eval: MaterializedEval,
   resolutionTimeTypeHelper?: ResolutionTimeTypeHelper,
 }
+
+// Report bottom for resolution-time formula return types to ensure the formula is assignable
+const ResolutionTimeReturnType = BoundingType.BOTTOM;
 
 interface BaseDrawingParameters {
   X: number,
@@ -63,6 +67,10 @@ class ParameterUtils {
     return {type: TypeUtils.LambdaOfAny, defaultValue};
   }
 
+  public static any = (defaultValue: boolean): ParameterGenerator<BoundingType.TOP> => {
+    return {type: TypeUtils.Top, defaultValue};
+  }
+
   public static readonly baseShapeDrawing = {
     Fill: ParameterUtils.string("black"),
   }
@@ -80,6 +88,8 @@ const dematerializeValue = <T extends Type = Type> (value: MaterializedValue, ty
     return value as ListValue<BoundingType.TOP> & Value<T>;
   } else if (TypeUtils.isPrimitive(type)) {
     return ValueUtils.primitiveOf(value as Primitive, type);
+  } else if (TypeUtils.isTop(type) && typeof value === 'boolean') {
+    return ValueUtils.primitiveOf(value, PrimitiveType.BOOLEAN) as Value<T>;
   }
   throw new TypeError(`Cannot dematerialize values for ${TypeUtils.toString(type)} types currently`);
 }
@@ -111,15 +121,16 @@ const dematerializeEval = <R extends Type = Type> (
   parameterDefs: {[id: string]: Parameter},
   returnType: R,
 ): BuiltInEval<R> => {
-  return (parameters: PartialRowValue): Value<R> => {
+  return (parameters: PartialRowValue, runtimeResolvedReturnType?: Type): Value<R> => {
     const defaultParametersByName = _.mapValues(parameterDefs, p => p.defaultValue);
     const parametersWithDefaults = _.extend({}, defaultParametersByName, parameters.dict);
     const parametersByName = _.mapKeys(parametersWithDefaults, (parameter: Value, id: string) => {
       return parameterDefs[id].name;
     });
     const materializedParameters = _.mapValues(parametersByName, materializeValue);
-    const materializedValue = materializedEval(materializedParameters);
-    return dematerializeValue(materializedValue, returnType);
+    const _returnType = runtimeResolvedReturnType as R || returnType;
+    const materializedValue = materializedEval(materializedParameters, _returnType);
+    return dematerializeValue(materializedValue, _returnType);
   }
 }
 
@@ -146,6 +157,39 @@ const buildDefaultAsmtUnres = (unparsed: string): UnresolvedAST => {
 }
 
 const formulaDefs: {[name: string]: FormulaGenerator} = {
+  /**
+   * Control Flow Formulas
+   */
+
+  If: {
+    returnType: ResolutionTimeReturnType,
+    parameters: {
+      If: ParameterUtils.boolean(false),
+      Then: ParameterUtils.any(true),
+      Else: ParameterUtils.any(false),
+    },
+    eval: ({If: ifVal, Then: thenVal, Else: elseVal}: {
+      If: boolean, Then: MaterializedValue, Else: MaterializedValue,
+    }, resolvedReturnType: Type): MaterializedValue => {
+      // clean up the hack of using boolean default values
+      const booleanReturn = TypeUtils.isBoolean(resolvedReturnType);
+      const _thenVal = typeof thenVal === 'boolean' && !booleanReturn ? elseVal : thenVal;
+      const _elseVal = typeof elseVal === 'boolean' && !booleanReturn ? thenVal : elseVal;
+      return ifVal ? _thenVal : _elseVal;
+    },
+    resolutionTimeTypeHelper: {
+      variant: ResolutionTimeTypeHelperVariant.BASIC,
+      resolveCallReturnType: (
+        {Then: thenType, Else: elseType}: RODictionary<Type>,
+        environment: FormulaEnvironment,
+      ) => {
+        return thenType && elseType ?
+          TypeUtils.union(thenType, elseType, environment) :
+          thenType || elseType || PrimitiveType.BOOLEAN;
+      }
+    },
+  },
+
   /**
    * List Processing Formulas
    */
@@ -175,7 +219,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
   },
 
   Map: {
-    returnType: TypeUtils.ListOf(BoundingType.BOTTOM),
+    returnType: TypeUtils.ListOf(ResolutionTimeReturnType),
     parameters: {
       Values: ParameterUtils.listOfAny(),
       Fn: ParameterUtils.lambdaOfAny(),
@@ -186,6 +230,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
       return ValueUtils.listOf(mappedValues, type.outputType);
     },
     resolutionTimeTypeHelper: {
+      variant: ResolutionTimeTypeHelperVariant.LAMBDA,
       lambdaAsmtName: "Fn",
       resolutionTimeAsmtDefaultValues: {
         Values: buildDefaultAsmtUnres('[]'),
@@ -193,7 +238,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
       },
       resolveLambdaType: ({Values: valuesType}: RODictionary<Type>) =>
           TypeUtils.LambdaOf((valuesType as ListType).itemType, BoundingType.BOTTOM),
-      resolveCallReturnType: ({Fn: fnType}: RODictionary<Type>) =>
+      resolveCallReturnType: ({Fn: fnType}: RODictionary<Type>, environment: FormulaEnvironment) =>
           TypeUtils.ListOf((fnType as LambdaType).outputType),
     },
   },

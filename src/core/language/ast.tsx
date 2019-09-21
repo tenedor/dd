@@ -1,9 +1,10 @@
 import * as _ from 'lodash';
 
-import {Constructor, ResolutionTimeTypeHelper} from '@models/domain_specific/constructor'; // Only a type dependency
+import {Constructor} from '@models/domain_specific/constructor'; // Only a type dependency
 import {Dictionary, ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
-import {OutOfBoundsError, TypeError, ValueResolutionError} from './language_errors';
+import {FormulaEnvironment} from './formula_environment';
+import {OutOfBoundsError, TypeError} from './language_errors';
 import {buildNamespace, NameResolver, ValueNamespace} from './name_resolver';
 import {Parser} from './parser';
 import {ConstructorReference, Reference, ReferenceUtils, RelativeValueReference,
@@ -13,6 +14,29 @@ import {DictType, GridType, Identifier, LambdaType, ListType, PartialRowType,
 import {UnaryOp, UnaryOpUtils} from './unary_op';
 import {ValueResolver} from './value_resolver';
 import {LambdaValue, ListValue, PartialRowValue, Value, ValueUtils} from './values';
+
+interface BaseResolutionTimeTypeHelper {
+  resolveCallReturnType: (asmtTypesByName: RODictionary<Type>, environment: FormulaEnvironment) => Type,
+}
+
+export enum ResolutionTimeTypeHelperVariant {
+  BASIC = "BASIC",
+  LAMBDA = "LAMBDA",
+}
+
+export interface BasicResolutionTimeTypeHelper extends BaseResolutionTimeTypeHelper {
+  variant: ResolutionTimeTypeHelperVariant.BASIC,
+}
+
+export interface LambdaResolutionTimeTypeHelper extends BaseResolutionTimeTypeHelper {
+  variant: ResolutionTimeTypeHelperVariant.LAMBDA,
+  lambdaAsmtName: string,
+  resolutionTimeAsmtDefaultValues: RODictionary<UnresolvedAST>,
+  resolveLambdaType: (nonLambdaAsmtTypesByName: RODictionary<Type>) => LambdaType,
+}
+
+export type ResolutionTimeTypeHelper = BasicResolutionTimeTypeHelper | LambdaResolutionTimeTypeHelper;
+
 
 enum ASTNodeType {
   EXPRESSION = "EXPRESSION",
@@ -475,15 +499,20 @@ export class CallUnres extends CallAST<AssignmentsUnres> implements UnresolvedAS
   public resolve = (resolver: NameResolver) => {
     const constructorR = resolver.resolveConstructorReference(this.name);
     const {returnType, resolutionTimeTypeHelper} = constructorR.model;
-    if (resolutionTimeTypeHelper === undefined) {
-      const asmtsR = this.asmts.resolveForConstructor(resolver, constructorR);
-      return new CallRes(constructorR, asmtsR, returnType);
-    } else {
-      const {asmtsR, asmtTypesByName} = this.asmts.resolveForConstructorWithResolutionTimeTypes(
-          resolver, constructorR, resolutionTimeTypeHelper);
-      const _returnType = resolutionTimeTypeHelper.resolveCallReturnType(asmtTypesByName);
+    if (resolutionTimeTypeHelper) {
+      const {asmtsR, asmtTypesByName} = this.isLambdaHelper(resolutionTimeTypeHelper) ?
+        this.asmts.resolveForConstructorWithResolutionTimeTypes(resolver, constructorR, resolutionTimeTypeHelper) :
+        this.asmts.resolveForConstructor(resolver, constructorR);
+      const _returnType = resolutionTimeTypeHelper.resolveCallReturnType(asmtTypesByName, resolver.environment);
       return new CallRes(constructorR, asmtsR, _returnType);
+    } else {
+      const {asmtsR} = this.asmts.resolveForConstructor(resolver, constructorR);
+      return new CallRes(constructorR, asmtsR, returnType);
     }
+  }
+
+  private isLambdaHelper = (helper: ResolutionTimeTypeHelper): helper is LambdaResolutionTimeTypeHelper => {
+    return helper.variant === ResolutionTimeTypeHelperVariant.LAMBDA;
   }
 
   public toText = (resolver: NameResolver): string => {
@@ -514,7 +543,7 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
 
   public eval = (valueResolver: ValueResolver): Value<R> => {
     const asmtsV = this.asmts.eval(valueResolver);
-    return this.constructorRef.model.eval(valueResolver, asmtsV);
+    return this.constructorRef.model.eval(valueResolver, asmtsV, this.type);
   }
 
   public toText = (resolver: NameResolver): string => {
@@ -566,18 +595,20 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
   public resolveForConstructor = (
     resolver: NameResolver,
     constructorRef: ConstructorReference,
-  ): AssignmentsRes => {
+  ): {asmtsR: AssignmentsRes, asmtTypesByName: RODictionary<Type>} => {
     const {assignmentsType} = constructorRef.model;
     const nameResolver = resolver.resolverFor(assignmentsType);
     const referencesByName = _.mapValues(this.asmts, (_e, name) => nameResolver.resolveValueReference(name));
     const asmtsRByName = _.mapValues(this.asmts, (e, name) => AssignmentsUnres.resolveAsmt(e, resolver, referencesByName[name].type));
-    return this.resolveFromResolvedAsmtsByName(asmtsRByName, referencesByName, nameResolver, constructorRef);
+    const asmtsR = this.resolveFromResolvedAsmtsByName(asmtsRByName, referencesByName, nameResolver, constructorRef);
+    const asmtTypesByName = _.mapValues(asmtsRByName, e => e.type);
+    return {asmtsR, asmtTypesByName};
   }
 
   public resolveForConstructorWithResolutionTimeTypes = (
     resolver: NameResolver,
     constructorRef: ConstructorReference,
-    resolutionTimeTypeHelper: ResolutionTimeTypeHelper,
+    resolutionTimeTypeHelper: LambdaResolutionTimeTypeHelper,
   ): {asmtsR: AssignmentsRes, asmtTypesByName: RODictionary<Type>} => {
     // On resolution-time types:
     // A lambda's type is T -> U but T (and usually U) cannot be resolved in isolation
@@ -617,7 +648,7 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
     asmts: RODictionary<UnresolvedAST>,
     resolver: NameResolver,
     referencesByName: RODictionary<ValueReference>,
-    {lambdaAsmtName, resolveLambdaType}: ResolutionTimeTypeHelper,
+    {lambdaAsmtName, resolveLambdaType}: LambdaResolutionTimeTypeHelper,
   ): RODictionary<ResolvedAST> {
     const nonLambdaAsmtsR: Dictionary<ResolvedAST> = {};
     _.forEach(asmts, (e, name) => {

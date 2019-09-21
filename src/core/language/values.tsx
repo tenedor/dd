@@ -13,7 +13,7 @@ import {BoundingType, DictType, DrawingType, GridIdentifier, GridType, Identifie
         LambdaType, ListType, PartialRowType, PrimitiveType, RowIdentifier, RowType,
         SchemaIdentifier, SupportsLiteralsType, Type, TypeUtils} from './types';
 
-interface BaseValue<T extends Type = Type> {
+export interface BaseValue<T extends Type = Type> {
   type: T,
 }
 
