@@ -59,12 +59,12 @@ input, textarea, select, button {
   position: relative;
 
   &::after {
-    content: '+';
     display: inline-block;
     font-weight: bold;
     line-height: 18px;
     padding: 4px 0;
     text-align: center;
+    width: 100%;
   }
 }
 
@@ -110,6 +110,20 @@ input, textarea, select, button {
   }
 }
 
+.drawing-view {
+  display: inline-block;
+  height: 100px;
+  margin-bottom: 10px;
+  margin-right: 10px;
+  width: 100px;
+
+  svg {
+    height: 100%;
+    vertical-align: top;
+    width: 100%;
+  }
+}
+
 .title-editor-view {
   margin-bottom: 14px;
 
@@ -131,20 +145,26 @@ input, textarea, select, button {
   }
 }
 
+.add-buttons {
+  margin-top: 14px;
+
+  > * {
+    display: inline-block;
+    margin-right: 18px;
+  }
+
+  .click-target {
+    .add-button();
+    height: 100%;
+  }
+}
+
 .add-grid {
-  margin-top: 24px;
   position: relative;
   width: 110px;
 
-  .add-grid-click-target {
-    .add-button();
-    box-sizing: border-box;
-    height: 100%;
-
-    &:after {
-      content: '+ Add Grid';
-      width: 100%;
-    }
+  .add-grid-click-target::after {
+    content: '+ Add Grid';
   }
 
   .add-grid-menu-pop-up {
@@ -153,6 +173,30 @@ input, textarea, select, button {
     .add-grid-menu {
       .add-menu();
     }
+  }
+}
+
+.add-drawing-surface {
+  width: 140px;
+
+  &::after {
+    content: '+ Add Drawing';
+  }
+}
+
+.increase-surface-size {
+  width: 26px;
+
+  &::after {
+    content: '+';
+  }
+}
+
+.decrease-surface-size {
+  width: 26px;
+
+  &::after {
+    content: '-';
   }
 }
 
@@ -190,8 +234,8 @@ input, textarea, select, button {
     box-sizing: border-box;
     height: 100%;
 
-    &:after {
-      width: 100%;
+    &::after {
+      content: '+';
     }
   }
 
@@ -208,9 +252,11 @@ input, textarea, select, button {
   .add-button();
   grid-area: addRow;
 
-  &:after {
+  &::after {
+    content: '+';
     padding: 4px 8px;
     margin-top: -2px;
+    width: auto;
   }
 }
 

@@ -70,6 +70,7 @@ export type GridUpdateType = (typeof GridUpdateType)[keyof typeof GridUpdateType
 
 export const DocumentUpdateType = {
   GRIDS_UPDATED: "GRIDS_UPDATED" as "GRIDS_UPDATED",
+  NEW_SURFACE: "NEW_SURFACE" as "NEW_SURFACE",
 };
 export type DocumentUpdateType = (typeof DocumentUpdateType)[keyof typeof DocumentUpdateType];
 

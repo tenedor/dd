@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
-import {Document} from '@models/domain_specific/document';
+import {Document, DrawingSurfaceInfos} from '@models/domain_specific/document';
 import {Grid} from '@models/domain_specific/grid';
 import {ROArray} from '@utils/types';
 import {BaseComponent, BaseProps} from './base_component';
@@ -15,6 +15,7 @@ interface Props extends BaseProps {
 }
 
 interface State {
+  drawingSurfaceSize: number,
   showAddGridMenu?: {x: number, y: number},
 }
 
@@ -22,23 +23,48 @@ export class DocumentView extends BaseComponent<Props, State> {
   constructor(props: Props) {
     super(props);
 
-    this.state = {};
+    this.state = {drawingSurfaceSize: 300};
   }
 
   public render = () => {
     const {document, epoch} = this.props;
-    const grids = document.getAllGridsFunctionally();
-    const addGridMenu = this.renderAddGridMenu();
-    const tables = this.renderTables(epoch, grids);
+    const {grids, drawingSurfaceInfos: drawingSurfacesInfo} = document;
+    const drawingSurfaces = this.renderDrawingSurfaces(epoch, drawingSurfacesInfo);
+    const addButtons = this.renderAddButtons();
+    const tables = this.renderTables(epoch, grids.a);
     return (
       <div>
-        <DrawingView epoch={epoch} grids={grids} />
-        <div className="add-grid">
-          <div className="add-grid-click-target" onClick={this.onClickAddGrid} />
-          {addGridMenu}
-        </div>
+        {drawingSurfaces}
+        {addButtons}
         {tables}
       </div>
+    );
+  }
+
+  private renderDrawingSurfaces = (epoch: number, infos: DrawingSurfaceInfos) => {
+    const {drawingSurfaceSize} = this.state;
+    const drawingViews = infos.a.map((info, i) => (
+      <DrawingView key={`dv-${i}`} epoch={epoch} grids={info.a} size={drawingSurfaceSize} />
+    ));
+    return (
+      <div className="drawing-surfaces">
+        {drawingViews}
+      </div>
+    );
+  }
+
+  private renderAddButtons = () => {
+    const addGridMenu = this.renderAddGridMenu();
+    return (
+        <div className="add-buttons">
+          <div className="add-grid">
+            <div className="add-grid-click-target click-target" onClick={this.onClickAddGrid} />
+            {addGridMenu}
+          </div>
+          <div className="add-drawing-surface click-target" onClick={this.onClickAddDrawingSurface} />
+          <div className="increase-surface-size click-target" onClick={this.onClickIncreaseSurfaceSize} />
+          <div className="decrease-surface-size click-target" onClick={this.onClickDecreaseSurfaceSize} />
+        </div>
     );
   }
 
@@ -110,6 +136,18 @@ export class DocumentView extends BaseComponent<Props, State> {
   private onClickAddGridExtending = (parentGrid: Grid, e: React.MouseEvent) => {
     this.props.document.addGrid({parentGrid, index: 0});
     this.closeAddGridMenu();
+  }
+
+  private onClickAddDrawingSurface = (e: React.MouseEvent) => {
+    this.props.document.addDrawingSurface();
+  }
+
+  private onClickIncreaseSurfaceSize = (e: React.MouseEvent) => {
+    this.setState({drawingSurfaceSize: this.state.drawingSurfaceSize + 20});
+  }
+
+  private onClickDecreaseSurfaceSize = (e: React.MouseEvent) => {
+    this.setState({drawingSurfaceSize: this.state.drawingSurfaceSize - 20});
   }
 
   private gridMenuIsOpen = () => {
