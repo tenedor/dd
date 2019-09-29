@@ -13,10 +13,10 @@ const {expectResults} = buildLanguageTestHelpers(formulaEnvironment);
 
 describe('Standard Library', () => {
 
-  describe('Square', () => {
+  describe('Sq', () => {
     expectResults('results', [
-      {formula: "Square()", result: 1},
-      {formula: "Square(Value = -3)", result: 9},
+      {formula: "Sq()", result: 1},
+      {formula: "Sq(Value = -3)", result: 9},
     ]);
   });
 

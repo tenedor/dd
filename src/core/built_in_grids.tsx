@@ -4,8 +4,8 @@ import {AssignmentsUnres, CallUnres} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver} from '@language/name_resolver';
 import {Parser} from '@language/parser';
-import {Type, TypeUtils} from '@language/types';
-import {ValueOrAST, ValueUtils} from '@language/values';
+import {PrimitiveType, Type, TypeUtils} from '@language/types';
+import {RowValue, Value, ValueOrAST, ValueUtils} from '@language/values';
 import {UpdateManager} from '@models/core/update_manager';
 import {Column, ColumnData} from '@models/domain_specific/column';
 import {Document} from '@models/domain_specific/document';
@@ -13,6 +13,7 @@ import {Grid} from '@models/domain_specific/grid';
 import {GridColumn} from '@models/domain_specific/grid_column';
 import {Row} from '@models/domain_specific/row';
 import {COORDINATE_SYSTEM_GRID_NAME, getBuiltInDrawingColumnData} from './drawing_grid_utilities';
+import {ValueResolver} from './language/value_resolver';
 
 // Draw a regular n-pointed star with density m and the specified side length.
 // See https://en.wikipedia.org/wiki/Regular_polygon#Regular_star_polygons.
@@ -145,12 +146,13 @@ function getTypeForInstanceOf(
   return formulaEnvironment.nameResolver.resolveConstructorReference(gridName).model.returnType;
 }
 
-function makeLiteralInstance(
-  formulaEnvironment: FormulaEnvironment,
-  gridName: string,
-): ValueOrAST {
-  const astUnres = new CallUnres(gridName, new AssignmentsUnres({}, []));
-  return astUnres.resolve(formulaEnvironment.nameResolver);
+function makeLiteral(literalExpression: string, type: Type, environment: FormulaEnvironment): Value {
+  const parseResult = Parser.parseLiteral(literalExpression, type);
+  if (!parseResult.succeeded) {
+    throw new Error("Bad built-in grid formula");
+  }
+  const astR = parseResult.ast.resolve(environment.nameResolver);
+  return astR.eval(new ValueResolver({}, environment));
 }
 
 function setFirstRowValues(grid: Grid, values: {[columnId: string]: ValueOrAST}) {
@@ -371,6 +373,44 @@ function addShapeGrid(
   addBuiltInGrid({name, updateManager, environment, gridColumnsData});
 }
 
+function addCircleGrid(
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const name = "Circle";
+  const drawingColumn = getBuiltInDrawingColumnData();
+  const columns = generateColumns(updateManager, [
+    {name: 'Radius', type: TypeUtils.Number},
+  ]);
+  const parentGrid = environment.getGridByName("Shape");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {column: columns.Radius, defaultValue: ValueUtils.numberOf(10)},
+    {parentGridColumn: parentColumns[drawingColumn.name], expressionString: "DrawCircle(Radius=Radius, Fill=Fill)"},
+  ];
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+}
+
+function addEllipseGrid(
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const name = "Ellipse";
+  const drawingColumn = getBuiltInDrawingColumnData();
+  const columns = generateColumns(updateManager, [
+    {name: 'Radius X', type: TypeUtils.Number},
+    {name: 'Radius Y', type: TypeUtils.Number},
+  ]);
+  const parentGrid = environment.getGridByName("Shape");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {column: columns['Radius X'], defaultValue: ValueUtils.numberOf(15)},
+    {column: columns['Radius Y'], defaultValue: ValueUtils.numberOf(10)},
+    {parentGridColumn: parentColumns[drawingColumn.name], expressionString: "DrawEllipse(Radius1='Radius X', Radius2='Radius Y', Fill=Fill)"},
+  ];
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+}
+
 function addPathShapeGrid(
   updateManager: UpdateManager,
   environment: FormulaEnvironment,
@@ -389,15 +429,120 @@ function addPathShapeGrid(
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
 }
 
+function addRelativePolygonGrid(
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const name = "Relative Polygon";
+  const vectorGrid = environment.getGridByName("Vector");
+  const vectorRowType = TypeUtils.RowOf(vectorGrid.id);
+  const columns = generateColumns(updateManager, [
+    {name: 'Relative Points', type: TypeUtils.ListOf(vectorRowType)},
+    {name: 'Path Steps', type: TypeUtils.ListOf(TypeUtils.String)},
+  ]);
+  const parentGrid = environment.getGridByName("Path Shape");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const defaultPoints = [[-10, -10], [20, 0], [0, 20], [-20, 0]].map(([x, y]) => makeLiteral(`Vector(X=${x}, Y=${y})`, vectorRowType, environment) as RowValue);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {column: columns['Relative Points'], defaultValue: ValueUtils.listOf(defaultPoints, TypeUtils.RowOf(vectorGrid.id))},
+    {column: columns['Path Steps'], expressionString: 'Map(Values=Range(N=Size(List=\'Relative Points\')), Fn=i->Join(Values=[If(If=i==1, Then="m", Else="l"), String(Value=\'Relative Points\'[i].X), " ", String(Value=\'Relative Points\'[i].Y)]))'},
+    {parentGridColumn: parentColumns.Path, expressionString: 'Join(Values=Concatenate(Lists=[\'Path Steps\', ["z"]]), Separator=" ")'},
+  ];
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+}
+
+function addPolygonGrid(
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const name = "Polygon";
+  const vectorGrid = environment.getGridByName("Vector");
+  const vectorRowType = TypeUtils.RowOf(vectorGrid.id);
+  const columns = generateColumns(updateManager, [
+    {name: 'Points', type: TypeUtils.ListOf(vectorRowType)},
+  ]);
+  const parentGrid = environment.getGridByName("Relative Polygon");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const defaultPoints = [[-10, -10], [10, -10], [10, 10], [-10, 10]].map(([x, y]) => makeLiteral(`Vector(X=${x}, Y=${y})`, vectorRowType, environment) as RowValue);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {column: columns.Points, defaultValue: ValueUtils.listOf(defaultPoints, TypeUtils.RowOf(vectorGrid.id))},
+    {parentGridColumn: parentColumns['Relative Points'], expressionString: 'Map(Values=Range(N=Size(List=Points)), Fn=i->If(If=i==1, Then=Points[i], Else=Vector(X=Points[i].X - Points[If(If=i==1, Then=1, Else=i-1)].X, Y=Points[i].Y - Points[If(If=i==1, Then=1, Else=i-1)].Y)))'},
+  ];
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+}
+
+function addRegularPolygonGrid(
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const name = "Regular Polygon";
+  const columns = generateColumns(updateManager, [
+    {name: 'N', type: PrimitiveType.NUMBER},
+    {name: 'Radius', type: PrimitiveType.NUMBER},
+  ]);
+  const parentGrid = environment.getGridByName("Polygon");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {column: columns.N, defaultValue: ValueUtils.numberOf(5)},
+    {column: columns.Radius, defaultValue: ValueUtils.numberOf(10)},
+    {parentGridColumn: parentColumns.Points, expressionString: 'Map(Values=Range(N=N), Fn=i->PoVec(R=Radius, Theta=(i+0.5)/N))'},
+  ];
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+}
+
 function addTriangleGrid(
   updateManager: UpdateManager,
   environment: FormulaEnvironment,
 ) {
   const name = "Triangle";
-  const parentGrid = environment.getGridByName("Path Shape");
+  const vectorGrid = environment.getGridByName("Vector");
+  const vectorRowType = TypeUtils.RowOf(vectorGrid.id);
+  const columns = generateColumns(updateManager, [
+    {name: 'P1', type: vectorRowType},
+    {name: 'P2', type: vectorRowType},
+    {name: 'P3', type: vectorRowType},
+  ]);
+  const parentGrid = environment.getGridByName("Polygon");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const defaultPoints = [[-10, 0], [10, 0], [0, -17.3]].map(([x, y]) => makeLiteral(`Vector(X=${x}, Y=${y})`, vectorRowType, environment) as RowValue);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {column: columns.P1, defaultValue: defaultPoints[0]},
+    {column: columns.P2, defaultValue: defaultPoints[1]},
+    {column: columns.P3, defaultValue: defaultPoints[2]},
+    {parentGridColumn: parentColumns.Points, expressionString: '[P1, P2, P3]'},
+  ];
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+}
+
+function addRectangleGrid(
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const name = "Rectangle";
+  const columns = generateColumns(updateManager, [
+    {name: 'Width', type: PrimitiveType.NUMBER},
+    {name: 'Height', type: PrimitiveType.NUMBER},
+  ]);
+  const parentGrid = environment.getGridByName("Relative Polygon");
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
-    {parentGridColumn: parentColumns.Path, expressionString: '"m0 0 l20 0 l-10 17.3 z"'},
+    {column: columns.Width, defaultValue: ValueUtils.numberOf(10)},
+    {column: columns.Height, defaultValue: ValueUtils.numberOf(20)},
+    {parentGridColumn: parentColumns['Relative Points'], expressionString: '[Vector(X=-Width/2, Y=-Height/2), Vector(X=Width), Vector(Y=Height), Vector(X=-Width)]'},
+  ];
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+}
+
+function addSquareGrid(
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const name = "Square";
+  const parentGrid = environment.getGridByName("Rectangle");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {parentGridColumn: parentColumns.Width, defaultValue: ValueUtils.numberOf(40)},
+    {parentGridColumn: parentColumns.Height, expressionString: 'Width'},
   ];
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
 }
@@ -407,8 +552,15 @@ function addShapeGrids(
   formulaEnvironment: FormulaEnvironment,
 ) {
   addShapeGrid(updateManager, formulaEnvironment);
+  addCircleGrid(updateManager, formulaEnvironment);
+  addEllipseGrid(updateManager, formulaEnvironment);
   addPathShapeGrid(updateManager, formulaEnvironment);
+  addRelativePolygonGrid(updateManager, formulaEnvironment);
+  addPolygonGrid(updateManager, formulaEnvironment);
+  addRegularPolygonGrid(updateManager, formulaEnvironment);
   addTriangleGrid(updateManager, formulaEnvironment);
+  addRectangleGrid(updateManager, formulaEnvironment);
+  addSquareGrid(updateManager, formulaEnvironment);
 }
 
 function addDemoArithmeticGrid(
@@ -426,7 +578,7 @@ function addDemoArithmeticGrid(
   ]);
   const gridColumnsData: GridColumnData[] = [
     {column: columns.In},
-    {column: columns.Out, expressionString: 'Square(Value = In / 10 + 1) * 2'},
+    {column: columns.Out, expressionString: '(In / 10 + 1) * (In / 10 + 1) * 2'},
   ];
   const gridColumns = generateGridColumns(updateManager, formulaEnvironment, grid, gridColumnsData);
   grid.addColumns(gridColumns);

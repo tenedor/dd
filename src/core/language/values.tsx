@@ -281,4 +281,33 @@ export class ValueUtils {
       return assertUnreachable(v);
     }
   }
+
+  // TODO remove this method
+  // tslint:disable-next-line
+  public static toString_NoEnvironment = (v: Value): string => {
+    if (ValueUtils.isLambda(v)) {
+      return 'fn'; // TODO
+    } else if (ValueUtils.isDict(v)) {
+      const gridName = 'Grid';
+      const escapedName = Parser.identToText(gridName);
+      if (ValueUtils.isGrid(v)) {
+        return `${escapedName}`;
+      } else if (ValueUtils.isRow(v)) {
+        return `${escapedName}(...)`;
+      } else if (ValueUtils.isPartialRow(v)) {
+        return `Partial Row of ${escapedName}`;
+      } else {
+        return assertUnreachable(v);
+      }
+    } else if (ValueUtils.isList(v)) {
+      const values = v.list.map(e => ValueUtils.toString_NoEnvironment(e));
+      return `[${values.join(", ")}]`;
+    } else if (ValueUtils.isDrawing(v)) {
+      return v.drawing.drawingType;
+    } else if (ValueUtils.isPrimitive(v)) {
+      return `${v.value}`;
+    } else {
+      return assertUnreachable(v);
+    }
+  }
 }

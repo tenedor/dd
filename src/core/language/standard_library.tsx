@@ -16,11 +16,18 @@ import {Parser} from './parser';
 import {BoundingType, Identifier, LambdaOfAnyType, LambdaType, ListOfAnyType, ListType,
         PrimitiveType, Type, TypeUtils} from './types';
 import {DrawingValue, LambdaValue, ListValue, NumberValue, PartialRowValue,
-        PrimitiveValue, RowValue, Value, ValueUtils} from './values';
+        PrimitiveValue, RowValue, StringValue, Value, ValueUtils} from './values';
 
 type Primitive = number | boolean | string;
 type MaterializedValue = Primitive | DrawingValue | ListValue | LambdaValue;
-type MaterializedEval = (parameters: {[name: string]: MaterializedValue}, resolvedReturnType: Type) => MaterializedValue;
+interface EvalEnvironment {
+  resolvedReturnType: Type,
+}
+type MaterializedEval = (parameters: {[name: string]: MaterializedValue}, env: EvalEnvironment) => MaterializedValue;
+
+const isPrimitive = (value: MaterializedValue): value is Primitive => {
+  return typeof value !== 'object';
+}
 
 interface ParameterGenerator<T extends Type = Type> {
   type: T,
@@ -59,6 +66,10 @@ class ParameterUtils {
     return {type: TypeUtils.String, defaultValue};
   }
 
+  public static listOfType = <T extends Type> (itemType: T, defaultValue: ListValue<T>): ParameterGenerator<ListType<T>> => {
+    return {type: TypeUtils.ListOf(itemType), defaultValue};
+  }
+
   public static listOfAny = (defaultValue: ListValue = ParameterUtils.defaultListValue): ParameterGenerator<ListOfAnyType> => {
     return {type: TypeUtils.ListOfAny, defaultValue};
   }
@@ -67,7 +78,7 @@ class ParameterUtils {
     return {type: TypeUtils.LambdaOfAny, defaultValue};
   }
 
-  public static any = (defaultValue: boolean): ParameterGenerator<BoundingType.TOP> => {
+  public static any = (defaultValue: MaterializedValue): ParameterGenerator<BoundingType.TOP> => {
     return {type: TypeUtils.Top, defaultValue};
   }
 
@@ -85,11 +96,18 @@ const dematerializeValue = <T extends Type = Type> (value: MaterializedValue, ty
   } else if (TypeUtils.isLambda(type)) {
     return value as LambdaOfAnyType & Value<T>;
   } else if (TypeUtils.isList(type)) {
-    return value as ListValue<BoundingType.TOP> & Value<T>;
+    return value as ListValue & Value<T>;
+  } else if (TypeUtils.isRow(type)) {
+    return value as RowValue & Value<T>;
   } else if (TypeUtils.isPrimitive(type)) {
     return ValueUtils.primitiveOf(value as Primitive, type);
-  } else if (TypeUtils.isTop(type) && typeof value === 'boolean') {
-    return ValueUtils.primitiveOf(value, PrimitiveType.BOOLEAN) as Value<T>;
+  } else if (TypeUtils.isTop(type)) {
+    switch (typeof value) {
+      case 'number':
+      case 'boolean':
+      case 'string':
+        return ValueUtils.primitiveOfInferType(value) as Value<T>;
+    }
   }
   throw new TypeError(`Cannot dematerialize values for ${TypeUtils.toString(type)} types currently`);
 }
@@ -128,9 +146,9 @@ const dematerializeEval = <R extends Type = Type> (
       return parameterDefs[id].name;
     });
     const materializedParameters = _.mapValues(parametersByName, materializeValue);
-    const _returnType = runtimeResolvedReturnType as R || returnType;
-    const materializedValue = materializedEval(materializedParameters, _returnType);
-    return dematerializeValue(materializedValue, _returnType);
+    const resolvedReturnType = runtimeResolvedReturnType as R || returnType;
+    const materializedValue = materializedEval(materializedParameters, {resolvedReturnType});
+    return dematerializeValue(materializedValue, resolvedReturnType);
   }
 }
 
@@ -161,6 +179,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
    * Control Flow Formulas
    */
 
+  // TODO Lazy Evaluate!
   If: {
     returnType: ResolutionTimeReturnType,
     parameters: {
@@ -170,7 +189,7 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({If: ifVal, Then: thenVal, Else: elseVal}: {
       If: boolean, Then: MaterializedValue, Else: MaterializedValue,
-    }, resolvedReturnType: Type): MaterializedValue => {
+    }, {resolvedReturnType}: EvalEnvironment): MaterializedValue => {
       // clean up the hack of using boolean default values
       const booleanReturn = TypeUtils.isBoolean(resolvedReturnType);
       const _thenVal = typeof thenVal === 'boolean' && !booleanReturn ? elseVal : thenVal;
@@ -243,11 +262,76 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
   },
 
+  Concatenate: {
+    returnType: TypeUtils.ListOf(ResolutionTimeReturnType),
+    parameters: {
+      Lists: ParameterUtils.listOfType(TypeUtils.ListOfAny, ValueUtils.listOf([], TypeUtils.ListOfAny)),
+    },
+    eval: <T extends Type> ({Lists: lists}: {Lists: ListValue<ListType<T>>}, {resolvedReturnType}: {resolvedReturnType: ListType<T>}): ListValue<T> => {
+      const flattened = _.flatten(lists.list.map((ls: ListValue<T>) => ls.list));
+      return ValueUtils.listOf(flattened, resolvedReturnType.itemType);
+    },
+    resolutionTimeTypeHelper: {
+      variant: ResolutionTimeTypeHelperVariant.BASIC,
+      resolveCallReturnType: ({Lists: listsType}: RODictionary<Type>, environment: FormulaEnvironment) => {
+        return listsType && TypeUtils.isList(listsType) && TypeUtils.isListOfList(listsType) ?
+          listsType.itemType :
+          TypeUtils.EmptyList;
+      }
+    },
+  },
+
+  /**
+   * String Formulas
+   */
+
+  Join: {
+    returnType: TypeUtils.String,
+    parameters: {
+      Values: ParameterUtils.listOfType(TypeUtils.String, ValueUtils.listOf([], TypeUtils.String)),
+      Separator: ParameterUtils.string(''),
+    },
+    eval: ({
+      Values: values, Separator: separator
+    }: {Values: ListValue<PrimitiveType.STRING>, Separator: string}): string => {
+      const strings = values.list.map((v: StringValue) => v.value);
+      return strings.join(separator);
+    },
+  },
+
+  Split: {
+    returnType: TypeUtils.ListOf(TypeUtils.String),
+    parameters: {
+      String: ParameterUtils.string(''),
+      Separator: ParameterUtils.string(''),
+    },
+    eval: ({
+      String: _string, Separator: separator
+    }: {String: string, Separator: string}): ListValue<PrimitiveType.STRING> => {
+      const strings = _string.split(separator).map(s => ValueUtils.stringOf(s));
+      return ValueUtils.listOf(strings, TypeUtils.String);
+    },
+  },
+
+  /**
+   * Type Formulas
+   */
+
+  String: {
+    returnType: TypeUtils.String,
+    parameters: {
+      Value: ParameterUtils.any(""),
+    },
+    eval: ({Value: value}: {Value: MaterializedValue}): string => {
+      return `${isPrimitive(value) ? value : ValueUtils.toString_NoEnvironment(value)}`;
+    },
+  },
+
   /**
    * Arithmetic Formulas
    */
 
-  Square: {
+  Sq: {
     returnType: TypeUtils.Number,
     parameters: {
       Value: ParameterUtils.number(1),
