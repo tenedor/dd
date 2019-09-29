@@ -5,7 +5,8 @@ import {buildNamespace, ValueNamespace} from '@language/name_resolver';
 import {RelativeValueReference} from '@language/reference';
 import {Identifier, PartialRowType, RowType, Type, TypeUtils} from '@language/types';
 import {ValueResolver} from '@language/value_resolver';
-import {PartialRowValue, RowValue, Value} from '@language/values';
+import {PartialRowValue, RowValue, Value, ValueUtils} from '@language/values';
+import {ROArray} from '@utils/types';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
 import {Constant} from '../core/constant';
 import {Model, ModelType} from '../core/model';
@@ -16,6 +17,12 @@ import {GridColumns} from './grid';
 import {GridColumnUpdateDescriptor} from './grid_column';
 import {Row, RowUpdateDescriptor} from './row';
 
+export interface Signature {
+  name: string,
+  parameters: ROArray<{name: string, type: Type, defaultValue: Value}>,
+  returnType: Type,
+}
+
 interface BaseConstructor<R extends Type, I extends Identifier = Identifier> {
   readonly id: string,
   readonly isConstructorLiteral: boolean,
@@ -25,6 +32,7 @@ interface BaseConstructor<R extends Type, I extends Identifier = Identifier> {
   assignmentsType: PartialRowType<I>,
   eval: (valueResolver: ValueResolver, asmts: PartialRowValue<I>, runtimeResolvedReturnType?: Type) => Value<R>;
   resolutionTimeTypeHelper?: ResolutionTimeTypeHelper,
+  getSignature: () => Signature,
 }
 
 export type Constructor<R extends Type = Type, I extends Identifier = Identifier> = BaseConstructor<R, I> & Model;
@@ -120,6 +128,18 @@ export class GridConstructor<I extends Identifier = Identifier>
       return a.elementDescriptors.some(c => columnSchemaChangeDescriptors.includes(c.type));
     });
   }
+
+  public getSignature = (): Signature => {
+    const {name} = this;
+    const parameterIds = this.columns.a.filter(c => !c.hasExpression()).map(c => c.columnId);
+    const parameters = parameterIds.map(id => {
+      const column = this.columns.getByKey(id)!;
+      const defaultValue = this.defaultValues.cells.get(id)!.value;
+      return {name: column.name, type: column.type, defaultValue};
+    });
+    const returnType = TypeUtils.RowOf(this.gridId);
+    return {name, parameters, returnType};
+  }
 }
 
 
@@ -151,23 +171,35 @@ export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identi
   public readonly assignmentsType: PartialRowType<I>;
   public readonly eval: (valueResolver: ValueResolver, asmts: PartialRowValue<I>, runtimeResolvedReturnType?: Type) => Value<R>;
   public readonly resolutionTimeTypeHelper?: ResolutionTimeTypeHelper;
+  private readonly signature: Signature;
 
   constructor(formula: BuiltInFormulaSpec<R, I>) {
     super(formula.id);
     this.name = formula.name;
     this.returnType = formula.returnType;
-    this.namespace = BuiltInFormula.buildNamespace(formula);
+    this.namespace = BuiltInFormula.buildNamespace(formula.parameters);
     this.assignmentsType = TypeUtils.PartialRowOf(formula.id);
     this.eval = (valueResolver: ValueResolver, asmts: PartialRowValue<I>, runtimeResolvedReturnType?: Type) =>
         formula.eval(asmts, runtimeResolvedReturnType);
     this.resolutionTimeTypeHelper = formula.resolutionTimeTypeHelper;
+    this.signature = BuiltInFormula.buildSignature(formula);
   }
 
-  private static buildNamespace = (formula: BuiltInFormulaSpec): ValueNamespace => {
-    const nameToParameterMap = _.mapKeys(formula.parameters, 'name');
+  private static buildNamespace = (parameters: {[id: string]: Parameter}): ValueNamespace => {
+    const nameToParameterMap = _.mapKeys(parameters, 'name');
     const nameToReferenceMap = _.mapValues(nameToParameterMap, p => {
       return new RelativeValueReference(p.id, p.type, () => p.name);
     });
     return buildNamespace(nameToReferenceMap);
+  }
+
+  private static buildSignature = (formula: BuiltInFormulaSpec): Signature => {
+    const {name, returnType} = formula;
+    const parameters = Object.values(formula.parameters);
+    return {name, parameters, returnType};
+  }
+
+  public getSignature = (): Signature => {
+    return this.signature;
   }
 }

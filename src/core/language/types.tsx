@@ -247,7 +247,7 @@ export class TypeUtils {
   public static validateIsAssignableTo = <T extends Type> (t1: Type, t2: T, environment: FormulaEnvironment, errorMessage?: string): t1 is T => {
     if (!TypeUtils.isAssignableTo(t1, t2, environment)) {
       throw new TypeError(errorMessage ||
-        `Expected type ${TypeUtils.toString(t1)} to be assignable to type ${TypeUtils.toString(t2)}`);
+        `Expected type ${environment.getNameForType(t1)} to be assignable to type ${environment.getNameForType(t2)}`);
     }
     return true;
   }
@@ -362,11 +362,14 @@ export class TypeUtils {
   // Utilities
   // =========
 
-  public static toString = (t: Type): string => {
+  public static toString = (t: Type, opts: {eraseBoundingTypes?: boolean} = {}): string => {
     if (TypeUtils.isAtomic(t)) {
+      if (TypeUtils.isBoundingType(t) && opts.eraseBoundingTypes) {
+        return 'T';
+      }
       return capitalizeFirstLetter(t.toLowerCase());
     } else if (TypeUtils.isList(t)) {
-      return TypeUtils.listToString(t, TypeUtils.toString);
+      return TypeUtils.listToString(t, tt => TypeUtils.toString(tt, opts));
     }
     // TODO
     return `${t}`;

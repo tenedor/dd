@@ -94,8 +94,10 @@ export abstract class CellEditorViewModel {
           throw e;
         }
         if (!TypeUtils.isAssignableTo(ast.type, column.type, formulaEnvironment)) {
+          const astType = formulaEnvironment.getNameForType(ast.type);
+          const columnType = formulaEnvironment.getNameForType(column.type);
           CellEditorViewModel.logSetFormulaError(`incompatible types: cannot assign ` +
-            `${TypeUtils.toString(ast.type)} to ${TypeUtils.toString(column.type)}`, unparsedExpression);
+              `${astType} to ${columnType}`, unparsedExpression);
           return false;
         }
         column.setExpression(ast);

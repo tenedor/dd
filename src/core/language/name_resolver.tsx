@@ -171,7 +171,7 @@ export class NameResolver {
       } else {
         const {type} = ref;
         TypeUtils.validateIsAssignableTo(asmtTypesById[id], type, this.environment,
-          `Expected value \`${name}\` to be assignable to type \`${TypeUtils.toString(type)}\``);
+          `Expected value \`${name}\` to be assignable to type \`${this.environment.getNameForType(type)}\``);
       }
     });
   }
