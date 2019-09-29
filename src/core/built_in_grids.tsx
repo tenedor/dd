@@ -588,39 +588,6 @@ function addDemoArithmeticGrid(
   setFirstRowValues(grid, manualValues);
 }
 
-function addDemoDerivativeGrid(
-  document: Document,
-  updateManager: UpdateManager,
-  formulaEnvironment: FormulaEnvironment,
-) {
-  const {nameResolver} = formulaEnvironment;
-
-  const grid = document.addGridFromGridData({name: "Derivative", formulaEnvironment});
-
-  const instanceType = formulaEnvironment.nameResolver.resolveConstructorReference("Radius Calculator").model.returnType;
-  const columns = generateColumns(updateManager, [
-    {name: 'In', type: TypeUtils.Number},
-    {name: 'Mid', type: instanceType},
-    {name: 'Out', type: TypeUtils.Number},
-  ]);
-  const gridColumnsData: GridColumnData[] = [
-    {column: columns.In},
-    {column: columns.Mid, width: 200},
-    {column: columns.Out, expressionString: 'Mid.Out'},
-  ];
-  const gridColumns = generateGridColumns(updateManager, formulaEnvironment, grid, gridColumnsData);
-  grid.addColumns(gridColumns);
-  setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
-
-  const astUnres = new CallUnres("Radius Calculator", new AssignmentsUnres({}, []));
-  const astLiteral = astUnres.resolve(nameResolver);
-  const manualValues = {
-    [gridColumns[0].columnId]: ValueUtils.numberOf(5),
-    [gridColumns[1].columnId]: astLiteral,
-  };
-  setFirstRowValues(grid, manualValues);
-}
-
 function addDemoShapeGrids(
   document: Document,
   updateManager: UpdateManager,
@@ -679,6 +646,5 @@ export function addDemoGrids(
   formulaEnvironment: FormulaEnvironment,
 ) {
   addDemoArithmeticGrid(document, updateManager, formulaEnvironment);
-  addDemoDerivativeGrid(document, updateManager, formulaEnvironment);
   addDemoShapeGrids(document, updateManager, formulaEnvironment);
 }
