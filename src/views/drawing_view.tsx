@@ -23,7 +23,7 @@ export class DrawingView extends BaseComponent<Props> {
 
     return (
       <div className="drawing-view" style={{height: size, width: size}}>
-        <svg viewBox="0 0 100 100" style={{backgroundColor: "#888888"}}>
+        <svg viewBox={"-100 -100 200 200"} style={{backgroundColor: "#888888"}}>
           {renderedDrawings}
         </svg>
       </div>
