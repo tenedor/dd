@@ -6,13 +6,13 @@ import {Mutable} from '@models/core/mutable';
 import {SimpleUpdateManager, UpdateDescriptor} from '@models/core/update_manager';
 import {AppUpdateType} from '@models/core/update_types';
 import {Document, DocumentUpdateDescriptor} from '@models/domain_specific/document';
-import {DocumentView} from '@views/document_view';
+import {AppView} from '@views/app_view';
 
 export interface AppUpdateDescriptor extends UpdateDescriptor<AppUpdateType> {}
 
 export class App extends Mutable {
   private document: Document;
-  private documentRef?: DocumentView;
+  private appViewRef?: AppView;
 
   constructor(modelType: ModelType = ModelType.APP) {
     super(new SimpleUpdateManager(), modelType);
@@ -22,8 +22,8 @@ export class App extends Mutable {
   }
 
   private onDocumentUpdated = (epoch: number, updates: DocumentUpdateDescriptor[]) => {
-    if (this.documentRef) {
-      this.documentRef.forceUpdate();
+    if (this.appViewRef) {
+      this.appViewRef.forceUpdate();
     }
 
     this.onDependencyUpdated(epoch);
@@ -33,7 +33,7 @@ export class App extends Mutable {
   public renderApplication = () => {
     const {document, epoch} = this;
     return (
-      <DocumentView ref={r => this.documentRef = r ? r : undefined} epoch={epoch} document={document} />
+      <AppView ref={r => this.appViewRef = r ? r : undefined} epoch={epoch} document={document} />
     );
   }
 }

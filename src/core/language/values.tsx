@@ -283,7 +283,7 @@ export class ValueUtils {
   }
 
   // TODO remove this method
-  // tslint:disable-next-line
+  // tslint:disable-next-line:variable-name
   public static toString_NoEnvironment = (v: Value): string => {
     if (ValueUtils.isLambda(v)) {
       return 'fn'; // TODO

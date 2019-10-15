@@ -8,10 +8,12 @@ import {BaseComponent, BaseProps} from './base_component';
 import {DrawingView} from './drawing_view';
 import {TableView} from './table_view';
 import {TitleEditorView} from './title_editor_view';
+import {UIGlobals} from './ui_globals';
 import {PopUpView} from './utilities/pop_up_view';
 
 interface Props extends BaseProps {
   document: Document,
+  uiGlobals: UIGlobals,
 }
 
 interface State {
@@ -42,9 +44,11 @@ export class DocumentView extends BaseComponent<Props, State> {
   }
 
   private renderDrawingSurfaces = (epoch: number, infos: DrawingSurfaceInfos) => {
+    const {uiGlobals} = this.props;
     const {drawingSurfaceSize} = this.state;
     const drawingViews = infos.a.map((info, i) => (
-      <DrawingView key={`dv-${i}`} epoch={epoch} grids={info.a} size={drawingSurfaceSize} />
+      <DrawingView key={`dv-${i}`} epoch={epoch} uiGlobals={uiGlobals} grids={info.a}
+          size={drawingSurfaceSize} />
     ));
     return (
       <div className="drawing-surfaces">

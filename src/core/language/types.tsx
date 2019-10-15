@@ -214,7 +214,7 @@ export class TypeUtils {
   }
 
   // TODO remove this method
-  // tslint:disable-next-line
+  // tslint:disable-next-line:variable-name
   private static isAssignableTo_NoEnvironment = (t1: Type, t2: Type): boolean => {
     if (TypeUtils.isBottom(t1)) {
       return true;

@@ -1,6 +1,6 @@
 import * as Ohm from 'ohm-js';
 
-// tslint:disable-next-line
+// tslint:disable-next-line:no-namespace
 declare namespace OhmTS {
   function grammarsFromScriptElements(
     nodeList?: NodeList,
