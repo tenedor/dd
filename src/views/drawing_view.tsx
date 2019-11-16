@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
-import {getDrawing} from '@core/drawing_grid_utilities';
+import {OLD_getDrawing} from '@core/drawing_grid_utilities';
 import {CoordinateSystem} from '@core/geometry';
-import {Drawing, DrawingVariant} from '@language/drawing_value';
+import {OLD_Drawing, OLD_DrawingVariant} from '@language/drawing_value';
 import {Grid} from '@models/domain_specific/grid';
 import {ROArray} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
@@ -68,16 +68,16 @@ export class DrawingView extends BaseComponent<Props, State> {
     );
   }
 
-  private static renderDrawings = (drawings: Drawing[]): JSX.Element[] => {
+  private static renderDrawings = (drawings: OLD_Drawing[]): JSX.Element[] => {
     return drawings.map((d, i) => {
       switch (d.drawingType) {
-        case DrawingVariant.CIRCLE:
+        case OLD_DrawingVariant.CIRCLE:
           return <circle key={`d-${i}`} r={d.radius} fill={d.fill} />;
-        case DrawingVariant.ELLIPSE:
+        case OLD_DrawingVariant.ELLIPSE:
           return <ellipse key={`d-${i}`} rx={d.radius1} ry={d.radius2} fill={d.fill} />;
-        case DrawingVariant.PATH:
+        case OLD_DrawingVariant.PATH:
           return <path key={`d-${i}`} d={d.path} fill={d.fill} />;
-        case DrawingVariant.GROUP:
+        case OLD_DrawingVariant.GROUP:
           const transform = DrawingView.getTransformForCoordinateSystem(d.coordinateSystem);
           return (
             <g key={`d-${i}`} transform={transform}>
@@ -90,12 +90,12 @@ export class DrawingView extends BaseComponent<Props, State> {
     });
   }
 
-  public static getDrawings = (grids: ROArray<Grid>): Drawing[] => {
+  public static getDrawings = (grids: ROArray<Grid>): OLD_Drawing[] => {
     return _.flatten(grids.map(DrawingView.getDrawingsForGrid));
   }
 
-  private static getDrawingsForGrid = (grid: Grid): Drawing[] => {
-    return grid.rows.a.map(row => getDrawing(row.asValue()));
+  private static getDrawingsForGrid = (grid: Grid): OLD_Drawing[] => {
+    return grid.rows.a.map(row => OLD_getDrawing(row.asValue()));
   }
 
   private static getTransformForCoordinateSystem = ({center, scale, rotation}: CoordinateSystem): string => {

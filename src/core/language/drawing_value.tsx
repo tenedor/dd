@@ -6,7 +6,7 @@ import {CoordinateSystem, Scalar} from '@core/geometry';
 type Color = string;
 type SVGPathString = string;
 
-export enum DrawingVariant {
+export enum OLD_DrawingVariant {
   CIRCLE = "CIRCLE",
   ELLIPSE = "ELLIPSE",
   // LINE = "LINE",
@@ -18,7 +18,7 @@ export enum DrawingVariant {
 }
 
 interface BaseDrawing {
-  drawingType: DrawingVariant,
+  drawingType: OLD_DrawingVariant,
 }
 
 interface BaseShapeDrawing extends BaseDrawing {
@@ -28,37 +28,37 @@ interface BaseShapeDrawing extends BaseDrawing {
 }
 
 interface Circle extends BaseShapeDrawing {
-  drawingType: DrawingVariant.CIRCLE,
+  drawingType: OLD_DrawingVariant.CIRCLE,
   radius: Scalar,
 }
 
 interface Ellipse extends BaseShapeDrawing {
-  drawingType: DrawingVariant.ELLIPSE,
+  drawingType: OLD_DrawingVariant.ELLIPSE,
   radius1: Scalar,
   radius2: Scalar,
 }
 
 interface Path extends BaseShapeDrawing {
-  drawingType: DrawingVariant.PATH,
+  drawingType: OLD_DrawingVariant.PATH,
   path: SVGPathString,
 }
 
 interface Group extends BaseDrawing {
-  drawingType: DrawingVariant.GROUP,
-  drawings: Drawing[],
+  drawingType: OLD_DrawingVariant.GROUP,
+  drawings: OLD_Drawing[],
   coordinateSystem: CoordinateSystem,
 }
 
-export type Drawing = Circle | Ellipse | Path | Group;
+export type OLD_Drawing = Circle | Ellipse | Path | Group;
 
-export function drawingsAreEqual(d1: Drawing, d2: Drawing): boolean {
+export function OLD_drawingsAreEqual(d1: OLD_Drawing, d2: OLD_Drawing): boolean {
   return _.isEqual(d1, d2);
 }
 
-export function isGroup(v: Drawing): v is Group {
-  return v.drawingType === DrawingVariant.GROUP;
+export function OLD_isGroup(v: OLD_Drawing): v is Group {
+  return v.drawingType === OLD_DrawingVariant.GROUP;
 }
 
-export function isEmptyDrawing(v: Drawing): boolean {
-  return isGroup(v) && v.drawings.length === 0;
+export function OLD_isEmptyDrawing(v: OLD_Drawing): boolean {
+  return OLD_isGroup(v) && v.drawings.length === 0;
 }

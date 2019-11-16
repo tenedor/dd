@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {COORDINATE_SYSTEM_COLUMN_ID, DRAWING_COLUMN_ID} from '@core/drawing_grid_utilities';
+import {COORDINATE_SYSTEM_COLUMN_ID, OLD_DRAWING_COLUMN_ID} from '@core/drawing_grid_utilities';
 import {ExpressionRes} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {ParseError} from '@language/language_errors';
@@ -136,7 +136,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private getDrawingColumn = (): GridColumn => {
-    return this.columns.getByKey(DRAWING_COLUMN_ID)!;
+    return this.columns.getByKey(OLD_DRAWING_COLUMN_ID)!;
   }
 
   private getCoordinateSystemColumn = (): GridColumn => {

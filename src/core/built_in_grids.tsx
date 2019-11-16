@@ -12,7 +12,7 @@ import {Document} from '@models/domain_specific/document';
 import {Grid} from '@models/domain_specific/grid';
 import {GridColumn} from '@models/domain_specific/grid_column';
 import {Row} from '@models/domain_specific/row';
-import {COORDINATE_SYSTEM_GRID_NAME, getBuiltInDrawingColumnData} from './drawing_grid_utilities';
+import {COORDINATE_SYSTEM_GRID_NAME, OLD_getBuiltInDrawingColumnData} from './drawing_grid_utilities';
 import {ValueResolver} from './language/value_resolver';
 
 // Draw a regular n-pointed star with density m and the specified side length.
@@ -361,7 +361,7 @@ function addShapeGrid(
   environment: FormulaEnvironment,
 ) {
   const name = "Shape";
-  const drawingColumn = getBuiltInDrawingColumnData();
+  const drawingColumn = OLD_getBuiltInDrawingColumnData();
   const columns = generateColumns(updateManager, [
     {name: 'Fill', type: TypeUtils.String},
     drawingColumn,
@@ -378,7 +378,7 @@ function addCircleGrid(
   environment: FormulaEnvironment,
 ) {
   const name = "Circle";
-  const drawingColumn = getBuiltInDrawingColumnData();
+  const drawingColumn = OLD_getBuiltInDrawingColumnData();
   const columns = generateColumns(updateManager, [
     {name: 'Radius', type: TypeUtils.Number},
   ]);
@@ -396,7 +396,7 @@ function addEllipseGrid(
   environment: FormulaEnvironment,
 ) {
   const name = "Ellipse";
-  const drawingColumn = getBuiltInDrawingColumnData();
+  const drawingColumn = OLD_getBuiltInDrawingColumnData();
   const columns = generateColumns(updateManager, [
     {name: 'Radius X', type: TypeUtils.Number},
     {name: 'Radius Y', type: TypeUtils.Number},
@@ -416,7 +416,7 @@ function addPathShapeGrid(
   environment: FormulaEnvironment,
 ) {
   const name = "Path Shape";
-  const drawingColumn = getBuiltInDrawingColumnData();
+  const drawingColumn = OLD_getBuiltInDrawingColumnData();
   const columns = generateColumns(updateManager, [
     {name: 'Path', type: TypeUtils.String},
   ]);

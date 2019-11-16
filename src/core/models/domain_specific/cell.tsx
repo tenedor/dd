@@ -168,7 +168,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   public setCoordinates = (coordinates: CoordinateSystem) => {
-    assert(TypeUtils.isDrawing(this.column.type), "Cannot move a non-shape value.");
+    assert(TypeUtils.OLD_isDrawing(this.column.type), "Cannot move a non-shape value.");
     assert(!this.isCalculated(), "Cannot move a calculated value.");
     /*
     const currentAsmts = currentValue.getAssignments().getAssignments();

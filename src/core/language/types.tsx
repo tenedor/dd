@@ -38,7 +38,7 @@ export enum PrimitiveType {
   STRING = "STRING",
 }
 
-export enum DrawingType {
+export enum OLD_DrawingType {
   DRAWING = "DRAWING",
 }
 
@@ -90,9 +90,9 @@ export type LambdaOfAnyType = LambdaType<BoundingType.BOTTOM, BoundingType.TOP>;
 
 // ListType only supports literals if its item type is Bottom or is a
 // SupportsLiteralsType, but TypeScript's types cannot express this concept.
-export type SupportsLiteralsType = PrimitiveType | DrawingType | ListType | RowType;
+export type SupportsLiteralsType = PrimitiveType | OLD_DrawingType | ListType | RowType;
 
-export type Type = PrimitiveType | DrawingType | ListTypeBase | DictType |
+export type Type = PrimitiveType | OLD_DrawingType | ListTypeBase | DictType |
   LambdaTypeBase | BoundingType;
 
 
@@ -105,7 +105,7 @@ export class TypeUtils {
   public static readonly Number = PrimitiveType.NUMBER;
   public static readonly Boolean = PrimitiveType.BOOLEAN;
   public static readonly String = PrimitiveType.STRING;
-  public static readonly Drawing = DrawingType.DRAWING;
+  public static readonly OLD_Drawing = OLD_DrawingType.DRAWING; // tslint:disable-line
   public static readonly Bottom: BoundingType.BOTTOM = BoundingType.BOTTOM;
   public static readonly Top: BoundingType.TOP = BoundingType.TOP;
   public static readonly EmptyList: EmptyListType = {itemType: BoundingType.BOTTOM};
@@ -149,7 +149,7 @@ export class TypeUtils {
   public static isNumber = (t: Type): t is PrimitiveType.NUMBER => t === PrimitiveType.NUMBER
   public static isBoolean = (t: Type): t is PrimitiveType.BOOLEAN => t === PrimitiveType.BOOLEAN
   public static isString = (t: Type): t is PrimitiveType.STRING => t === PrimitiveType.STRING
-  public static isDrawing = (t: Type): t is DrawingType => t === DrawingType.DRAWING
+  public static OLD_isDrawing = (t: Type): t is OLD_DrawingType => t === OLD_DrawingType.DRAWING // tslint:disable-line
   public static isList = (t: Type): t is ListType => !TypeUtils.isAtomic(t) && 'itemType' in t
   public static isListOfList = (t: ListType): t is ListType<ListType> => TypeUtils.isList(t.itemType)
   public static isDict = (t: Type): t is DictType => !TypeUtils.isAtomic(t) && 'schemaId' in t
@@ -167,11 +167,11 @@ export class TypeUtils {
       TypeUtils.isNumber(t) || TypeUtils.isBoolean(t) || TypeUtils.isString(t)
   public static isBoundingType = (t: Type): t is BoundingType =>
       TypeUtils.isTop(t) || TypeUtils.isBottom(t)
-  private static isAtomic = (t: Type): t is PrimitiveType | DrawingType | BoundingType =>
-      TypeUtils.isPrimitive(t) || TypeUtils.isDrawing(t) || TypeUtils.isBoundingType(t)
+  private static isAtomic = (t: Type): t is PrimitiveType | OLD_DrawingType | BoundingType =>
+      TypeUtils.isPrimitive(t) || TypeUtils.OLD_isDrawing(t) || TypeUtils.isBoundingType(t)
 
   public static supportsLiterals = (t: Type): t is SupportsLiteralsType => {
-    return TypeUtils.isPrimitive(t) || TypeUtils.isDrawing(t) || TypeUtils.isRow(t) ||
+    return TypeUtils.isPrimitive(t) || TypeUtils.OLD_isDrawing(t) || TypeUtils.isRow(t) ||
         (TypeUtils.isList(t) && TypeUtils.listItemTypeSupportsLiterals(t.itemType));
   }
 
@@ -204,8 +204,8 @@ export class TypeUtils {
       return TypeUtils.isPartialRow(t1) && TypeUtils.isRowAssignableTo(t1, t2, environment);
     } else if (TypeUtils.isList(t2)) {
       return TypeUtils.isList(t1) && TypeUtils.isAssignableTo(t1.itemType, t2.itemType, environment);
-    } else if (TypeUtils.isDrawing(t2)) {
-      return TypeUtils.isDrawing(t1);
+    } else if (TypeUtils.OLD_isDrawing(t2)) {
+      return TypeUtils.OLD_isDrawing(t1);
     } else if (TypeUtils.isPrimitive(t2)) {
       return TypeUtils.isPrimitive(t1) && t1 === t2;
     } else {
@@ -235,8 +235,8 @@ export class TypeUtils {
       return TypeUtils.isPartialRow(t1) && t1.schemaId.gridId === t2.schemaId.gridId;
     } else if (TypeUtils.isList(t2)) {
       return TypeUtils.isList(t1) && TypeUtils.isAssignableTo_NoEnvironment(t1.itemType, t2.itemType);
-    } else if (TypeUtils.isDrawing(t2)) {
-      return TypeUtils.isDrawing(t1);
+    } else if (TypeUtils.OLD_isDrawing(t2)) {
+      return TypeUtils.OLD_isDrawing(t1);
     } else if (TypeUtils.isPrimitive(t2)) {
       return TypeUtils.isPrimitive(t1) && t1 === t2;
     } else {
@@ -297,8 +297,8 @@ export class TypeUtils {
           : BoundingType.BOTTOM;
       }
       return TypeUtils.ListOf(itemTypeIntersection);
-    } else if (TypeUtils.isDrawing(t1) && TypeUtils.isDrawing(t2)) {
-      return DrawingType.DRAWING;
+    } else if (TypeUtils.OLD_isDrawing(t1) && TypeUtils.OLD_isDrawing(t2)) {
+      return OLD_DrawingType.DRAWING;
     } else if (TypeUtils.isPrimitive(t1) && TypeUtils.isPrimitive(t2)) {
       return t1 === t2 ? t2 : BoundingType.BOTTOM;
     } else {
@@ -326,8 +326,8 @@ export class TypeUtils {
       return TypeUtils.partialRowUnion(t1, t2, environment);
     } else if (TypeUtils.isList(t1) && TypeUtils.isList(t2)) {
       return TypeUtils.ListOf(TypeUtils.union(t1.itemType, t2.itemType, environment));
-    } else if (TypeUtils.isDrawing(t1) && TypeUtils.isDrawing(t2)) {
-      return DrawingType.DRAWING;
+    } else if (TypeUtils.OLD_isDrawing(t1) && TypeUtils.OLD_isDrawing(t2)) {
+      return OLD_DrawingType.DRAWING;
     } else if (TypeUtils.isPrimitive(t1) && TypeUtils.isPrimitive(t2)) {
       return t1 === t2 ? t2 : BoundingType.TOP;
     } else {
@@ -399,6 +399,6 @@ export class TypeUtils {
     PrimitiveType.NUMBER,
     PrimitiveType.BOOLEAN,
     PrimitiveType.STRING,
-    DrawingType.DRAWING,
+    OLD_DrawingType.DRAWING,
   ];
 }

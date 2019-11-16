@@ -1,7 +1,7 @@
 import {TestUtils} from '@test_utils/test_utils';
 
 import {SimpleUpdateManager} from '@models/core/update_manager';
-import {DrawingVariant} from '../drawing_value';
+import {OLD_DrawingVariant} from '../drawing_value';
 import {loadStandardLibrary} from '../standard_library';
 import {ValueUtils} from '../values';
 import {buildLanguageTestHelpers} from "./test_helpers";
@@ -31,8 +31,8 @@ describe('Standard Library', () => {
   describe('DrawCircle', () => {
     const circleOf = ({radius = 10, fill = "black"}: {
       radius?: number, fill?: string,
-    } = {}) => ValueUtils.drawingOf({
-      drawingType: DrawingVariant.CIRCLE, radius, fill,
+    } = {}) => ValueUtils.OLD_drawingOf({
+      drawingType: OLD_DrawingVariant.CIRCLE, radius, fill,
     });
 
     expectResults('results', [
@@ -47,8 +47,8 @@ describe('Standard Library', () => {
   describe('DrawEllipse', () => {
     const ellipseOf = ({radius1 = 15, radius2 = 10, fill = "black"}: {
       radius1?: number, radius2?: number, fill?: string,
-    } = {}) => ValueUtils.drawingOf({
-      drawingType: DrawingVariant.ELLIPSE, radius1, radius2, fill,
+    } = {}) => ValueUtils.OLD_drawingOf({
+      drawingType: OLD_DrawingVariant.ELLIPSE, radius1, radius2, fill,
     });
 
     expectResults('results', [
@@ -63,8 +63,8 @@ describe('Standard Library', () => {
   describe('DrawPath', () => {
     const pathOf = ({path = "m -15 9, c 10 -25, 20 -25, 30 0 z", fill = "black"}: {
       path?: string, fill?: string,
-    } = {}) => ValueUtils.drawingOf({
-      drawingType: DrawingVariant.PATH, path, fill,
+    } = {}) => ValueUtils.OLD_drawingOf({
+      drawingType: OLD_DrawingVariant.PATH, path, fill,
     });
 
     const trianglePath = "m -10 0, l 10 10, l 10 -10 z";

@@ -4,13 +4,13 @@ import {Row} from '@models/domain_specific/row'; // only a type dependency
 import {RODictionary} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
 import {CallRes, ResolvedAST} from './ast';
-import {Drawing, drawingsAreEqual, DrawingVariant} from './drawing_value';
+import {OLD_Drawing, OLD_drawingsAreEqual, OLD_DrawingVariant} from './drawing_value';
 import {FormulaEnvironment} from './formula_environment';
 import {TypeError} from './language_errors';
 import {NameResolver} from './name_resolver';
 import {Parser} from './parser';
-import {BoundingType, DictType, DrawingType, GridIdentifier, GridType, Identifier,
-        LambdaType, ListType, PartialRowType, PrimitiveType, RowIdentifier, RowType,
+import {BoundingType, DictType, GridIdentifier, GridType, Identifier, LambdaType,
+        ListType, OLD_DrawingType, PartialRowType, PrimitiveType, RowIdentifier, RowType,
         SchemaIdentifier, SupportsLiteralsType, Type, TypeUtils} from './types';
 
 export interface BaseValue<T extends Type = Type> {
@@ -31,8 +31,8 @@ export interface StringValue extends BaseValue<PrimitiveType.STRING> {
 
 export type PrimitiveValue = NumberValue | BooleanValue | StringValue;
 
-export interface DrawingValue extends BaseValue<DrawingType> {
-  drawing: Drawing,
+export interface OLD_DrawingValue extends BaseValue<OLD_DrawingType> { // tslint:disable-line
+  drawing: OLD_Drawing,
 }
 
 export interface ListValue<T extends Type = Type> extends BaseValue<ListType<T>> {
@@ -69,7 +69,7 @@ export interface LambdaValue<I extends Type = Type, O extends Type = Type>
   lambda: (input: Value<I>) => Value<O>,
 }
 
-type ValueUnion = PrimitiveValue | DrawingValue | ListValue | DictValue | LambdaValue;
+type ValueUnion = PrimitiveValue | OLD_DrawingValue | ListValue | DictValue | LambdaValue;
 export type Value<T extends Type = Type> = BaseValue<T> & ValueUnion;
 
 export type ValueOrAST<T extends Type = Type> = ResolvedAST<T> | Value<T>;
@@ -119,8 +119,8 @@ export class ValueUtils {
     return throwValueConstructionTypeError(value, type);
   }
 
-  public static drawingOf = (drawing: Drawing): DrawingValue => {
-    return {drawing, type: DrawingType.DRAWING};
+  public static OLD_drawingOf = (drawing: OLD_Drawing): OLD_DrawingValue => { // tslint:disable-line
+    return {drawing, type: OLD_DrawingType.DRAWING};
   }
 
   public static listOfInferType = (list: Value[], environment: FormulaEnvironment): ListValue => {
@@ -165,7 +165,7 @@ export class ValueUtils {
   public static isBoolean = (v: Value): v is BooleanValue => TypeUtils.isBoolean(v.type)
   public static isString = (v: Value): v is StringValue => TypeUtils.isString(v.type)
   public static isPrimitive = (v: Value): v is PrimitiveValue => TypeUtils.isPrimitive(v.type)
-  public static isDrawing = (v: Value): v is DrawingValue => TypeUtils.isDrawing(v.type)
+  public static OLD_isDrawing = (v: Value): v is OLD_DrawingValue => TypeUtils.OLD_isDrawing(v.type) // tslint:disable-line
   public static isList = (v: Value): v is ListValue => TypeUtils.isList(v.type)
   public static isListOfList = (v: ListValue): v is ListValue<ListType> => TypeUtils.isListOfList(v.type)
   public static isDict = (v: Value): v is DictValue => TypeUtils.isDict(v.type)
@@ -197,8 +197,8 @@ export class ValueUtils {
       const list2 = v2.list;
       return list1.length === list2.length &&
           _.every(_.range(list1.length), i => ValueUtils.areEqual(list1[i], list2[i]));
-    } else if (ValueUtils.isDrawing(v1) && ValueUtils.isDrawing(v2)) {
-      return drawingsAreEqual(v1.drawing, v2.drawing);
+    } else if (ValueUtils.OLD_isDrawing(v1) && ValueUtils.OLD_isDrawing(v2)) {
+      return OLD_drawingsAreEqual(v1.drawing, v2.drawing);
     } else if (ValueUtils.isPrimitive(v1) && ValueUtils.isPrimitive(v2)) {
       return v1.value === v2.value;
     }
@@ -214,11 +214,11 @@ export class ValueUtils {
   public static get defaultBoolean() { return ValueUtils.booleanOf(false); }
   public static get defaultString() { return ValueUtils.stringOf(""); }
 
-  public static get defaultDrawing() {
-    const drawingType = DrawingVariant.CIRCLE;
+  public static get OLD_defaultDrawing() {
+    const drawingType = OLD_DrawingVariant.CIRCLE;
     const radius = 10;
     const fill = "black";
-    return ValueUtils.drawingOf({drawingType, radius, fill});
+    return ValueUtils.OLD_drawingOf({drawingType, radius, fill});
   }
 
   public static defaultListOfType = <T extends Type> (itemType: T) => ValueUtils.listOf([], itemType)
@@ -234,8 +234,8 @@ export class ValueUtils {
       return ValueUtils.defaultString as Value<T>;
     } else if (TypeUtils.isBoolean(type)) {
       return ValueUtils.defaultBoolean as Value<T>;
-    } else if (TypeUtils.isDrawing(type)) {
-      return ValueUtils.defaultDrawing as Value<T>;
+    } else if (TypeUtils.OLD_isDrawing(type)) {
+      return ValueUtils.OLD_defaultDrawing as Value<T>;
     } else if (TypeUtils.isList(type)) {
       return ValueUtils.defaultListOfType(type.itemType) as Value<T>;
     } else if (TypeUtils.isRow(type)) {
@@ -273,7 +273,7 @@ export class ValueUtils {
     } else if (ValueUtils.isList(v)) {
       const values = v.list.map(e => ValueUtils.toString(e, resolver));
       return `[${values.join(", ")}]`;
-    } else if (ValueUtils.isDrawing(v)) {
+    } else if (ValueUtils.OLD_isDrawing(v)) {
       return v.drawing.drawingType;
     } else if (ValueUtils.isPrimitive(v)) {
       return `${v.value}`;
@@ -302,7 +302,7 @@ export class ValueUtils {
     } else if (ValueUtils.isList(v)) {
       const values = v.list.map(e => ValueUtils.toString_NoEnvironment(e));
       return `[${values.join(", ")}]`;
-    } else if (ValueUtils.isDrawing(v)) {
+    } else if (ValueUtils.OLD_isDrawing(v)) {
       return v.drawing.drawingType;
     } else if (ValueUtils.isPrimitive(v)) {
       return `${v.value}`;

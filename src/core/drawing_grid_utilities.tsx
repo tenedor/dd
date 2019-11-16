@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 
-import {Drawing, DrawingVariant, isEmptyDrawing} from '@language/drawing_value';
-import {DrawingValue, ListValue, RowValue, Value, ValueUtils} from '@language/values';
+import {OLD_Drawing, OLD_DrawingVariant, OLD_isEmptyDrawing} from '@language/drawing_value';
+import {ListValue, OLD_DrawingValue, RowValue, Value, ValueUtils} from '@language/values';
 import {assertUnreachable} from '@utils/utils';
 import {CoordinateSystem, defaultCoordinateSystem} from './geometry';
 import {Identifier, Type, TypeUtils} from './language/types';
@@ -13,38 +13,38 @@ const builtInDrawingColumnName = "BUILT_IN_DRAWING";
 
 // These ids should match the UID pattern for columns. They cannot be calculated since
 // they are used to specify TS types.
-export const DRAWING_COLUMN_ID = 'col-_DRAWING_';
+export const OLD_DRAWING_COLUMN_ID = 'col-_DRAWING_';
 export const COORDINATE_SYSTEM_COLUMN_ID = 'col-_COORDINATE_SYSTEM_';
 const BUILT_IN_DRAWING_COLUMN_ID = 'col-_BUILT_IN_DRAWING_';
 
-type ValueWithDrawing = DrawingValue | ListValue | RowValue;
+type ValueWithDrawing = OLD_DrawingValue | ListValue | RowValue;
 
 const hasDrawing = (v: Value): v is ValueWithDrawing => {
   const baseType = TypeUtils.getBaseType(v.type);
-  return TypeUtils.isDrawing(baseType) || TypeUtils.isRow(baseType);
+  return TypeUtils.OLD_isDrawing(baseType) || TypeUtils.isRow(baseType);
 }
 
-const getDrawingValue = (v: ValueWithDrawing): DrawingValue => {
-  if (ValueUtils.isDrawing(v)) {
+const getDrawingValue = (v: ValueWithDrawing): OLD_DrawingValue => {
+  if (ValueUtils.OLD_isDrawing(v)) {
     return v;
   } else if (ValueUtils.isRow(v)) {
-    return v.dict[DRAWING_COLUMN_ID] as DrawingValue;
+    return v.dict[OLD_DRAWING_COLUMN_ID] as OLD_DrawingValue;
   } else if (ValueUtils.isList(v)) {
     const flattenedList = ValueUtils.deepFlattenList(v);
     const valuesWithDrawings = flattenedList.list as ValueWithDrawing[];
     const drawingValues = valuesWithDrawings.map(getDrawingValue);
     const drawings = drawingValues.map(d => d.drawing);
-    return makeDrawingGroupValue(drawings);
+    return OLD_makeDrawingGroupValue(drawings);
   }
   return assertUnreachable(v);
 }
 
-export const getDrawing = (v: ValueWithDrawing): Drawing => getDrawingValue(v).drawing;
+export const OLD_getDrawing = (v: ValueWithDrawing): OLD_Drawing => getDrawingValue(v).drawing; // tslint:disable-line
 
-export const hasNonEmptyDrawing = (v: Value): v is ValueWithDrawing => hasDrawing(v) && !isEmptyDrawing(getDrawing(v));
+export const OLD_hasNonEmptyDrawing = (v: Value): v is ValueWithDrawing => hasDrawing(v) && !OLD_isEmptyDrawing(OLD_getDrawing(v)); // tslint:disable-line
 
-export const getDrawingColumnData = (): {id: string, name: string, type: Type} => {
-  return {id: DRAWING_COLUMN_ID, name: drawingColumnName, type: TypeUtils.Drawing};
+export const OLD_getDrawingColumnData = (): {id: string, name: string, type: Type} => { // tslint:disable-line
+  return {id: OLD_DRAWING_COLUMN_ID, name: drawingColumnName, type: TypeUtils.OLD_Drawing};
 }
 
 export const getCoordinateSystemColumnData = (
@@ -58,16 +58,16 @@ export const getCoordinateSystemColumnData = (
   };
 }
 
-export const getBuiltInDrawingColumnData = (): {id: string, name: string, type: Type} => {
-  return {id: BUILT_IN_DRAWING_COLUMN_ID, name: builtInDrawingColumnName, type: TypeUtils.Drawing};
+export const OLD_getBuiltInDrawingColumnData = (): {id: string, name: string, type: Type} => { // tslint:disable-line
+  return {id: BUILT_IN_DRAWING_COLUMN_ID, name: builtInDrawingColumnName, type: TypeUtils.OLD_Drawing};
 }
 
-export const makeDrawingGroup = (drawings: Drawing[], coordinateSystem?: CoordinateSystem): Drawing => {
-  const drawingType = DrawingVariant.GROUP;
+export const OLD_makeDrawingGroup = (drawings: OLD_Drawing[], coordinateSystem?: CoordinateSystem): OLD_Drawing => { // tslint:disable-line
+  const drawingType = OLD_DrawingVariant.GROUP;
   const _coordinateSystem = coordinateSystem || defaultCoordinateSystem;
   return {drawingType, drawings, coordinateSystem: _coordinateSystem};
 }
 
-export const makeDrawingGroupValue = (drawings: Drawing[], coordinateSystem?: CoordinateSystem): DrawingValue => {
-  return ValueUtils.drawingOf(makeDrawingGroup(drawings, coordinateSystem));
+export const OLD_makeDrawingGroupValue = (drawings: OLD_Drawing[], coordinateSystem?: CoordinateSystem): OLD_DrawingValue => { // tslint:disable-line
+  return ValueUtils.OLD_drawingOf(OLD_makeDrawingGroup(drawings, coordinateSystem));
 }
