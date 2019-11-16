@@ -551,6 +551,16 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
     return `${Parser.identToText(constructorName)}(${this.asmts.toText(resolver)})`;
   }
 
+  public getAssignments = (): AssignmentsRes<I> => {
+    return this.asmts;
+  }
+
+  public withAssignments = (asmts: RODictionary<ResolvedAST>): CallRes<R, I>  => {
+    const {constructorRef, type} = this;
+    const mergedAsmts = this.asmts.withAssignments(asmts);
+    return new CallRes(constructorRef, mergedAsmts, type);
+  }
+
   // TODO update this given resolution-time types
   public static buildDefaultConstructorCall = <R extends Type, I extends Identifier> (
     constructorRef: ConstructorReference<R, I>,
@@ -703,6 +713,18 @@ export class AssignmentsRes<I extends Identifier = Identifier>
 
   public getAsmtTypes = (): RODictionary<Type> => {
     return _.mapValues(this.asmts, e => e.type);
+  }
+
+  public getAssignments = (): RODictionary<ResolvedAST> => {
+    return this.asmts;
+  }
+
+  public withAssignments = (asmts: RODictionary<ResolvedAST>): AssignmentsRes<I>  => {
+    const {asmts: originalAsmts, asmtOrder, constructorRef, type} = this;
+    const asmtsMerged = _.extend({}, originalAsmts, asmts);
+    const newAsmts = Object.keys(asmts).filter(id => !(id in originalAsmts));
+    const asmtOrderMerged = asmtOrder.concat(newAsmts);
+    return new AssignmentsRes(asmtsMerged, asmtOrderMerged, constructorRef, type);
   }
 }
 

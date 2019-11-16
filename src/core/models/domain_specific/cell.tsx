@@ -1,11 +1,15 @@
 import * as _ from 'lodash';
 
+import {COORDINATE_SYSTEM_COLUMN_ID} from '@core/drawing_grid_utilities';
+import {CoordinateSystem} from '@core/geometry';
 import {CallRes, ResolvedAST, ResolvedASTUtils} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {TypeError} from '@language/language_errors';
+import {NameResolver} from '@language/name_resolver';
+import {Parser} from '@language/parser';
 import {AbsoluteValueReference, ModelWithValue, Reference, ReferenceUtils,
         ValueReference} from '@language/reference';
-import {Identifier, Type, TypeUtils} from '@language/types';
+import {Identifier, RowType, Type, TypeUtils} from '@language/types';
 import {ValueResolver} from '@language/value_resolver';
 import {Value, ValueOrAST, ValueUtils} from '@language/values';
 import {RODictionary} from '@utils/types';
@@ -161,6 +165,29 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     if (descriptors.length) {
       this.onSelfMutated(descriptors);
     }
+  }
+
+  public setCoordinates = (coordinates: CoordinateSystem) => {
+    assert(TypeUtils.isDrawing(this.column.type), "Cannot move a non-shape value.");
+    assert(!this.isCalculated(), "Cannot move a calculated value.");
+    /*
+    const currentAsmts = currentValue.getAssignments().getAssignments();
+    const currentCoords = currentAsmts[COORDINATE_SYSTEM_COLUMN_ID] as CallRes<RowType> | undefined;
+    */
+    const ast = Cell.makeCoordinatesAST(coordinates, this.column.nameResolver);
+    const asmtUpdates = {[COORDINATE_SYSTEM_COLUMN_ID]: ast};
+    const currentValue = this.manualValue as CallRes<T>;
+    const newValue = currentValue.withAssignments(asmtUpdates);
+    this.setManualValue(newValue);
+  }
+
+  private static makeCoordinatesAST = (coordinates: CoordinateSystem, resolver: NameResolver): ResolvedAST<RowType> => {
+    const {x, y} = coordinates.center;
+    const parsed = Parser.parseLiteral(`'Coordinate System'(Center=Vector(X=${x},Y=${y}))`, TypeUtils.RowOf("any"));
+    if (parsed.succeeded) {
+      return parsed.ast.resolve(resolver) as ResolvedAST<RowType>;
+    }
+    throw new Error("Failed to construct coordinates AST.");
   }
 
   private addManualValueListeners = () => {
