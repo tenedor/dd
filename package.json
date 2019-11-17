@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@types/lodash": "^4.14.116",
-    "deep-equal": "^1.0.1",
+    "@types/lodash": "^4.14.148",
+    "deep-equal": "^1.1.1",
     "jest": "^23.6.0",
-    "lodash": "^4.17.11",
+    "lodash": "^4.17.15",
     "ohm-js": "^0.14.0",
-    "react": "^16.5.2",
-    "react-dom": "^16.5.2",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0",
     "react-scripts-ts": "3.1.0",
     "shallow-equals": "^1.0.0",
     "tslib": "^1.10.0"
@@ -24,10 +24,10 @@
   },
   "devDependencies": {
     "@types/jest": "^23.3.14",
-    "@types/node": "^10.14.6",
-    "@types/react": "^16.8.17",
-    "@types/react-dom": "^16.8.4",
-    "typescript": "^3.4.5"
+    "@types/node": "^10.17.5",
+    "@types/react": "^16.9.11",
+    "@types/react-dom": "^16.9.4",
+    "typescript": "^3.7.2"
   },
   "jest": {
     "moduleNameMapper": {
