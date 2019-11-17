@@ -12,6 +12,7 @@ import {Mutable} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {RowUpdateType} from '../core/update_types';
 import {Cell, CellUpdateDescriptor} from './cell';
+import {Drawing} from './drawing';
 import {GridColumns} from './grid';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 
@@ -125,6 +126,10 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
 
   private getRowContext = (): RowContext => {
     return this.cells.d;
+  }
+
+  public getDrawing = (): Drawing => {
+    throw new Error("TODO");
   }
 
   public asValue = (): RowValue<I> => {
