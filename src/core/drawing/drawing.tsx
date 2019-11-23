@@ -19,41 +19,35 @@ export enum DrawingType {
   LIST = "LIST",
 }
 
-interface BaseDrawing {
-  readonly drawingType: DrawingType,
+interface BaseDrawing<T extends DrawingType> {
+  readonly drawingType: T,
 }
 
-interface BasePrimitiveDrawing extends BaseDrawing {
-  readonly drawingType: Exclude<DrawingType, DrawingType.GROUP>;
+interface BasePrimitiveDrawing<T extends Exclude<DrawingType, DrawingType.GROUP>> extends BaseDrawing<T> {
   readonly fill: Color,
   // stroke: number,
   // stroke-color: Color,
 }
 
-interface Circle extends BasePrimitiveDrawing {
-  readonly drawingType: DrawingType.CIRCLE,
+interface Circle extends BasePrimitiveDrawing<DrawingType.CIRCLE> {
   readonly radius: Scalar,
 }
 
-interface Ellipse extends BasePrimitiveDrawing {
-  readonly drawingType: DrawingType.ELLIPSE,
+interface Ellipse extends BasePrimitiveDrawing<DrawingType.ELLIPSE> {
   readonly radius1: Scalar,
   readonly radius2: Scalar,
 }
 
-interface Path extends BasePrimitiveDrawing {
-  readonly drawingType: DrawingType.PATH,
+interface Path extends BasePrimitiveDrawing<DrawingType.PATH> {
   readonly path: SVGPathString,
 }
 
-interface DrawingGroup extends BaseDrawing {
-  readonly drawingType: DrawingType.GROUP,
+interface DrawingGroup extends BaseDrawing<DrawingType.GROUP> {
   readonly drawings: RODictionary<Drawing>,
   readonly transform: CoordinateSystem,
 }
 
-interface DrawingList extends BaseDrawing {
-  readonly drawingType: DrawingType.LIST,
+interface DrawingList extends BaseDrawing<DrawingType.LIST> {
   readonly drawings: ROArray<Drawing>,
 }
 
@@ -63,7 +57,7 @@ export type Drawing = PrimitiveDrawing | DrawingGroup | DrawingList;
 export const DRAWING_PRIMITIVE_PATH_ID = "PRIMITIVE";
 
 
-type BasePrimitiveParameters = Omit<BasePrimitiveDrawing, "drawingType">
+type BasePrimitiveParameters = Omit<BasePrimitiveDrawing<any>, "drawingType">
 
 export class DrawingUtils {
 
@@ -83,7 +77,7 @@ export class DrawingUtils {
     drawingType: DrawingType.PATH, path, fill,
   })
 
-  public static groupOf = (drawings: RODictionary<Drawing>, transform: CoordinateSystem): DrawingGroup => ({
+  public static groupOf = ({drawings, transform}: {drawings: RODictionary<Drawing>, transform: CoordinateSystem}): DrawingGroup => ({
     drawingType: DrawingType.GROUP, drawings, transform,
   })
 

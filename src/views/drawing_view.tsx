@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 import * as React from 'react';
 
 import {CoordinateSystem} from '@core/geometry';
-import {Drawing, DrawingType} from '@models/domain_specific/drawing';
+import {Drawing, DrawingType} from '@drawing/drawing';
 import {Grid} from '@models/domain_specific/grid';
 import {ROArray} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';

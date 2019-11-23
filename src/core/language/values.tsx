@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {Drawing} from '@models/domain_specific/drawing'; // only a type dependency
+import {Drawing} from '@drawing/drawing'; // only a type dependency
 import {Row} from '@models/domain_specific/row'; // only a type dependency
 import {RODictionary} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';

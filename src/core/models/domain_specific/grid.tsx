@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 
+import {Drawing} from '@drawing/drawing';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver, ValueNamespace} from '@language/name_resolver';
 import {RelativeValueReference} from '@language/reference';
@@ -15,7 +16,6 @@ import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {GridUpdateType} from '../core/update_types';
 import {Column} from './column';
 import {ConstructorUpdateDescriptor, GridConstructor} from './constructor';
-import {Drawing} from './drawing';
 import {DEFAULT_COLUMN_WIDTH, GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {Row, RowUpdateDescriptor} from './row';
 

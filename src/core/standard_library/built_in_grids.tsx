@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 
+import {Drawing, DrawingUtils} from '@drawing/drawing';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver} from '@language/name_resolver';
 import {Parser} from '@language/parser';
@@ -10,7 +11,6 @@ import {NumberValue, RowValue, StringValue, Value, ValueOrAST, ValueUtils}
 import {UpdateManager} from '@models/core/update_manager';
 import {Column, ColumnData} from '@models/domain_specific/column';
 import {Document} from '@models/domain_specific/document';
-import {Drawing, DrawingUtils} from '@models/domain_specific/drawing';
 import {Grid} from '@models/domain_specific/grid';
 import {GridColumn} from '@models/domain_specific/grid_column';
 import {Row} from '@models/domain_specific/row';

@@ -23,6 +23,7 @@
       "@css/*": ["src/css/*"],
       "@controllers/*": ["src/controllers/*"],
       "@core/*": ["src/core/*"],
+      "@drawing/*": ["src/core/drawing/*"],
       "@language/*": ["src/core/language/*"],
       "@models/*": ["src/core/models/*"],
       "@standard_library/*": ["src/core/standard_library/*"],

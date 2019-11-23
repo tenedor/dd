@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 
+import {Drawing} from '@drawing/drawing';
 import {ResolutionTimeTypeHelper} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {buildNamespace, ValueNamespace} from '@language/name_resolver';
@@ -14,7 +15,6 @@ import {Model, ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
 import {SimpleUpdateManager, UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {ArrayUpdateType, ConstructorUpdateType, GridColumnUpdateType} from '../core/update_types';
-import {Drawing} from './drawing';
 import {GridColumns} from './grid';
 import {GridColumnUpdateDescriptor} from './grid_column';
 import {Row, RowUpdateDescriptor} from './row';

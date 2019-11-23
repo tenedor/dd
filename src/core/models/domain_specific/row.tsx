@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 
 import {CoordinateSystem, defaultCoordinateSystem} from '@core/geometry';
+import {Drawing, DRAWING_PRIMITIVE_PATH_ID, DrawingUtils} from '@drawing/drawing';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {Identifier, TypeUtils} from '@language/types';
 import {ListValue, RowValue, Value, ValueOrAST, ValueUtils} from '@language/values';
@@ -16,7 +17,6 @@ import {Mutable} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {RowUpdateType} from '../core/update_types';
 import {Cell, CellUpdateDescriptor} from './cell';
-import {Drawing, DRAWING_PRIMITIVE_PATH_ID, DrawingUtils} from './drawing';
 import {GridColumns} from './grid';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 
@@ -162,7 +162,7 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
       drawings[DRAWING_PRIMITIVE_PATH_ID] = primitiveDrawing;
     }
     const transform: CoordinateSystem = this.getCoordinateSystem();
-    this.drawing = DrawingUtils.groupOf(drawings, transform);
+    this.drawing = DrawingUtils.groupOf({drawings, transform});
   }
 
   private static makeDrawing = (valueWithRows: ValueWithRows): Drawing => {

@@ -35,6 +35,7 @@
       "^@css(.*)$": "<rootDir>/src/css$1",
       "^@controllers(.*)$": "<rootDir>/src/controllers$1",
       "^@core(.*)$": "<rootDir>/src/core$1",
+      "^@drawing(.*)$": "<rootDir>/src/core/drawing$1",
       "^@language(.*)$": "<rootDir>/src/core/language$1",
       "^@models(.*)$": "<rootDir>/src/core/models$1",
       "^@standard_library(.*)$": "<rootDir>/src/core/standard_library$1",
