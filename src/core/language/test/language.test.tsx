@@ -11,14 +11,14 @@ import {ValueResolver} from '../value_resolver';
 import {ValueUtils} from '../values';
 import {buildLanguageTestHelpers} from './test_helpers';
 
-const formulaEnvironment = new FormulaEnvironment();
-formulaEnvironment.addBuiltInFormula(getExampleFormulaForTesting());
+const environment = new FormulaEnvironment();
+environment.addBuiltInFormula(getExampleFormulaForTesting());
 
 const fakeGridId = 'fake-grid-id';
 
 const fakeColumns = {
   'fake-column-1': {type: TypeUtils.Number, name: 'One', value: ValueUtils.numberOf(1)},
-  'fake-column-2': {type: TypeUtils.ListOf(TypeUtils.Boolean), name: 'True and False', value: TestUtils.asValue([true, false], formulaEnvironment)},
+  'fake-column-2': {type: TypeUtils.ListOf(TypeUtils.Boolean), name: 'True and False', value: TestUtils.asValue([true, false], environment)},
 };
 
 const fakeGridNamespace = {
@@ -33,10 +33,10 @@ const fakeGridNamespace = {
 const fakeGrid = {id: fakeGridId, namespace: fakeGridNamespace};
 
 // TODO make an actual grid to avoid casting
-formulaEnvironment.addGrid(fakeGrid as any as Grid);
+environment.addGrid(fakeGrid as any as Grid);
 
-const gridColumnNameResolver = formulaEnvironment.nameResolver.resolverFor(TypeUtils.GridOf(fakeGridId));
-const gridColumnValueResolver = new ValueResolver(_.mapValues(fakeColumns, 'value'), formulaEnvironment);
+const gridColumnNameResolver = environment.nameResolver.resolverFor(TypeUtils.GridOf(fakeGridId));
+const gridColumnValueResolver = new ValueResolver(_.mapValues(fakeColumns, 'value'), environment);
 
 
 const {
@@ -46,7 +46,7 @@ const {
   expectResults,
   expectToText,
   expectToTextIrregular,
-} = buildLanguageTestHelpers(formulaEnvironment);
+} = buildLanguageTestHelpers(environment);
 
 
 beforeAll(TestUtils.defaultBeforeAll);
@@ -291,7 +291,7 @@ describe('Language', () => {
       {formula: "Power(Exponent = 4)", result: 16},
       {formula: "Power(Base = 5, Exponent = 4)", result: 625},
       {formula: "Power(Exponent = Power(Base = 0))", result: 1},
-    ], formulaEnvironment.nameResolver);
+    ], environment.nameResolver);
   });
 
 
@@ -299,7 +299,7 @@ describe('Language', () => {
     expectResults('lambdas', [
       {formula: "N -> N * 2", lambdaArg: 8, result: 16},
       {formula: "B -> !B", lambdaArg: false, result: true},
-    ], formulaEnvironment.nameResolver);
+    ], environment.nameResolver);
   });
 
 

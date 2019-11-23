@@ -17,7 +17,7 @@ export type DrawingSurfaceInfos = FunctionalArrayM<FunctionalArrayM<Grid, GridUp
 export interface DocumentUpdateDescriptor extends UpdateDescriptor<DocumentUpdateType> {}
 
 export class Document extends Mutable<DocumentUpdateDescriptor> {
-  private readonly formulaEnvironment: FormulaEnvironment;
+  private readonly environment: FormulaEnvironment;
   public readonly grids: Grids;
   public readonly drawingSurfaceInfos: DrawingSurfaceInfos;
 
@@ -26,8 +26,7 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
     // update manager per document and all other models receive this singleton.
     super(updateManager, modelType);
 
-    const standardLibrary = loadStandardLibrary(updateManager);
-    this.formulaEnvironment = standardLibrary;
+    this.environment = loadStandardLibrary(updateManager);
     this.grids = new FunctionalArrayM(this.updateManager, []);
     this.drawingSurfaceInfos = new FunctionalArrayM(this.updateManager, []);
     this.addDrawingSurface();
@@ -36,7 +35,7 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
   }
 
   public addDemoGrids = () => {
-    addDemoGrids(this, this.updateManager, this.formulaEnvironment);
+    addDemoGrids(this, this.updateManager, this.environment);
   }
 
   public addGridFromGridData = (gridData: GridData, index?: number): Grid => {
@@ -46,13 +45,13 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
   }
 
   public addGrid = ({name, parentGrid, index}: {name?: string, parentGrid?: Grid, index?: number} = {}): Grid => {
-    const {formulaEnvironment} = this;
+    const {environment} = this;
     const _name = name || this.getDefaultNameForGrid();
-    return this.addGridFromGridData({name: _name, formulaEnvironment, parentGrid}, index)
+    return this.addGridFromGridData({name: _name, environment, parentGrid}, index)
   }
 
   public getAllExtensibleGrids = (): ROArray<Grid> => {
-    return this.formulaEnvironment.getAllExtensibleGrids();
+    return this.environment.getAllExtensibleGrids();
   }
 
   public addDrawingSurface = () => {
@@ -64,7 +63,7 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
     let i = 1;
     while (true) {
       const name = `${baseName} ${i}`;
-      if (!this.formulaEnvironment.existsGridWithName(name)) {
+      if (!this.environment.existsGridWithName(name)) {
         return name;
       }
       i++;

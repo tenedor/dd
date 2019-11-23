@@ -27,7 +27,7 @@ export interface CellIndex {
 }
 
 export interface GridData {
-  formulaEnvironment: FormulaEnvironment;
+  environment: FormulaEnvironment;
   name: string,
   parentGrid?: Grid,
   newColumns?: Column[],
@@ -40,7 +40,7 @@ export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {
 export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateDescriptor> {
   public readonly id: I;
   private _name: string;
-  private readonly formulaEnvironment: FormulaEnvironment;
+  private readonly environment: FormulaEnvironment;
   private readonly parent?: Grid;
   private readonly disableDrawingColumn: boolean;
   // FIXME should be private
@@ -53,12 +53,12 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
 
   constructor(
     updateManager: UpdateManager,
-    {disableDrawingColumn, formulaEnvironment, getPrimitiveDrawing, name, newColumns, parentGrid}: GridData,
+    {disableDrawingColumn, environment, getPrimitiveDrawing, name, newColumns, parentGrid}: GridData,
     modelType: ModelType = ModelType.GRID,
   ) {
     super(updateManager, modelType);
     this._name = name;
-    this.formulaEnvironment = formulaEnvironment;
+    this.environment = environment;
     this.disableDrawingColumn = !!disableDrawingColumn;
     this.getPrimitiveDrawing = getPrimitiveDrawing || (parentGrid && parentGrid.getPrimitiveDrawing);
     if (parentGrid) {
@@ -71,7 +71,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     this.columns = new FunctionalKeyedArray(updateManager, this.constructInitialColumns(newColumns), 'columnId');
 
     // add to formula environment
-    formulaEnvironment.addGrid(this);
+    environment.addGrid(this);
 
     // finish configuring grid. can now resolve internal references with formula environment.
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
@@ -82,7 +82,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private get nameResolver(): NameResolver {
-    return this.formulaEnvironment.nameResolver.resolverWith(this.namespace);
+    return this.environment.nameResolver.resolverWith(this.namespace);
   }
 
   private constructInitialColumns = (newColumnData: Column[] = []): GridColumn[] => {
@@ -112,13 +112,13 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     if (this.disableDrawingColumn) {
       return [];
     }
-    const getGridIdByName = (gridName: string) => this.formulaEnvironment.getGridByName(gridName).id;
+    const getGridIdByName = (gridName: string) => this.environment.getGridByName(gridName).id;
     const coordinateSystemColumn = this.makeGridColumn(Column.getCoordinateSystemColumn(this.updateManager, getGridIdByName));
     return [coordinateSystemColumn];
   }
 
   private buildDefaultRow = (): Row => {
-    const {columns, formulaEnvironment: environment, id, getPrimitiveDrawing, parent, updateManager} = this;
+    const {columns, environment, id, getPrimitiveDrawing, parent, updateManager} = this;
     return new Row(updateManager, {
       columns,
       defaultValues: parent ? parent.defaultValues : undefined,
@@ -150,7 +150,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private buildConstructor = (): GridConstructor<I> => {
-    const {columns, defaultValues, formulaEnvironment: environment, getPrimitiveDrawing, id: gridId, namespace} = this;
+    const {columns, defaultValues, environment, getPrimitiveDrawing, id: gridId, namespace} = this;
     // TODO create a Primitive mutable model and make this.name a Primitive
     const getName = () => this.name;
     return new GridConstructor(this.updateManager, {
@@ -163,7 +163,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   public setName = (name: string) => {
-    if (!this.formulaEnvironment.existsGridWithName(name)) {
+    if (!this.environment.existsGridWithName(name)) {
       this._name = name;
       const descriptor = {type: GridUpdateType.NAME_UPDATED};
       this.onSelfMutated([descriptor]);
@@ -211,10 +211,10 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private makeGridColumn = (column: Column): GridColumn => {
-    const {formulaEnvironment, nameResolver, updateManager} = this;
+    const {environment, nameResolver, updateManager} = this;
     return new GridColumn(updateManager, {
       column,
-      formulaEnvironment,
+      environment,
       nameResolver,
       type: column.type,
       width: DEFAULT_COLUMN_WIDTH,
@@ -222,7 +222,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private getDefaultNameForColumnOfType = (type: Type): string => {
-    const baseName = this.formulaEnvironment.getNameForType(type);
+    const baseName = this.environment.getNameForType(type);
     let i = 1;
     while (true) {
       const name = i === 1 ? baseName : `${baseName} ${i}`;
@@ -238,7 +238,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   public addNewRow = () => {
-    const {columns, defaultValues, formulaEnvironment: environment, getPrimitiveDrawing,
+    const {columns, defaultValues, environment, getPrimitiveDrawing,
         id, updateManager} = this;
     const row = new Row(updateManager, {
       columns,
@@ -252,8 +252,8 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   public getAllowedColumnTypes = (): Array<{name: string, type: Type}> => {
-    const types = this.formulaEnvironment.getAllowedColumnTypes().map(type => ({
-      name: this.formulaEnvironment.getNameForType(type),
+    const types = this.environment.getAllowedColumnTypes().map(type => ({
+      name: this.environment.getNameForType(type),
       type,
     }));
     return types;

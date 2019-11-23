@@ -138,8 +138,8 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return this.column.formulaExpression;
   }
 
-  private get formulaEnvironment(): FormulaEnvironment {
-    return this.column.formulaEnvironment;
+  private get environment(): FormulaEnvironment {
+    return this.column.environment;
   }
 
   public setManualValue = (value: ValueOrAST<T> | undefined) => {
@@ -149,9 +149,9 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     }
     if (value !== undefined) {
       assert(!isAST(value) || value.isLiteral, "Manual values must be literals.");
-      assert(TypeUtils.isAssignableTo(value.type, type, this.formulaEnvironment),
+      assert(TypeUtils.isAssignableTo(value.type, type, this.environment),
           new TypeError(`Cannot set manual value of type ${value.type} on cell of type ` +
-          `${this.formulaEnvironment.getNameForType(type)}.`));
+          `${this.environment.getNameForType(type)}.`));
 
       if (isAST(value) && ResolvedASTUtils.isConstant(value)) {
         // can concretize early
@@ -304,7 +304,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
   private getValueResolver = (): ValueResolver => {
     const dependencyValues = _.mapValues(this.valueDependencies, r => r.value);
-    return new ValueResolver(dependencyValues, this.formulaEnvironment);
+    return new ValueResolver(dependencyValues, this.environment);
   }
 
   private isCalculated = (): boolean => {

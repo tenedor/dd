@@ -74,17 +74,17 @@ function generateColumns(
 
 function generateGridColumns(
   updateManager: UpdateManager,
-  formulaEnvironment: FormulaEnvironment,
+  environment: FormulaEnvironment,
   grid: Grid,
   gridColumnsData: GridColumnData[],
 ): GridColumn[] {
-  const nameResolver = formulaEnvironment.nameResolver.resolverFor(TypeUtils.GridOf(grid.id));
+  const nameResolver = environment.nameResolver.resolverFor(TypeUtils.GridOf(grid.id));
   return gridColumnsData.map(gridColumnData => {
     const {column, width} = gridColumnData;
     const {type} = column;
     return new GridColumn(updateManager, {
       column,
-      formulaEnvironment,
+      environment,
       nameResolver,
       type,
       width: width || 100,
@@ -135,17 +135,17 @@ function addBuiltInGrid({
 }) {
   const {nameResolver} = environment;
   const newColumns = gridColumnsData.filter((c): c is GridColumnData => !isChildData(c)).map(d => d.column);
-  const grid = new Grid(updateManager, {name, formulaEnvironment: environment,
+  const grid = new Grid(updateManager, {name, environment,
     parentGrid, newColumns, getPrimitiveDrawing, disableDrawingColumn});
   setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
   setDefaultValues(grid, gridColumnsData);
 }
 
 function getTypeForInstanceOf(
-  formulaEnvironment: FormulaEnvironment,
+  environment: FormulaEnvironment,
   gridName: string,
 ): Type {
-  return formulaEnvironment.nameResolver.resolveConstructorReference(gridName).model.returnType;
+  return environment.nameResolver.resolveConstructorReference(gridName).model.returnType;
 }
 
 function makeLiteral(literalExpression: string, type: Type, environment: FormulaEnvironment): Value {
@@ -579,28 +579,28 @@ function addSquareGrid(
 
 function addShapeGrids(
   updateManager: UpdateManager,
-  formulaEnvironment: FormulaEnvironment,
+  environment: FormulaEnvironment,
 ) {
-  addShapeGrid(updateManager, formulaEnvironment);
-  addCircleGrid(updateManager, formulaEnvironment);
-  addEllipseGrid(updateManager, formulaEnvironment);
-  addPathShapeGrid(updateManager, formulaEnvironment);
-  addRelativePolygonGrid(updateManager, formulaEnvironment);
-  addPolygonGrid(updateManager, formulaEnvironment);
-  addRegularPolygonGrid(updateManager, formulaEnvironment);
-  addTriangleGrid(updateManager, formulaEnvironment);
-  addRectangleGrid(updateManager, formulaEnvironment);
-  addSquareGrid(updateManager, formulaEnvironment);
+  addShapeGrid(updateManager, environment);
+  addCircleGrid(updateManager, environment);
+  addEllipseGrid(updateManager, environment);
+  addPathShapeGrid(updateManager, environment);
+  addRelativePolygonGrid(updateManager, environment);
+  addPolygonGrid(updateManager, environment);
+  addRegularPolygonGrid(updateManager, environment);
+  addTriangleGrid(updateManager, environment);
+  addRectangleGrid(updateManager, environment);
+  addSquareGrid(updateManager, environment);
 }
 
 function addDemoArithmeticGrid(
   document: Document,
   updateManager: UpdateManager,
-  formulaEnvironment: FormulaEnvironment,
+  environment: FormulaEnvironment,
 ) {
-  const {nameResolver} = formulaEnvironment;
+  const {nameResolver} = environment;
 
-  const grid = document.addGridFromGridData({name: "Radius Calculator", formulaEnvironment});
+  const grid = document.addGridFromGridData({name: "Radius Calculator", environment});
 
   const columns = generateColumns(updateManager, [
     {name: 'In', type: TypeUtils.Number},
@@ -610,7 +610,7 @@ function addDemoArithmeticGrid(
     {column: columns.In},
     {column: columns.Out, expressionString: '(In / 10 + 1) * (In / 10 + 1) * 2'},
   ];
-  const gridColumns = generateGridColumns(updateManager, formulaEnvironment, grid, gridColumnsData);
+  const gridColumns = generateGridColumns(updateManager, environment, grid, gridColumnsData);
   grid.addColumns(gridColumns);
   setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
 
@@ -621,10 +621,10 @@ function addDemoArithmeticGrid(
 function addDemoShapeGrids(
   document: Document,
   updateManager: UpdateManager,
-  formulaEnvironment: FormulaEnvironment,
+  environment: FormulaEnvironment,
 ) {
-  const {nameResolver} = formulaEnvironment;
-  const shapeGridId = formulaEnvironment.getGridByName('Shape').id;
+  const {nameResolver} = environment;
+  const shapeGridId = environment.getGridByName('Shape').id;
 
   const columns = generateColumns(updateManager, [
     {name: 'X', type: TypeUtils.Number},
@@ -643,11 +643,11 @@ function addDemoShapeGrids(
     {column: columns.Path},
     {column: columns.Shape, width: 150, expressionString: "'Path Shape'(Path=Path,Fill=Fill,Transform='Coordinate System'(Center=Vector(X=X-100,Y=Y-100)))"},
   ];
-  const grid1 = document.addGridFromGridData({name: "Shapes", formulaEnvironment});
-  const grid1Columns = generateGridColumns(updateManager, formulaEnvironment, grid1, grid1ColumnsData);
+  const grid1 = document.addGridFromGridData({name: "Shapes", environment});
+  const grid1Columns = generateGridColumns(updateManager, environment, grid1, grid1ColumnsData);
   grid1.addColumns(grid1Columns);
   setColumnExpressions(grid1, grid1ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid1.id)));
-  addRows(updateManager, grid1, formulaEnvironment, false);
+  addRows(updateManager, grid1, environment, false);
 
   const grid2ColumnsData: ChildGridColumnData[] = grid1Columns.map(parentGridColumn => {
     if (parentGridColumn.columnId === columns.Shape.id) {
@@ -655,24 +655,24 @@ function addDemoShapeGrids(
     }
     return {parentGridColumn}
   });
-  const grid2 = document.addGridFromGridData({name: "More Shapes", parentGrid: grid1, formulaEnvironment});
+  const grid2 = document.addGridFromGridData({name: "More Shapes", parentGrid: grid1, environment});
   setColumnExpressions(grid2, grid2ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid2.id)));
-  addRows(updateManager, grid2, formulaEnvironment, true);
+  addRows(updateManager, grid2, environment, true);
 }
 
 export function loadBuiltInGrids(
   updateManager: UpdateManager,
-  formulaEnvironment: FormulaEnvironment,
+  environment: FormulaEnvironment,
 ) {
-  addTrigonometryGrids(updateManager, formulaEnvironment);
-  addShapeGrids(updateManager, formulaEnvironment);
+  addTrigonometryGrids(updateManager, environment);
+  addShapeGrids(updateManager, environment);
 }
 
 export function addDemoGrids(
   document: Document,
   updateManager: UpdateManager,
-  formulaEnvironment: FormulaEnvironment,
+  environment: FormulaEnvironment,
 ) {
-  addDemoArithmeticGrid(document, updateManager, formulaEnvironment);
-  addDemoShapeGrids(document, updateManager, formulaEnvironment);
+  addDemoArithmeticGrid(document, updateManager, environment);
+  addDemoShapeGrids(document, updateManager, environment);
 }

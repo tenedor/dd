@@ -15,7 +15,7 @@ export const DEFAULT_COLUMN_WIDTH = 100;
 
 interface GridColumnData<T extends Type, C extends Type, P extends Type = Type> {
   column: Column<C>;
-  formulaEnvironment: FormulaEnvironment;
+  environment: FormulaEnvironment;
   nameResolver: NameResolver;
   parentGridColumn?: GridColumn<P, C>;
   type: T;
@@ -31,21 +31,21 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
   private readonly column: Column<C>;
   private readonly parentGridColumn?: GridColumn<P, C>;
   private readonly _type: T;
-  private readonly _formulaEnvironment: FormulaEnvironment;
+  private readonly _environment: FormulaEnvironment;
   private readonly _formulaExpression: FormulaExpression<T>;
   private readonly _nameResolver: NameResolver;
   private _width: number;
 
   constructor(
     updateManager: UpdateManager,
-    {column, formulaEnvironment, nameResolver, parentGridColumn, type, width}: GridColumnData<T, C, P>,
+    {column, environment, nameResolver, parentGridColumn, type, width}: GridColumnData<T, C, P>,
     modelType: ModelType = ModelType.GRID_COLUMN,
   ) {
     super(updateManager, modelType);
     this.column = column;
     this.parentGridColumn = parentGridColumn;
     this._type = type;
-    this._formulaEnvironment = formulaEnvironment;
+    this._environment = environment;
     this._nameResolver = nameResolver;
     const parentExpression = parentGridColumn ? parentGridColumn.formulaExpression : undefined;
     this._formulaExpression = new FormulaExpression(updateManager,
@@ -63,10 +63,10 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
     parentGridColumn: GridColumn<P, C>,
     {nameResolver, type, width}: {nameResolver: NameResolver, type?: T, width?: number},
   ): GridColumn<T, C, P> {
-    const {column, _formulaEnvironment: formulaEnvironment, type: parentType, updateManager, width: parentWidth} = parentGridColumn;
+    const {column, _environment: environment, type: parentType, updateManager, width: parentWidth} = parentGridColumn;
     return new GridColumn(updateManager, {
       column,
-      formulaEnvironment,
+      environment,
       nameResolver,
       parentGridColumn,
       type: type || (parentType as Type as T),
@@ -90,8 +90,8 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
     return this._nameResolver;
   }
 
-  public get formulaEnvironment(): FormulaEnvironment {
-    return this._formulaEnvironment;
+  public get environment(): FormulaEnvironment {
+    return this._environment;
   }
 
   public get name(): string {

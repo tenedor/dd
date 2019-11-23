@@ -5,9 +5,9 @@ import {loadStandardLibrary} from '../standard_library';
 import {buildLanguageTestHelpers} from "./test_helpers";
 
 TestUtils.defaultBeforeAll();
-const formulaEnvironment = loadStandardLibrary(new SimpleUpdateManager());
+const environment = loadStandardLibrary(new SimpleUpdateManager());
 
-const {expectResults} = buildLanguageTestHelpers(formulaEnvironment);
+const {expectResults} = buildLanguageTestHelpers(environment);
 
 describe('Standard Library', () => {
 
