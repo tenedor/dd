@@ -85,9 +85,6 @@ export class Parser {
       return Parser.parseBoolean(unparsed);
     } else if (TypeUtils.isString(type)) {
       return Parser.parseString(unparsed);
-    } else if (TypeUtils.OLD_isDrawing(type)) {
-      // for now
-      return Parser.failureOf(`Literal ${type} values are not currently supported.`);
     } else if (TypeUtils.isList(type)) {
       // for now
       return Parser.failureOf(`Literal ${type} values are not currently supported.`);

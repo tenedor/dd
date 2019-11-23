@@ -13,8 +13,7 @@ import {Grid} from '@models/domain_specific/grid';
 import {GridColumn} from '@models/domain_specific/grid_column';
 import {Row} from '@models/domain_specific/row';
 import {RODictionary} from '@utils/types';
-import {COORDINATE_SYSTEM_GRID_NAME, OLD_getBuiltInDrawingColumnData}
-        from './drawing_grid_utilities';
+import {COORDINATE_SYSTEM_GRID_NAME} from './drawing_grid_utilities';
 import {ValueResolver} from './language/value_resolver';
 import {Drawing, DrawingUtils} from './models/domain_specific/drawing';
 
@@ -174,11 +173,11 @@ function addRows(
   const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
   const sideLength = (i: number) => 15 * (0.5 + i / 2);
   const rowsValues = _.range(rowCount).map(i => ({
-    [columns.get(2)!.columnId]: ValueUtils.numberOf(hasParent ? 200 - i * 40 : i * 20),
-    [columns.get(3)!.columnId]: ValueUtils.numberOf(i * i * 6),
-    [columns.get(4)!.columnId]: ValueUtils.numberOf((i + 1) * (i + 1) * 2),
-    [columns.get(5)!.columnId]: ValueUtils.stringOf(colors[i + (hasParent ? 2 : 0)]),
-    [columns.get(6)!.columnId]: ValueUtils.stringOf(getStarPath(5 + 2 * i, 2 + 2 * i, sideLength(i))),
+    [columns.get(1)!.columnId]: ValueUtils.numberOf(hasParent ? 200 - i * 40 : i * 20),
+    [columns.get(2)!.columnId]: ValueUtils.numberOf(i * i * 6),
+    [columns.get(3)!.columnId]: ValueUtils.numberOf((i + 1) * (i + 1) * 2),
+    [columns.get(4)!.columnId]: ValueUtils.stringOf(colors[i + (hasParent ? 2 : 0)]),
+    [columns.get(5)!.columnId]: ValueUtils.stringOf(getStarPath(5 + 2 * i, 2 + 2 * i, sideLength(i))),
   }));
   setFirstRowValues(grid, rowsValues[0]);
   const laterRowsValues = rowsValues.slice(1);
@@ -376,14 +375,11 @@ function addShapeGrid(
   environment: FormulaEnvironment,
 ) {
   const name = "Shape";
-  const drawingColumn = OLD_getBuiltInDrawingColumnData();
   const columns = generateColumns(updateManager, [
     {name: 'Fill', type: TypeUtils.String},
-    drawingColumn,
   ]);
   const gridColumnsData: GridColumnData[] = [
     {column: columns.Fill},
-    {column: columns[drawingColumn.name], expressionString: "DrawCircle(Radius=20, Fill=Fill)"},
   ];
   const columnIdsByName = makeColumnIdsByName(columns, {});
   const getPrimitiveDrawing = (cells: RODictionary<Value>) => {
@@ -399,7 +395,6 @@ function addCircleGrid(
   environment: FormulaEnvironment,
 ) {
   const name = "Circle";
-  const drawingColumn = OLD_getBuiltInDrawingColumnData();
   const columns = generateColumns(updateManager, [
     {name: 'Radius', type: TypeUtils.Number},
   ]);
@@ -407,7 +402,6 @@ function addCircleGrid(
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.Radius, defaultValue: ValueUtils.numberOf(20)},
-    {parentGridColumn: parentColumns[drawingColumn.name], expressionString: "DrawCircle(Radius=Radius, Fill=Fill)"},
   ];
   const columnIdsByName = makeColumnIdsByName(columns, parentColumns);
   const getPrimitiveDrawing = (cells: RODictionary<Value>) => {
@@ -423,7 +417,6 @@ function addEllipseGrid(
   environment: FormulaEnvironment,
 ) {
   const name = "Ellipse";
-  const drawingColumn = OLD_getBuiltInDrawingColumnData();
   const columns = generateColumns(updateManager, [
     {name: 'Radius X', type: TypeUtils.Number},
     {name: 'Radius Y', type: TypeUtils.Number},
@@ -433,7 +426,6 @@ function addEllipseGrid(
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns['Radius X'], defaultValue: ValueUtils.numberOf(30)},
     {column: columns['Radius Y'], defaultValue: ValueUtils.numberOf(20)},
-    {parentGridColumn: parentColumns[drawingColumn.name], expressionString: "DrawEllipse(Radius1='Radius X', Radius2='Radius Y', Fill=Fill)"},
   ];
   const columnIdsByName = makeColumnIdsByName(columns, parentColumns);
   const getPrimitiveDrawing = (cells: RODictionary<Value>) => {
@@ -450,7 +442,6 @@ function addPathShapeGrid(
   environment: FormulaEnvironment,
 ) {
   const name = "Path Shape";
-  const drawingColumn = OLD_getBuiltInDrawingColumnData();
   const columns = generateColumns(updateManager, [
     {name: 'Path', type: TypeUtils.String},
   ]);
@@ -458,7 +449,6 @@ function addPathShapeGrid(
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.Path, defaultValue: ValueUtils.stringOf("m0 0 l40 0 l0 40 l-40 0 z")},
-    {parentGridColumn: parentColumns[drawingColumn.name], expressionString: "DrawPath(Path=Path, Fill=Fill)"},
   ];
   const columnIdsByName = makeColumnIdsByName(columns, parentColumns);
   const getPrimitiveDrawing = (cells: RODictionary<Value>) => {

@@ -2,7 +2,6 @@ import * as _ from 'lodash';
 import * as React from 'react';
 
 import {CoordinateSystem} from '@core/geometry';
-import {OLD_Drawing, OLD_DrawingVariant} from '@language/drawing_value';
 import {Drawing, DrawingType} from '@models/domain_specific/drawing';
 import {Grid} from '@models/domain_specific/grid';
 import {ROArray} from '@utils/types';

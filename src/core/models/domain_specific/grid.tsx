@@ -1,11 +1,7 @@
 import * as _ from 'lodash';
 
-import {COORDINATE_SYSTEM_COLUMN_ID, OLD_DRAWING_COLUMN_ID} from '@core/drawing_grid_utilities';
-import {ExpressionRes} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
-import {ParseError} from '@language/language_errors';
 import {NameResolver, ValueNamespace} from '@language/name_resolver';
-import {Parser} from '@language/parser';
 import {RelativeValueReference} from '@language/reference';
 import {Identifier, Type, TypeUtils} from '@language/types';
 import {GridValue, Value} from '@language/values';
@@ -78,7 +74,6 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     formulaEnvironment.addGrid(this);
 
     // finish configuring grid. can now resolve internal references with formula environment.
-    this.configureSystemColumns();
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
     this.rows = new FunctionalArrayM(updateManager, [this.buildDefaultRow()]);
     this.rows.listenForUpdate(this, this.onRowsUpdated);
@@ -114,55 +109,12 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private makeSystemColumns = (): GridColumn[] => {
-    const drawingColumn = this.makeGridColumn(Column.getDrawingColumn(this.updateManager));
     if (this.disableDrawingColumn) {
-      return [drawingColumn];
+      return [];
     }
     const getGridIdByName = (gridName: string) => this.formulaEnvironment.getGridByName(gridName).id;
     const coordinateSystemColumn = this.makeGridColumn(Column.getCoordinateSystemColumn(this.updateManager, getGridIdByName));
-    return [drawingColumn, coordinateSystemColumn];
-  }
-
-  private configureSystemColumns = () => {
-    this.updateSystemColumns();
-  }
-
-  private updateSystemColumns = () => {
-    this.updateDrawingColumn();
-  }
-
-  private updateDrawingColumn = () => {
-    const drawingColumn = this.getDrawingColumn();
-    const expression = this.disableDrawingColumn ? 'DrawDrawings()' : this.buildDrawingColumnExpression();
-    const ast = this.resolveExpression(expression);
-    drawingColumn.setExpression(ast);
-  }
-
-  private buildDrawingColumnExpression = (): string => {
-    const drawingColumn = this.getDrawingColumn();
-    const coordinateSystemColumn = this.getCoordinateSystemColumn();
-    const csRefExpr = Parser.identToText(coordinateSystemColumn.name);
-    const csExpr = `[${csRefExpr}]`;
-    const otherColumns = this.columns.a.filter(c => c !== drawingColumn && c !== coordinateSystemColumn);
-    const otherColumnRefExprs = otherColumns.map(c => Parser.identToText(c.name));
-    const columnsExpr = `[${otherColumnRefExprs.join(", ")}]`;
-    return `DrawDrawings('Coordinate System' = ${csExpr}, Values = ${columnsExpr})`;
-  }
-
-  private getDrawingColumn = (): GridColumn => {
-    return this.columns.getByKey(OLD_DRAWING_COLUMN_ID)!;
-  }
-
-  private getCoordinateSystemColumn = (): GridColumn => {
-    return this.columns.getByKey(COORDINATE_SYSTEM_COLUMN_ID)!;
-  }
-
-  private resolveExpression = (expression: string): ExpressionRes => {
-    const parseResult = Parser.parseExpression(expression);
-    if (!parseResult.succeeded) {
-      throw new ParseError(`Bad formula: ${expression}`);
-    }
-    return parseResult.ast.resolve(this.nameResolver);
+    return [coordinateSystemColumn];
   }
 
   private buildDefaultRow = (): Row => {
@@ -248,7 +200,6 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
 
   public addColumns = (columns: GridColumn[]) => {
     this.columns.pushAll(columns);
-    this.updateSystemColumns();
   }
 
   public addNewColumn = (type: Type) => {

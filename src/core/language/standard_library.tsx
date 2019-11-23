@@ -1,25 +1,22 @@
 import * as _ from 'lodash';
 
 import {loadBuiltInGrids} from '@core/built_in_grids';
-import {getCoordinateSystemData, OLD_getDrawing, OLD_hasNonEmptyDrawing,
-        OLD_makeDrawingGroupValue} from '@core/drawing_grid_utilities';
 import {UpdateManager} from '@models/core/update_manager';
 import {BuiltInEval, BuiltInFormula, BuiltInFormulaSpec, Parameter}
         from '@models/domain_specific/constructor';
 import {RODictionary} from '@utils/types';
 import {ResolutionTimeTypeHelper, ResolutionTimeTypeHelperVariant, UnresolvedAST}
         from './ast';
-import {OLD_DrawingVariant} from './drawing_value';
 import {FormulaEnvironment} from './formula_environment';
 import {ParseError, TypeError} from './language_errors';
 import {Parser} from './parser';
 import {BoundingType, Identifier, LambdaOfAnyType, LambdaType, ListOfAnyType, ListType,
         PrimitiveType, Type, TypeUtils} from './types';
-import {LambdaValue, ListValue, NumberValue, OLD_DrawingValue, PartialRowValue,
-        PrimitiveValue, RowValue, StringValue, Value, ValueUtils} from './values';
+import {LambdaValue, ListValue, PartialRowValue, PrimitiveValue, RowValue, StringValue,
+        Value, ValueUtils} from './values';
 
 type Primitive = number | boolean | string;
-type MaterializedValue = Primitive | OLD_DrawingValue | ListValue | LambdaValue;
+type MaterializedValue = Primitive | ListValue | LambdaValue;
 interface EvalEnvironment {
   resolvedReturnType: Type,
 }
@@ -91,9 +88,7 @@ const getUID = (name: string) => `stdlib-${name}`;
 const getParameterUID = (formulaId: Identifier, parameterName: string) => `${formulaId}-${parameterName}`;
 
 const dematerializeValue = <T extends Type = Type> (value: MaterializedValue, type: T): Value<T> => {
-  if (TypeUtils.OLD_isDrawing(type)) {
-    return value as OLD_DrawingValue & Value<T>;
-  } else if (TypeUtils.isLambda(type)) {
+  if (TypeUtils.isLambda(type)) {
     return value as LambdaOfAnyType & Value<T>;
   } else if (TypeUtils.isList(type)) {
     return value as ListValue & Value<T>;
@@ -112,7 +107,7 @@ const dematerializeValue = <T extends Type = Type> (value: MaterializedValue, ty
   throw new TypeError(`Cannot dematerialize values for ${TypeUtils.toString(type)} types currently`);
 }
 
-const materializeValue = (value: PrimitiveValue | OLD_DrawingValue | ListValue): MaterializedValue => {
+const materializeValue = (value: PrimitiveValue | ListValue): MaterializedValue => {
   return ValueUtils.isPrimitive(value) ? value.value : value;
 }
 
@@ -413,70 +408,6 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({X: x, Y: y}: {X: number, Y: number}): number => Math.atan2(y, x),
   },
-
-  /**
-   * Drawing Formulas
-   */
-
-  DrawCircle: {
-    returnType: TypeUtils.OLD_Drawing,
-    parameters: _.extend({}, ParameterUtils.baseShapeDrawing, {
-      Radius: ParameterUtils.number(10),
-    }),
-    eval: ({
-      Radius: radius, Fill: fill,
-    }: {Radius: number} & BaseDrawingParameters): OLD_DrawingValue => {
-      const drawingType = OLD_DrawingVariant.CIRCLE;
-      return ValueUtils.OLD_drawingOf({drawingType, radius, fill});
-    },
-  },
-
-  DrawEllipse: {
-    returnType: TypeUtils.OLD_Drawing,
-    parameters: _.extend({}, ParameterUtils.baseShapeDrawing, {
-      Radius1: ParameterUtils.number(15),
-      Radius2: ParameterUtils.number(10),
-    }),
-    eval: ({
-      Radius1: radius1, Radius2: radius2, Fill: fill,
-    }: {Radius1: number, Radius2: number} & BaseDrawingParameters): OLD_DrawingValue => {
-      const drawingType = OLD_DrawingVariant.ELLIPSE;
-      return ValueUtils.OLD_drawingOf({drawingType, radius1, radius2, fill});
-    },
-  },
-
-  DrawPath: {
-    returnType: TypeUtils.OLD_Drawing,
-    parameters: _.extend({}, ParameterUtils.baseShapeDrawing, {
-      Path: ParameterUtils.string("m -15 9, c 10 -25, 20 -25, 30 0 z"),
-    }),
-    eval: ({
-      Path: path, Fill: fill,
-    }: {Path: string} & BaseDrawingParameters): OLD_DrawingValue => {
-      const drawingType = OLD_DrawingVariant.PATH;
-      return ValueUtils.OLD_drawingOf({drawingType, path, fill});
-    },
-  },
-
-  DrawDrawings: {
-    returnType: TypeUtils.OLD_Drawing,
-    parameters: {
-      // TODO: encode coordinate system as something less idiotic than a list
-      'Coordinate System': ParameterUtils.listOfAny(),
-      Values: ParameterUtils.listOfAny(),
-    },
-    eval: ({
-      'Coordinate System': coordinateSystemList,
-      Values: values,
-    }: {'Coordinate System': ListValue, Values: ListValue}): OLD_DrawingValue => {
-      const drawings = values.list.filter(OLD_hasNonEmptyDrawing).map(OLD_getDrawing);
-      const environment = formulaEnvironmentReference.get();
-      const coordinateSystem = coordinateSystemList.list.length ?
-        getCoordinateSystemData(coordinateSystemList.list[0] as RowValue, environment) :
-        undefined;
-      return OLD_makeDrawingGroupValue(drawings, coordinateSystem);
-    },
-  },
 };
 
 const builtInFormulas: RODictionary<BuiltInFormula> = _.mapValues(formulaDefs, (def, name) => {
@@ -486,7 +417,6 @@ const builtInFormulas: RODictionary<BuiltInFormula> = _.mapValues(formulaDefs, (
 
 export const loadStandardLibrary = (updateManager: UpdateManager): FormulaEnvironment => {
   const environment = new FormulaEnvironment();
-  formulaEnvironmentReference.set(environment);
   Object.values(builtInFormulas).map(environment.addBuiltInFormula);
   loadBuiltInGrids(updateManager, environment);
   return environment;
@@ -496,13 +426,3 @@ export const getExampleFormulaForTesting = (): BuiltInFormula => {
   const spec = generateFormulaSpec(formulaDefs.Power, "Power");
   return new BuiltInFormula(spec);
 }
-
-
-// TODO clean this up
-const formulaEnvironmentReference = (() => {
-  let env: FormulaEnvironment;
-  return {
-    set: (environment: FormulaEnvironment) => { env = environment; },
-    get: () => env,
-  };
-})();
