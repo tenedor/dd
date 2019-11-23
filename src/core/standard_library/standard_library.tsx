@@ -169,7 +169,7 @@ const buildDefaultAsmtUnres = (unparsed: string): UnresolvedAST => {
   throw new ParseError(`Failed to parse standard library default assignment ${unparsed}`);
 }
 
-const formulaDefs: {[name: string]: FormulaGenerator} = {
+const getFormulaDefs = (): {[name: string]: FormulaGenerator} => ({
   /**
    * Control Flow Formulas
    */
@@ -408,21 +408,32 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
     },
     eval: ({X: x, Y: y}: {X: number, Y: number}): number => Math.atan2(y, x),
   },
-};
+});
 
-const builtInFormulas: RODictionary<BuiltInFormula> = _.mapValues(formulaDefs, (def, name) => {
+const getBuiltInFormulas = (): RODictionary<BuiltInFormula> => {
+return _.mapValues(getFormulaDefs(), (def, name) => {
   const spec = generateFormulaSpec(def, name);
   return new BuiltInFormula(spec);
 });
+}
 
 export const loadStandardLibrary = (updateManager: UpdateManager): FormulaEnvironment => {
   const environment = new FormulaEnvironment();
-  Object.values(builtInFormulas).map(environment.addBuiltInFormula);
+  Object.values(getBuiltInFormulas()).map(environment.addBuiltInFormula);
   loadBuiltInGrids(updateManager, environment);
   return environment;
 }
 
 export const getExampleFormulaForTesting = (): BuiltInFormula => {
-  const spec = generateFormulaSpec(formulaDefs.Power, "Power");
+  const def: FormulaGenerator = {
+    returnType: TypeUtils.Number,
+    parameters: {
+      Base: ParameterUtils.number(2),
+      Exponent: ParameterUtils.number(3),
+    },
+    eval: ({Base: base, Exponent: exponent}: {Base: number, Exponent: number}): number => Math.pow(base, exponent),
+  };
+
+  const spec = generateFormulaSpec(def, "Power");
   return new BuiltInFormula(spec);
 }
