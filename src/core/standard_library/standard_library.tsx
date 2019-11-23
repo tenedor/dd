@@ -1,19 +1,19 @@
 import * as _ from 'lodash';
 
-import {loadBuiltInGrids} from '@core/built_in_grids';
+import {ResolutionTimeTypeHelper, ResolutionTimeTypeHelperVariant, UnresolvedAST}
+        from '@language/ast';
+import {FormulaEnvironment} from '@language/formula_environment';
+import {ParseError, TypeError} from '@language/language_errors';
+import {Parser} from '@language/parser';
+import {BoundingType, Identifier, LambdaOfAnyType, LambdaType, ListOfAnyType, ListType,
+        PrimitiveType, Type, TypeUtils} from '@language/types';
+import {LambdaValue, ListValue, PartialRowValue, PrimitiveValue, RowValue, StringValue,
+        Value, ValueUtils} from '@language/values';
 import {UpdateManager} from '@models/core/update_manager';
 import {BuiltInEval, BuiltInFormula, BuiltInFormulaSpec, Parameter}
         from '@models/domain_specific/constructor';
 import {RODictionary} from '@utils/types';
-import {ResolutionTimeTypeHelper, ResolutionTimeTypeHelperVariant, UnresolvedAST}
-        from './ast';
-import {FormulaEnvironment} from './formula_environment';
-import {ParseError, TypeError} from './language_errors';
-import {Parser} from './parser';
-import {BoundingType, Identifier, LambdaOfAnyType, LambdaType, ListOfAnyType, ListType,
-        PrimitiveType, Type, TypeUtils} from './types';
-import {LambdaValue, ListValue, PartialRowValue, PrimitiveValue, RowValue, StringValue,
-        Value, ValueUtils} from './values';
+import {loadBuiltInGrids} from './built_in_grids';
 
 type Primitive = number | boolean | string;
 type MaterializedValue = Primitive | ListValue | LambdaValue;

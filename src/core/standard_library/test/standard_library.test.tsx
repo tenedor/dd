@@ -1,8 +1,8 @@
 import {TestUtils} from '@test_utils/test_utils';
 
+import {buildLanguageTestHelpers} from "@language/test/test_helpers";
 import {SimpleUpdateManager} from '@models/core/update_manager';
 import {loadStandardLibrary} from '../standard_library';
-import {buildLanguageTestHelpers} from "./test_helpers";
 
 TestUtils.defaultBeforeAll();
 const environment = loadStandardLibrary(new SimpleUpdateManager());

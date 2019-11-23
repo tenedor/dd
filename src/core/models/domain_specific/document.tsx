@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 
-import {addDemoGrids} from '@core/built_in_grids';
 import {FormulaEnvironment} from '@language/formula_environment';
-import {loadStandardLibrary} from '@language/standard_library';
+import {addDemoGrids} from '@standard_library/built_in_grids';
+import {loadStandardLibrary} from '@standard_library/standard_library';
 import {ROArray} from '@utils/types';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from '../collections/functional_array';
 import {ModelType} from '../core/model';

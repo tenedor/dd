@@ -1,11 +1,11 @@
 import * as _ from 'lodash';
 
-import {COORDINATE_SYSTEM_COLUMN_ID, getCoordinateSystemData} from '@core/drawing_grid_utilities';
 import {CoordinateSystem, defaultCoordinateSystem} from '@core/geometry';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {Identifier, TypeUtils} from '@language/types';
-import {ListValue, NumberValue, RowValue, Value, ValueOrAST, ValueUtils}
-        from '@language/values';
+import {ListValue, RowValue, Value, ValueOrAST, ValueUtils} from '@language/values';
+import {COORDINATE_SYSTEM_COLUMN_ID, getCoordinateSystemFromValue}
+        from '@standard_library/geometry_utils';
 import {Dictionary, RODictionary} from '@utils/types';
 import {keysDiff} from '@utils/utils';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
@@ -181,7 +181,7 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
 
   private getCoordinateSystem = (): CoordinateSystem => {
     const coords = this.getCoordinateSystemValue();
-    return coords ? getCoordinateSystemData(coords, this.environment) : defaultCoordinateSystem;
+    return coords ? getCoordinateSystemFromValue(coords, this.environment) : defaultCoordinateSystem;
   }
 
   public getCellValues = (): RODictionary<Value> => {

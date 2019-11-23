@@ -4,18 +4,18 @@ import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver} from '@language/name_resolver';
 import {Parser} from '@language/parser';
 import {PrimitiveType, Type, TypeUtils} from '@language/types';
+import {ValueResolver} from '@language/value_resolver';
 import {NumberValue, RowValue, StringValue, Value, ValueOrAST, ValueUtils}
         from '@language/values';
 import {UpdateManager} from '@models/core/update_manager';
 import {Column, ColumnData} from '@models/domain_specific/column';
 import {Document} from '@models/domain_specific/document';
+import {Drawing, DrawingUtils} from '@models/domain_specific/drawing';
 import {Grid} from '@models/domain_specific/grid';
 import {GridColumn} from '@models/domain_specific/grid_column';
 import {Row} from '@models/domain_specific/row';
 import {RODictionary} from '@utils/types';
-import {COORDINATE_SYSTEM_GRID_NAME} from './drawing_grid_utilities';
-import {ValueResolver} from './language/value_resolver';
-import {Drawing, DrawingUtils} from './models/domain_specific/drawing';
+import {COORDINATE_SYSTEM_GRID_NAME} from './geometry_utils';
 
 // Draw a regular n-pointed star with density m and the specified side length.
 // See https://en.wikipedia.org/wiki/Regular_polygon#Regular_star_polygons.
@@ -123,7 +123,7 @@ function setDefaultValues(grid: Grid, columns: MixedGridColumnData[]) {
 }
 
 function addBuiltInGrid({
-  name, updateManager, environment, gridColumnsData, parentGrid, getPrimitiveDrawing, disableDrawingColumn,
+  name, updateManager, environment, gridColumnsData, parentGrid, getPrimitiveDrawing, disableCoordinateSystemColumn,
 }: {
   name: string,
   updateManager: UpdateManager,
@@ -131,12 +131,12 @@ function addBuiltInGrid({
   gridColumnsData: MixedGridColumnData[],
   parentGrid?: Grid,
   getPrimitiveDrawing?: (cells: RODictionary<Value>) => Drawing,
-  disableDrawingColumn?: boolean,
+  disableCoordinateSystemColumn?: boolean,
 }) {
   const {nameResolver} = environment;
   const newColumns = gridColumnsData.filter((c): c is GridColumnData => !isChildData(c)).map(d => d.column);
   const grid = new Grid(updateManager, {name, environment,
-    parentGrid, newColumns, getPrimitiveDrawing, disableDrawingColumn});
+    parentGrid, newColumns, getPrimitiveDrawing, disableCoordinateSystemColumn});
   setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
   setDefaultValues(grid, gridColumnsData);
 }
@@ -205,8 +205,8 @@ function addRotationGrid(
     {column: columns['Rotation CW']},
     {column: columns['Rotation CCW'], expressionString: "-'Rotation CW'"},
   ];
-  const disableDrawingColumn = true;
-  addBuiltInGrid({name, updateManager, environment, gridColumnsData, disableDrawingColumn});
+  const disableCoordinateSystemColumn = true;
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, disableCoordinateSystemColumn});
 }
 
 function addDirectionGrid(
@@ -221,8 +221,8 @@ function addDirectionGrid(
   const gridColumnsData: GridColumnData[] = [
     {column: columns['Rotation From Up']},
   ];
-  const disableDrawingColumn = true;
-  addBuiltInGrid({name, updateManager, environment, gridColumnsData, disableDrawingColumn});
+  const disableCoordinateSystemColumn = true;
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, disableCoordinateSystemColumn});
 }
 
 function addVectorGrid(
@@ -243,8 +243,8 @@ function addVectorGrid(
     {column: columns._R, expressionString: "Sqrt(Value = X * X + Y * Y)"},
     {column: columns._Theta, expressionString: "Direction('Rotation From Up' = Rotation('Rotation CW' = Atan2(X = Y, Y = X) / (2 * Pi())))"},
   ];
-  const disableDrawingColumn = true;
-  addBuiltInGrid({name, updateManager, environment, gridColumnsData, disableDrawingColumn});
+  const disableCoordinateSystemColumn = true;
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, disableCoordinateSystemColumn});
 }
 
 function addCoordinateSystemGrid(
@@ -264,8 +264,8 @@ function addCoordinateSystemGrid(
     {column: columns.Scale, defaultValue: ValueUtils.numberOf(100)},
     {column: columns.Rotation},
   ];
-  const disableDrawingColumn = true;
-  addBuiltInGrid({name, updateManager, environment, gridColumnsData, disableDrawingColumn});
+  const disableCoordinateSystemColumn = true;
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, disableCoordinateSystemColumn});
 }
 
 function addRotAliasGrid(

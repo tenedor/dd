@@ -1,11 +1,11 @@
 import * as _ from 'lodash';
 
 import {Grid} from '@models/domain_specific/grid';
+import {getExampleFormulaForTesting} from '@standard_library/standard_library';
 import {TestUtils} from '@test_utils/test_utils';
 import {FormulaEnvironment} from '../formula_environment';
 import {NameResolver} from '../name_resolver';
 import {RelativeValueReference} from '../reference';
-import {getExampleFormulaForTesting} from '../standard_library';
 import {TypeUtils} from '../types';
 import {ValueResolver} from '../value_resolver';
 import {ValueUtils} from '../values';

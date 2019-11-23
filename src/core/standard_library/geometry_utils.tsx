@@ -1,27 +1,36 @@
 import * as _ from 'lodash';
 
+import {CoordinateSystem} from '@core/geometry';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {Identifier, Type, TypeUtils} from '@language/types';
 import {NumberValue, RowValue, Value} from '@language/values';
-import {CoordinateSystem} from './geometry';
+import {ModelType} from '@models/core/model';
+import {UpdateManager} from '@models/core/update_manager';
+import {Column} from '@models/domain_specific/column';
 
 export const coordinateSystemColumnName = "Transform";
 export const COORDINATE_SYSTEM_GRID_NAME = 'Coordinate System';
 // This id should match the UID pattern for columns
-export const COORDINATE_SYSTEM_COLUMN_ID = 'col-_COORDINATE_SYSTEM_';
+export const COORDINATE_SYSTEM_COLUMN_ID = `${ModelType.COLUMN}-_COORDINATE_SYSTEM_`;
 
-export const getCoordinateSystemColumnData = (
+let coordinateSystemColumn: Column | undefined;
+
+export const getCoordinateSystemColumn = (
+  updateManager: UpdateManager,
   getGridIdByName: (gridName: string) => Identifier,
-): {id: string, name: string, type: Type} => {
-  const coordinateSystemGridId = getGridIdByName(COORDINATE_SYSTEM_GRID_NAME);
-  return {
-    id: COORDINATE_SYSTEM_COLUMN_ID,
-    name: coordinateSystemColumnName,
-    type: TypeUtils.RowOf(coordinateSystemGridId),
-  };
+): Column<Type>  => {
+  if (!coordinateSystemColumn) {
+    const coordinateSystemGridId = getGridIdByName(COORDINATE_SYSTEM_GRID_NAME);
+    coordinateSystemColumn = new Column(updateManager, {
+      id: COORDINATE_SYSTEM_COLUMN_ID,
+      name: coordinateSystemColumnName,
+      type: TypeUtils.RowOf(coordinateSystemGridId),
+    });
+  }
+  return coordinateSystemColumn;
 }
 
-export const getCoordinateSystemData = (csValue: RowValue, environment: FormulaEnvironment): CoordinateSystem => {
+export const getCoordinateSystemFromValue = (csValue: RowValue, environment: FormulaEnvironment): CoordinateSystem => {
   const centerValue = project(csValue, 'Center', environment) as RowValue;
   const xValue = project(centerValue, 'X', environment) as NumberValue;
   const yValue = project(centerValue, 'Y', environment) as NumberValue;

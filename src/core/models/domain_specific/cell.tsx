@@ -1,6 +1,5 @@
 import * as _ from 'lodash';
 
-import {COORDINATE_SYSTEM_COLUMN_ID} from '@core/drawing_grid_utilities';
 import {CoordinateSystem} from '@core/geometry';
 import {CallRes, ResolvedAST, ResolvedASTUtils} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
@@ -12,6 +11,7 @@ import {AbsoluteValueReference, ModelWithValue, Reference, ReferenceUtils,
 import {Identifier, RowType, Type, TypeUtils} from '@language/types';
 import {ValueResolver} from '@language/value_resolver';
 import {Value, ValueOrAST, ValueUtils} from '@language/values';
+import {COORDINATE_SYSTEM_COLUMN_ID} from '@standard_library/geometry_utils';
 import {RODictionary} from '@utils/types';
 import {assert, keysDiff} from '@utils/utils';
 import {Model, ModelType} from '../core/model';

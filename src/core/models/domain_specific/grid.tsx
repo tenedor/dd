@@ -5,6 +5,7 @@ import {NameResolver, ValueNamespace} from '@language/name_resolver';
 import {RelativeValueReference} from '@language/reference';
 import {Identifier, Type, TypeUtils} from '@language/types';
 import {GridValue, Value} from '@language/values';
+import {getCoordinateSystemColumn} from '@standard_library/geometry_utils';
 import {RODictionary} from '@utils/types';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from '../collections/functional_array';
 import {FunctionalKeyedArray} from '../collections/functional_keyed_array';
@@ -32,7 +33,7 @@ export interface GridData {
   parentGrid?: Grid,
   newColumns?: Column[],
   getPrimitiveDrawing?: (cells: RODictionary<Value>) => Drawing,
-  disableDrawingColumn?: boolean;
+  disableCoordinateSystemColumn?: boolean;
 }
 
 export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {}
@@ -42,7 +43,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   private _name: string;
   private readonly environment: FormulaEnvironment;
   private readonly parent?: Grid;
-  private readonly disableDrawingColumn: boolean;
+  private readonly disableCoordinateSystemColumn: boolean;
   // FIXME should be private
   public readonly getPrimitiveDrawing?: (cells: RODictionary<Value>) => Drawing;
 
@@ -53,13 +54,13 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
 
   constructor(
     updateManager: UpdateManager,
-    {disableDrawingColumn, environment, getPrimitiveDrawing, name, newColumns, parentGrid}: GridData,
+    {disableCoordinateSystemColumn, environment, getPrimitiveDrawing, name, newColumns, parentGrid}: GridData,
     modelType: ModelType = ModelType.GRID,
   ) {
     super(updateManager, modelType);
     this._name = name;
     this.environment = environment;
-    this.disableDrawingColumn = !!disableDrawingColumn;
+    this.disableCoordinateSystemColumn = !!disableCoordinateSystemColumn;
     this.getPrimitiveDrawing = getPrimitiveDrawing || (parentGrid && parentGrid.getPrimitiveDrawing);
     if (parentGrid) {
       this.parent = parentGrid;
@@ -109,11 +110,11 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private makeSystemColumns = (): GridColumn[] => {
-    if (this.disableDrawingColumn) {
+    if (this.disableCoordinateSystemColumn) {
       return [];
     }
     const getGridIdByName = (gridName: string) => this.environment.getGridByName(gridName).id;
-    const coordinateSystemColumn = this.makeGridColumn(Column.getCoordinateSystemColumn(this.updateManager, getGridIdByName));
+    const coordinateSystemColumn = this.makeGridColumn(getCoordinateSystemColumn(this.updateManager, getGridIdByName));
     return [coordinateSystemColumn];
   }
 

@@ -1,6 +1,5 @@
 import * as _ from 'lodash';
 
-import {getCoordinateSystemColumnData} from '@core/drawing_grid_utilities';
 import {Identifier, Type} from '@language/types';
 import {ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
@@ -10,15 +9,12 @@ import {ColumnUpdateType} from '../core/update_types';
 export interface ColumnData<T extends Type = Type> {
   name: string;
   type: T;
-  id?: string; // only for internal use
+  id?: Identifier; // only for internal use
 }
 
 export interface ColumnUpdateDescriptor extends UpdateDescriptor<ColumnUpdateType> {}
 
 export class Column<T extends Type = Type> extends Mutable<ColumnUpdateDescriptor> {
-  private static drawingColumn?: Column;
-  private static coordinateSystemColumn?: Column;
-
   private _name: string;
   private _type: T;
 
@@ -26,16 +22,6 @@ export class Column<T extends Type = Type> extends Mutable<ColumnUpdateDescripto
     super(updateManager, modelType, id);
     this._name = name;
     this._type = type;
-  }
-
-  public static getCoordinateSystemColumn(
-    updateManager: UpdateManager,
-    getGridIdByName: (gridName: string) => Identifier,
-  ): Column<Type> {
-    if (!this.coordinateSystemColumn) {
-      this.coordinateSystemColumn = new Column(updateManager, getCoordinateSystemColumnData(getGridIdByName));
-    }
-    return this.coordinateSystemColumn;
   }
 
   public get name(): string {
