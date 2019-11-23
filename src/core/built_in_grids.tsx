@@ -1,19 +1,22 @@
 import * as _ from 'lodash';
 
-import {AssignmentsUnres, CallUnres} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver} from '@language/name_resolver';
 import {Parser} from '@language/parser';
 import {PrimitiveType, Type, TypeUtils} from '@language/types';
-import {RowValue, Value, ValueOrAST, ValueUtils} from '@language/values';
+import {NumberValue, RowValue, StringValue, Value, ValueOrAST, ValueUtils}
+        from '@language/values';
 import {UpdateManager} from '@models/core/update_manager';
 import {Column, ColumnData} from '@models/domain_specific/column';
 import {Document} from '@models/domain_specific/document';
 import {Grid} from '@models/domain_specific/grid';
 import {GridColumn} from '@models/domain_specific/grid_column';
 import {Row} from '@models/domain_specific/row';
-import {COORDINATE_SYSTEM_GRID_NAME, OLD_getBuiltInDrawingColumnData} from './drawing_grid_utilities';
+import {RODictionary} from '@utils/types';
+import {COORDINATE_SYSTEM_GRID_NAME, OLD_getBuiltInDrawingColumnData}
+        from './drawing_grid_utilities';
 import {ValueResolver} from './language/value_resolver';
+import {Drawing, DrawingUtils} from './models/domain_specific/drawing';
 
 // Draw a regular n-pointed star with density m and the specified side length.
 // See https://en.wikipedia.org/wiki/Regular_polygon#Regular_star_polygons.
@@ -74,16 +77,16 @@ function generateGridColumns(
   updateManager: UpdateManager,
   formulaEnvironment: FormulaEnvironment,
   grid: Grid,
-  gridColumnsData: MixedGridColumnData[],
+  gridColumnsData: GridColumnData[],
 ): GridColumn[] {
-  const newColumns = gridColumnsData.filter((c): c is GridColumnData  => !isChildData(c));
-  return newColumns.map(gridColumnData => {
+  const nameResolver = formulaEnvironment.nameResolver.resolverFor(TypeUtils.GridOf(grid.id));
+  return gridColumnsData.map(gridColumnData => {
     const {column, width} = gridColumnData;
     const {type} = column;
     return new GridColumn(updateManager, {
       column,
       formulaEnvironment,
-      grid,
+      nameResolver,
       type,
       width: width || 100,
     });
@@ -121,20 +124,20 @@ function setDefaultValues(grid: Grid, columns: MixedGridColumnData[]) {
 }
 
 function addBuiltInGrid({
-  name, updateManager, environment, gridColumnsData, parentGrid, disableDrawingColumn,
+  name, updateManager, environment, gridColumnsData, parentGrid, getPrimitiveDrawing, disableDrawingColumn,
 }: {
   name: string,
   updateManager: UpdateManager,
   environment: FormulaEnvironment,
   gridColumnsData: MixedGridColumnData[],
   parentGrid?: Grid,
+  getPrimitiveDrawing?: (cells: RODictionary<Value>) => Drawing,
   disableDrawingColumn?: boolean,
 }) {
   const {nameResolver} = environment;
-  const grid = new Grid(updateManager, {name, formulaEnvironment: environment, parentGrid, disableDrawingColumn});
-
-  const gridColumns = generateGridColumns(updateManager, environment, grid, gridColumnsData);
-  grid.addColumns(gridColumns);
+  const newColumns = gridColumnsData.filter((c): c is GridColumnData => !isChildData(c)).map(d => d.column);
+  const grid = new Grid(updateManager, {name, formulaEnvironment: environment,
+    parentGrid, newColumns, getPrimitiveDrawing, disableDrawingColumn});
   setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
   setDefaultValues(grid, gridColumnsData);
 }
@@ -163,9 +166,10 @@ function setFirstRowValues(grid: Grid, values: {[columnId: string]: ValueOrAST})
 function addRows(
   updateManager: UpdateManager,
   grid: Grid,
+  environment: FormulaEnvironment,
   hasParent: boolean,
 ) {
-  const {columns, defaultValues, id: gridId} = grid;
+  const {columns, defaultValues, getPrimitiveDrawing, id: gridId} = grid;
   const rowCount = hasParent ? 3 : 6;
   const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
   const sideLength = (i: number) => 15 * (0.5 + i / 2);
@@ -181,6 +185,8 @@ function addRows(
   const laterRows = laterRowsValues.map(manualValues => new Row(updateManager, {
     columns,
     defaultValues,
+    environment,
+    getPrimitiveDrawing,
     gridId,
     manualValues,
   }));
@@ -356,6 +362,15 @@ function addTrigonometryGrids(
   addPoCoAliasGrid(updateManager, environment);
 }
 
+function makeColumnIdsByName(columns: RODictionary<Column>, gridColumns: RODictionary<GridColumn>): RODictionary<string> {
+  return _.defaults({}, _.mapValues(columns, c => c.id), _.mapValues(gridColumns, c => c.columnId));
+}
+
+function getStandardShapePrimitiveValues(cells: RODictionary<Value>, columnIdsByName: RODictionary<string>): {fill: string} {
+    const fill = (cells[columnIdsByName.Fill] as StringValue).value;
+    return {fill};
+}
+
 function addShapeGrid(
   updateManager: UpdateManager,
   environment: FormulaEnvironment,
@@ -370,7 +385,13 @@ function addShapeGrid(
     {column: columns.Fill},
     {column: columns[drawingColumn.name], expressionString: "DrawCircle(Radius=20, Fill=Fill)"},
   ];
-  addBuiltInGrid({name, updateManager, environment, gridColumnsData});
+  const columnIdsByName = makeColumnIdsByName(columns, {});
+  const getPrimitiveDrawing = (cells: RODictionary<Value>) => {
+    const {fill} = getStandardShapePrimitiveValues(cells, columnIdsByName);
+    const radius = 20;
+    return DrawingUtils.circleOf({fill, radius});
+  }
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, getPrimitiveDrawing});
 }
 
 function addCircleGrid(
@@ -388,7 +409,13 @@ function addCircleGrid(
     {column: columns.Radius, defaultValue: ValueUtils.numberOf(20)},
     {parentGridColumn: parentColumns[drawingColumn.name], expressionString: "DrawCircle(Radius=Radius, Fill=Fill)"},
   ];
-  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+  const columnIdsByName = makeColumnIdsByName(columns, parentColumns);
+  const getPrimitiveDrawing = (cells: RODictionary<Value>) => {
+    const {fill} = getStandardShapePrimitiveValues(cells, columnIdsByName);
+    const radius = (cells[columns.Radius.id] as NumberValue).value;
+    return DrawingUtils.circleOf({fill, radius});
+  }
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid, getPrimitiveDrawing});
 }
 
 function addEllipseGrid(
@@ -408,7 +435,14 @@ function addEllipseGrid(
     {column: columns['Radius Y'], defaultValue: ValueUtils.numberOf(20)},
     {parentGridColumn: parentColumns[drawingColumn.name], expressionString: "DrawEllipse(Radius1='Radius X', Radius2='Radius Y', Fill=Fill)"},
   ];
-  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+  const columnIdsByName = makeColumnIdsByName(columns, parentColumns);
+  const getPrimitiveDrawing = (cells: RODictionary<Value>) => {
+    const {fill} = getStandardShapePrimitiveValues(cells, columnIdsByName);
+    const radius1 = (cells[columns["Radius X"].id] as NumberValue).value;
+    const radius2 = (cells[columns["Radius Y"].id] as NumberValue).value;
+    return DrawingUtils.ellipseOf({fill, radius1, radius2});
+  }
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid, getPrimitiveDrawing});
 }
 
 function addPathShapeGrid(
@@ -426,7 +460,13 @@ function addPathShapeGrid(
     {column: columns.Path, defaultValue: ValueUtils.stringOf("m0 0 l40 0 l0 40 l-40 0 z")},
     {parentGridColumn: parentColumns[drawingColumn.name], expressionString: "DrawPath(Path=Path, Fill=Fill)"},
   ];
-  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+  const columnIdsByName = makeColumnIdsByName(columns, parentColumns);
+  const getPrimitiveDrawing = (cells: RODictionary<Value>) => {
+    const {fill} = getStandardShapePrimitiveValues(cells, columnIdsByName);
+    const path = (cells[columns.Path.id] as StringValue).value;
+    return DrawingUtils.pathOf({fill, path});
+  }
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid, getPrimitiveDrawing});
 }
 
 function addRelativePolygonGrid(
@@ -617,7 +657,7 @@ function addDemoShapeGrids(
   const grid1Columns = generateGridColumns(updateManager, formulaEnvironment, grid1, grid1ColumnsData);
   grid1.addColumns(grid1Columns);
   setColumnExpressions(grid1, grid1ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid1.id)));
-  addRows(updateManager, grid1, false);
+  addRows(updateManager, grid1, formulaEnvironment, false);
 
   const grid2ColumnsData: ChildGridColumnData[] = grid1Columns.map(parentGridColumn => {
     if (parentGridColumn.columnId === columns.Shape.id) {
@@ -626,10 +666,8 @@ function addDemoShapeGrids(
     return {parentGridColumn}
   });
   const grid2 = document.addGridFromGridData({name: "More Shapes", parentGrid: grid1, formulaEnvironment});
-  const grid2Columns = generateGridColumns(updateManager, formulaEnvironment, grid2, grid2ColumnsData);
-  grid2.addColumns(grid2Columns);
   setColumnExpressions(grid2, grid2ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid2.id)));
-  addRows(updateManager, grid2, true);
+  addRows(updateManager, grid2, formulaEnvironment, true);
 }
 
 export function loadBuiltInGrids(

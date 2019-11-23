@@ -1,7 +1,11 @@
 import * as _ from 'lodash';
 
-import {Identifier} from '@language/types';
-import {RowValue, ValueOrAST, ValueUtils} from '@language/values';
+import {COORDINATE_SYSTEM_COLUMN_ID, getCoordinateSystemData} from '@core/drawing_grid_utilities';
+import {CoordinateSystem, defaultCoordinateSystem} from '@core/geometry';
+import {FormulaEnvironment} from '@language/formula_environment';
+import {Identifier, TypeUtils} from '@language/types';
+import {ListValue, NumberValue, RowValue, Value, ValueOrAST, ValueUtils}
+        from '@language/values';
 import {Dictionary, RODictionary} from '@utils/types';
 import {keysDiff} from '@utils/utils';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
@@ -12,12 +16,14 @@ import {Mutable} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {RowUpdateType} from '../core/update_types';
 import {Cell, CellUpdateDescriptor} from './cell';
-import {Drawing} from './drawing';
+import {Drawing, DRAWING_PRIMITIVE_PATH_ID, DrawingUtils} from './drawing';
 import {GridColumns} from './grid';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 
 export type CellRO = Readonly<Cell>;
 export type Cells = FunctionalDictionaryM<Cell, CellUpdateDescriptor>;
+
+type ValueWithRows = RowValue | ListValue;
 
 interface ManualValues {
   [columnId: string]: ValueOrAST,
@@ -26,29 +32,46 @@ interface ManualValues {
 interface RowData<I extends Identifier = Identifier> {
   gridId: I,
   columns: GridColumns,
+  environment: FormulaEnvironment,
   manualValues: ManualValues,
   defaultValues?: Row,
+  getPrimitiveDrawing?: (cells: RODictionary<Value>) => Drawing,
 }
 
 export type RowContext = RODictionary<Cell>;
 
-export interface RowUpdateDescriptor extends UpdateDescriptor<RowUpdateType> {
+interface CellsUpdateDescriptor extends UpdateDescriptor<RowUpdateType> {
+  type: "CELLS_UPDATED",
   columnIds: string[];
 }
+
+interface DrawingUpdateDescriptor extends UpdateDescriptor<RowUpdateType> {
+  type: "DRAWING_UPDATED",
+}
+
+export type RowUpdateDescriptor = CellsUpdateDescriptor | DrawingUpdateDescriptor;
 
 export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDescriptor> {
   private readonly gridId: I;
   private readonly columns: GridColumns;
+  private readonly environment: FormulaEnvironment;
   private readonly defaultValues?: Row;
+  private readonly getPrimitiveDrawingIfAny: (cells: RODictionary<Value>) => Drawing | undefined;
   public readonly cells: Cells;
+  private drawing: Drawing;
 
-  constructor(updateManager: UpdateManager, {columns, defaultValues, gridId, manualValues}: RowData<I>, modelType: ModelType = ModelType.ROW) {
+  constructor(updateManager: UpdateManager, {
+    columns, defaultValues, environment, gridId, manualValues, getPrimitiveDrawing,
+  }: RowData<I>, modelType: ModelType = ModelType.ROW) {
     super(updateManager, modelType);
     this.gridId = gridId;
     this.columns = columns;
+    this.environment = environment;
     this.defaultValues = defaultValues;
+    this.getPrimitiveDrawingIfAny = getPrimitiveDrawing || (() => undefined);
     this.cells = new FunctionalDictionaryM(updateManager, {});
     this.constructCells(manualValues);
+    this.updateDrawing();
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
     this.cells.listenForUpdate(this, this.onCellsUpdated);
   }
@@ -128,12 +151,55 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
     return this.cells.d;
   }
 
+  private updateDrawing = (): void => {
+    const drawingColumns = Object.values(this.columns.d).filter(c => TypeUtils.isRow(TypeUtils.getBaseType(c.type)));
+    const drawings: {[pathId: string]: Drawing} = {};
+    drawingColumns.forEach(c => {
+      drawings[c.columnId] = Row.makeDrawing(this.cells.get(c.columnId)!.value as ValueWithRows);
+    });
+    const primitiveDrawing = this.getPrimitiveDrawingIfAny(this.getCellValues());
+    if (primitiveDrawing !== undefined) {
+      drawings[DRAWING_PRIMITIVE_PATH_ID] = primitiveDrawing;
+    }
+    const transform: CoordinateSystem = this.getCoordinateSystem();
+    this.drawing = DrawingUtils.groupOf(drawings, transform);
+  }
+
+  private static makeDrawing = (valueWithRows: ValueWithRows): Drawing => {
+    if (ValueUtils.isRow(valueWithRows)) {
+      return valueWithRows.drawing;
+    }
+    const nestedValues = valueWithRows.list as ValueWithRows[];
+    const nestedDrawings = nestedValues.map(Row.makeDrawing);
+    return DrawingUtils.listOf(nestedDrawings);
+  }
+
+  private getCoordinateSystemValue = (): RowValue | undefined => {
+    const cell = this.cells.get(COORDINATE_SYSTEM_COLUMN_ID);
+    return cell && (cell.value as RowValue);
+  }
+
+  private getCoordinateSystem = (): CoordinateSystem => {
+    const coords = this.getCoordinateSystemValue();
+    return coords ? getCoordinateSystemData(coords, this.environment) : defaultCoordinateSystem;
+  }
+
+  public getCellValues = (): RODictionary<Value> => {
+    return _.mapValues(this.cells.d, c => c.value);
+  }
+
   public getDrawing = (): Drawing => {
-    throw new Error("TODO");
+    return this.drawing;
   }
 
   public asValue = (): RowValue<I> => {
     return ValueUtils.rowOf(this, this.gridId);
+  }
+
+  private updatesMayChangeDrawing = (updates: Array<DictionaryUD<CellUpdateDescriptor>>): boolean => {
+    // Drawing can only update when a cell with drawings is added or removed or changes
+    // its drawings, or when the transform cell value changes. But for now...
+    return true;
   }
 
   private onCellsUpdated = (
@@ -142,8 +208,13 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
   ): RowUpdateDescriptor[] => {
     this.onDependencyUpdated(epoch);
     const columnIds = updates ? _.uniq(updates.map(d => d.key)) : [];
-    const descriptor = {type: RowUpdateType.CELLS_UPDATED, columnIds};
-    return [descriptor];
+    const cellsUpdatedDescriptor = {type: RowUpdateType.CELLS_UPDATED, columnIds};
+    if (!this.updatesMayChangeDrawing(updates)) {
+      return [cellsUpdatedDescriptor];
+    }
+    this.updateDrawing();
+    const drawingUpdatedDescriptor = {type: RowUpdateType.DRAWING_UPDATED};
+    return [cellsUpdatedDescriptor, drawingUpdatedDescriptor];
   }
 
   private onColumnsUpdated = (

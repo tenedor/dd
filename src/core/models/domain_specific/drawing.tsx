@@ -1,12 +1,13 @@
 import * as _ from 'lodash';
 
 import {CoordinateSystem, Scalar} from '@core/geometry';
+import {ROArray, RODictionary} from '@utils/types';
 
 // for now, use these stand-in types
 type Color = string;
 type SVGPathString = string;
 
-enum DrawingType {
+export enum DrawingType {
   CIRCLE = "CIRCLE",
   ELLIPSE = "ELLIPSE",
   // LINE = "LINE",
@@ -19,45 +20,47 @@ enum DrawingType {
 }
 
 interface BaseDrawing {
-  drawingType: DrawingType,
+  readonly drawingType: DrawingType,
 }
 
 interface BasePrimitiveDrawing extends BaseDrawing {
-  drawingType: Exclude<DrawingType, DrawingType.GROUP>;
-  fill: Color,
+  readonly drawingType: Exclude<DrawingType, DrawingType.GROUP>;
+  readonly fill: Color,
   // stroke: number,
   // stroke-color: Color,
 }
 
 interface Circle extends BasePrimitiveDrawing {
-  drawingType: DrawingType.CIRCLE,
-  radius: Scalar,
+  readonly drawingType: DrawingType.CIRCLE,
+  readonly radius: Scalar,
 }
 
 interface Ellipse extends BasePrimitiveDrawing {
-  drawingType: DrawingType.ELLIPSE,
-  radius1: Scalar,
-  radius2: Scalar,
+  readonly drawingType: DrawingType.ELLIPSE,
+  readonly radius1: Scalar,
+  readonly radius2: Scalar,
 }
 
 interface Path extends BasePrimitiveDrawing {
-  drawingType: DrawingType.PATH,
-  path: SVGPathString,
+  readonly drawingType: DrawingType.PATH,
+  readonly path: SVGPathString,
 }
 
 interface DrawingGroup extends BaseDrawing {
-  drawingType: DrawingType.GROUP,
-  drawings: {[columnId: string]: Drawing},
-  transform: CoordinateSystem,
+  readonly drawingType: DrawingType.GROUP,
+  readonly drawings: RODictionary<Drawing>,
+  readonly transform: CoordinateSystem,
 }
 
 interface DrawingList extends BaseDrawing {
-  drawingType: DrawingType.LIST,
-  drawings: Drawing[],
+  readonly drawingType: DrawingType.LIST,
+  readonly drawings: ROArray<Drawing>,
 }
 
 export type PrimitiveDrawing = Circle | Ellipse | Path;
 export type Drawing = PrimitiveDrawing | DrawingGroup | DrawingList;
+
+export const DRAWING_PRIMITIVE_PATH_ID = "PRIMITIVE";
 
 
 type BasePrimitiveParameters = Omit<BasePrimitiveDrawing, "drawingType">
@@ -80,11 +83,11 @@ export class DrawingUtils {
     drawingType: DrawingType.PATH, path, fill,
   })
 
-  public static groupOf = (drawings: {[columnId: string]: Drawing}, transform: CoordinateSystem): DrawingGroup => ({
+  public static groupOf = (drawings: RODictionary<Drawing>, transform: CoordinateSystem): DrawingGroup => ({
     drawingType: DrawingType.GROUP, drawings, transform,
   })
 
-  public static listOf = (drawings: Drawing[]): DrawingList => ({
+  public static listOf = (drawings: ROArray<Drawing>): DrawingList => ({
     drawingType: DrawingType.LIST, drawings,
   })
 

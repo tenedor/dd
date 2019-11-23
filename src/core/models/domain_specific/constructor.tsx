@@ -1,18 +1,20 @@
 import * as _ from 'lodash';
 
 import {ResolutionTimeTypeHelper} from '@language/ast';
+import {FormulaEnvironment} from '@language/formula_environment';
 import {buildNamespace, ValueNamespace} from '@language/name_resolver';
 import {RelativeValueReference} from '@language/reference';
 import {Identifier, PartialRowType, RowType, Type, TypeUtils} from '@language/types';
 import {ValueResolver} from '@language/value_resolver';
 import {PartialRowValue, RowValue, Value, ValueUtils} from '@language/values';
-import {ROArray} from '@utils/types';
+import {ROArray, RODictionary} from '@utils/types';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
 import {Constant} from '../core/constant';
 import {Model, ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
 import {SimpleUpdateManager, UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {ArrayUpdateType, ConstructorUpdateType, GridColumnUpdateType} from '../core/update_types';
+import {Drawing} from './drawing';
 import {GridColumns} from './grid';
 import {GridColumnUpdateDescriptor} from './grid_column';
 import {Row, RowUpdateDescriptor} from './row';
@@ -40,6 +42,8 @@ export type Constructor<R extends Type = Type, I extends Identifier = Identifier
 export interface ConstructorData<I extends Identifier = Identifier> {
   columns: GridColumns,
   defaultValues: Row,
+  environment: FormulaEnvironment,
+  getPrimitiveDrawing?: (cells: RODictionary<Value>) => Drawing,
   gridId: I,
   getName: () => string,
   namespace: ValueNamespace,
@@ -51,6 +55,8 @@ export class GridConstructor<I extends Identifier = Identifier>
     extends Mutable<ConstructorUpdateDescriptor> implements BaseConstructor<RowType<I>, I> {
   private readonly columns: GridColumns;
   private readonly defaultValues: Row;
+  private readonly environment: FormulaEnvironment;
+  private readonly getPrimitiveDrawing?: (cells: RODictionary<Value>) => Drawing;
   private readonly gridId: I;
   private readonly getName: () => string;
   public readonly isConstructorLiteral = true;
@@ -60,12 +66,14 @@ export class GridConstructor<I extends Identifier = Identifier>
 
   constructor(
     updateManager: UpdateManager,
-    {columns, defaultValues, gridId, getName, namespace}: ConstructorData<I>,
+    {columns, defaultValues, environment, getPrimitiveDrawing, gridId, getName, namespace}: ConstructorData<I>,
     modelType: ModelType = ModelType.CONSTRUCTOR,
   ) {
     super(updateManager, modelType);
     this.columns = columns;
     this.defaultValues = defaultValues;
+    this.environment = environment;
+    this.getPrimitiveDrawing = getPrimitiveDrawing;
     this.gridId = gridId;
     this.getName = getName;
     this.namespace = namespace;
@@ -81,12 +89,14 @@ export class GridConstructor<I extends Identifier = Identifier>
   }
 
   public eval = (valueResolver: ValueResolver, asmts: PartialRowValue<I>): RowValue<I> => {
-    const {columns, defaultValues, gridId} = this;
+    const {columns, defaultValues, environment, getPrimitiveDrawing, gridId} = this;
     const updateManager = new SimpleUpdateManager();
     const manualValues = _.extend({}, asmts.dict);
     const row = new Row(updateManager, {
       columns,
       defaultValues,
+      environment,
+      getPrimitiveDrawing,
       gridId,
       manualValues,
     });

@@ -50,6 +50,7 @@ export type CellUpdateType = (typeof CellUpdateType)[keyof typeof CellUpdateType
 
 export const RowUpdateType = {
   CELLS_UPDATED: "CELLS_UPDATED" as "CELLS_UPDATED",
+  DRAWING_UPDATED: "DRAWING_UPDATED" as "DRAWING_UPDATED",
 };
 export type RowUpdateType = (typeof RowUpdateType)[keyof typeof RowUpdateType];
 

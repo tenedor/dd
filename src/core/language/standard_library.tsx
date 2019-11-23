@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 
 import {loadBuiltInGrids} from '@core/built_in_grids';
-import {OLD_getDrawing, OLD_hasNonEmptyDrawing, OLD_makeDrawingGroupValue} from '@core/drawing_grid_utilities';
-import {CoordinateSystem} from '@core/geometry';
+import {getCoordinateSystemData, OLD_getDrawing, OLD_hasNonEmptyDrawing,
+        OLD_makeDrawingGroupValue} from '@core/drawing_grid_utilities';
 import {UpdateManager} from '@models/core/update_manager';
 import {BuiltInEval, BuiltInFormula, BuiltInFormulaSpec, Parameter}
         from '@models/domain_specific/constructor';
@@ -470,8 +470,9 @@ const formulaDefs: {[name: string]: FormulaGenerator} = {
       Values: values,
     }: {'Coordinate System': ListValue, Values: ListValue}): OLD_DrawingValue => {
       const drawings = values.list.filter(OLD_hasNonEmptyDrawing).map(OLD_getDrawing);
+      const environment = formulaEnvironmentReference.get();
       const coordinateSystem = coordinateSystemList.list.length ?
-        getCoordinateSystemData(coordinateSystemList.list[0] as RowValue) :
+        getCoordinateSystemData(coordinateSystemList.list[0] as RowValue, environment) :
         undefined;
       return OLD_makeDrawingGroupValue(drawings, coordinateSystem);
     },
@@ -505,27 +506,3 @@ const formulaEnvironmentReference = (() => {
     get: () => env,
   };
 })();
-
-const getCoordinateSystemData = (rowValue: RowValue): CoordinateSystem => {
-  const environment = formulaEnvironmentReference.get();
-  const centerValue = project(rowValue, 'Center', environment) as RowValue;
-  const xValue = project(centerValue, 'X', environment) as NumberValue;
-  const yValue = project(centerValue, 'Y', environment) as NumberValue;
-  const scaleValue = project(rowValue, 'Scale', environment) as NumberValue;
-  const rotationValue = project(rowValue, 'Rotation', environment) as RowValue;
-  const ccwValue = project(rotationValue, 'Rotation CCW', environment) as NumberValue;
-  const x = xValue.value;
-  const y = yValue.value;
-  const center = {x, y}
-  const scale = scaleValue.value;
-  const ccw = ccwValue.value;
-  const rotation = {ccw};
-  return {center, scale, rotation};
-}
-
-const project = (rowValue: RowValue, columnName: string, environment: FormulaEnvironment): Value => {
-  const grid = environment.getGridById(rowValue.type.schemaId.gridId);
-  const ns = grid.namespace;
-  const columnId = ns.getReferenceForName(columnName)!.id;
-  return rowValue.dict[columnId];
-}

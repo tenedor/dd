@@ -1,10 +1,12 @@
 import * as _ from 'lodash';
 
 import {OLD_Drawing, OLD_DrawingVariant, OLD_isEmptyDrawing} from '@language/drawing_value';
-import {ListValue, OLD_DrawingValue, RowValue, Value, ValueUtils} from '@language/values';
+import {FormulaEnvironment} from '@language/formula_environment';
+import {Identifier, Type, TypeUtils} from '@language/types';
+import {ListValue, NumberValue, OLD_DrawingValue, RowValue, Value, ValueUtils}
+        from '@language/values';
 import {assertUnreachable} from '@utils/utils';
 import {CoordinateSystem, defaultCoordinateSystem} from './geometry';
-import {Identifier, Type, TypeUtils} from './language/types';
 
 const drawingColumnName = "DRAWING_GROUP";
 export const coordinateSystemColumnName = "Transform";
@@ -70,4 +72,27 @@ export const OLD_makeDrawingGroup = (drawings: OLD_Drawing[], coordinateSystem?:
 
 export const OLD_makeDrawingGroupValue = (drawings: OLD_Drawing[], coordinateSystem?: CoordinateSystem): OLD_DrawingValue => { // tslint:disable-line
   return ValueUtils.OLD_drawingOf(OLD_makeDrawingGroup(drawings, coordinateSystem));
+}
+
+export const getCoordinateSystemData = (csValue: RowValue, environment: FormulaEnvironment): CoordinateSystem => {
+  const centerValue = project(csValue, 'Center', environment) as RowValue;
+  const xValue = project(centerValue, 'X', environment) as NumberValue;
+  const yValue = project(centerValue, 'Y', environment) as NumberValue;
+  const scaleValue = project(csValue, 'Scale', environment) as NumberValue;
+  const rotationValue = project(csValue, 'Rotation', environment) as RowValue;
+  const ccwValue = project(rotationValue, 'Rotation CCW', environment) as NumberValue;
+  const x = xValue.value;
+  const y = yValue.value;
+  const center = {x, y}
+  const scale = scaleValue.value;
+  const ccw = ccwValue.value;
+  const rotation = {ccw};
+  return {center, scale, rotation};
+}
+
+const project = (rowValue: RowValue, columnName: string, environment: FormulaEnvironment): Value => {
+  const grid = environment.getGridById(rowValue.type.schemaId.gridId);
+  const ns = grid.namespace;
+  const columnId = ns.getReferenceForName(columnName)!.id;
+  return rowValue.dict[columnId];
 }

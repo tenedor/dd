@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 
+import {Drawing} from '@models/domain_specific/drawing'; // only a type dependency
 import {Row} from '@models/domain_specific/row'; // only a type dependency
 import {RODictionary} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
@@ -53,6 +54,7 @@ export interface RowValue<I extends Identifier = Identifier>
   extends BaseValue<RowType<I>>, PartialRowValue<I> {
   type: RowType<I>,
   dict: RODictionary<Value>,
+  drawing: Drawing,
 }
 
 export interface GridValue<I extends Identifier = Identifier>
@@ -141,8 +143,7 @@ export class ValueUtils {
   }
 
   public static rowOf = <I extends Identifier> (row: Row<I>, id: I): RowValue<I> => {
-    const cellValues = _.mapValues(row.cells.d, c => c.value);
-    return {dict: cellValues, type: TypeUtils.RowOf(id)};
+    return {dict: row.getCellValues(), drawing: row.getDrawing(), type: TypeUtils.RowOf(id)};
   }
 
   public static gridOf = (): never => {
