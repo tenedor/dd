@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {CoordinateSystem, defaultCoordinateSystem} from '@core/geometry';
+import {CoordinateSystem, GeometryUtils} from '@core/geometry';
 import {Drawing, DRAWING_PRIMITIVE_PATH_ID, DrawingUtils} from '@drawing/drawing';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {Identifier, TypeUtils} from '@language/types';
@@ -181,7 +181,9 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
 
   private getCoordinateSystem = (): CoordinateSystem => {
     const coords = this.getCoordinateSystemValue();
-    return coords ? getCoordinateSystemFromValue(coords, this.environment) : defaultCoordinateSystem;
+    return coords ?
+      getCoordinateSystemFromValue(coords, this.environment) :
+      GeometryUtils.defaultCoordinateSystem;
   }
 
   public getCellValues = (): RODictionary<Value> => {

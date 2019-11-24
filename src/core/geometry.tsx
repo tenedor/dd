@@ -1,68 +1,19 @@
-// Scalar
-// ------
-
 export type Scalar = number;
-
-export const defaultScalar: Scalar = 100;
-
-export function isScalar(value: any): value is Scalar {
-  return typeof value === "number";
-}
-
-
-// Rotation
-// --------
 
 export interface Rotation {
   readonly ccw: number; // fraction of a full counterclockwise rotation
 }
-
-export const defaultRotation: Rotation = {ccw: 0};
-
-export function isRotation(value: any): value is Rotation {
-  return value && typeof value.ccw === "number";
-}
-
-export function rotationFromFraction(fractionalRotation: number, clockwise = false): Rotation {
-  return {ccw: (clockwise ? -1 : 1) * fractionalRotation};
-}
-
-export function rotationFromDegrees(degrees: number, clockwise = false): Rotation {
-  return {ccw: (clockwise ? -1 : 1) * degrees / 360};
-}
-
-export function rotationFromRadians(radians: number, clockwise = false): Rotation {
-  return {ccw: (clockwise ? -1 : 1) * radians / (2 * Math.PI)};
-}
-
-
-// Vector
-// ------
 
 export interface Vector {
   readonly x: Scalar;
   readonly y: Scalar;
 }
 
-const defaultVector: Vector = {x: 0, y: 0};
-
-export function isVector(value: any): value is Vector {
-  return value && isScalar(value.x) && isScalar(value.y);
-}
-
-export function vectorFromCartesianCoordinates(x: Scalar, y: Scalar): Vector {
-  return {x, y};
-};
-
 // The rotational reference direction is straight to the right.
-export function vectorFromPolarCoordinates(scalar: Scalar, rotationFromRight: Rotation): Vector {
-  const angle = 2 * Math.PI * rotationFromRight.ccw;
-  return {x: scalar * Math.cos(angle), y: scalar * Math.sin(angle)};
-};
-
-
-// Coordinate System
-// -----------------
+export interface PolarVector {
+  readonly scalar: Scalar;
+  readonly rotationFromRight: Rotation;
+}
 
 export interface CoordinateSystem {
   center: Vector,
@@ -70,8 +21,54 @@ export interface CoordinateSystem {
   rotation: Rotation,
 }
 
-export const defaultCoordinateSystem: CoordinateSystem = {
-  center: defaultVector,
-  scale: defaultScalar,
-  rotation: defaultRotation,
-};
+
+export class GeometryUtils {
+
+  // ==============
+  // Default Values
+  // ==============
+
+  public static readonly defaultScalar: Scalar = 100;
+  public static readonly defaultRotation: Rotation = {ccw: 0};
+  public static readonly defaultVector: Vector = {x: 0, y: 0};
+
+  public static readonly defaultCoordinateSystem: CoordinateSystem = {
+    center: GeometryUtils.defaultVector,
+    scale: GeometryUtils.defaultScalar,
+    rotation: GeometryUtils.defaultRotation,
+  };
+
+
+  // ============
+  // Constructors
+  // ============
+
+  public static rotationOf = (ccw: number): Rotation => ({ccw})
+  public static vectorOf = (x: Scalar, y: Scalar): Vector => ({x, y})
+  public static polarVectorOf = (scalar: Scalar, rotationFromRight: Rotation): PolarVector => ({scalar, rotationFromRight})
+
+  public static vectorFromPolarVector = (pv: PolarVector): Vector => {
+    const angle = 2 * Math.PI * pv.rotationFromRight.ccw;
+    const x = pv.scalar * Math.cos(angle);
+    const y = pv.scalar * Math.sin(angle);
+    return {x, y};
+  }
+
+  public static polarVectorFromVector = (v: Vector): PolarVector => {
+    const scalar = Math.sqrt(v.x * v.x + v.y * v.y);
+    const rotationFromRight = {ccw: Math.atan2(v.y, v.x) / (2 * Math.PI)};
+    return {scalar, rotationFromRight};
+  }
+
+
+  // ===========
+  // Type Guards
+  // ===========
+
+  public static isScalar = (value: any): value is Scalar => typeof value === "number"
+  public static isRotation = (value: any): value is Rotation => value && typeof value.ccw === "number"
+  public static isVector = (value: any): value is Vector =>
+      value && GeometryUtils.isScalar(value.x) && GeometryUtils.isScalar(value.y)
+  public static isPolarVector = (value: any): value is PolarVector =>
+      value && GeometryUtils.isScalar(value.scalar) && GeometryUtils.isRotation(value.rotationFromRight)
+}
