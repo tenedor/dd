@@ -80,7 +80,7 @@ export function unescape(str: string, escapeChar: string): string {
   const regExpStr = escapeChar === '\\' ? '\\\\' : escapeChar;
   // This one gets fun...
   // 1. First, remove any escape character not followed by another escape character.
-  //    Note that (?!pattern) is a negative lookahead on pattern.
+  //    Note that (?!pattern) is a negative look-ahead on pattern.
   // 2. Then replace all double escape characters with a single escape character.
   const x = str.replace(RegExp(`${regExpStr}(?!${regExpStr})`, 'g'), '');
   return x.replace(RegExp(`${regExpStr}${regExpStr}`, 'g'), escapeChar);
@@ -89,6 +89,53 @@ export function unescape(str: string, escapeChar: string): string {
 export function escapeAndQuote(str: string, quoteChar: string): string {
   const escapedStr = escape(str, '\\', [quoteChar]);
   return `${quoteChar}${escapedStr}${quoteChar}`;
+}
+
+export function splitEscapedString(str: string, splitChar: string, escapeChar: string): string[] {
+  // This one also gets fun. Must distinguish a split char from an escaped split char,
+  // but can't locally tell if a character is escaped (requires determining if there are
+  // an odd number of escape chars in front of it). To solve this:
+  // 1. Post-escape all double-escapes with a new escape char to make the problem local
+  // 2. Split on each split char that is not escaped
+  //    Note that (?<!pattern) is a negative look-behind on pattern
+  // 3. Unescape the new escape char out of results
+
+  // Choose new escape char to not clash with existing special characters. Also skip
+  // backslash because it's annoying to work with.
+  const dec = getDynamicEscapeChar([splitChar, escapeChar, '\\']);
+
+  // Continue in helper to aid testing.
+  return splitEscapedStringHelper(str, splitChar, escapeChar, dec);
+}
+
+// Visible for testing only
+export function splitEscapedStringHelper(str: string, splitChar: string, escapeChar: string, dec: string): string[] {
+  assert(dec !== splitChar, `Split char and dec cannot be the same. Both are: ${dec}`);
+  assert(dec !== escapeChar, `Escape char and dec cannot be the same. Both are: ${dec}`);
+  assert(dec !== '\\', "Backslash is not allowed for dec, it's annoying to work with.");
+
+  const reSplitChar = splitChar === '\\' ? '\\\\' : splitChar;
+  const reEscapeChar = escapeChar === '\\' ? '\\\\' : escapeChar;
+  const decEscaped = str
+    .replace(RegExp(dec, 'g'), `${dec}${dec}`)
+    .replace(RegExp(`${reEscapeChar}${reEscapeChar}`, 'g'), `${escapeChar}${escapeChar}${dec}`);
+  const splits = decEscaped.split(RegExp(`(?<!${reEscapeChar})${reSplitChar}`, 'g'));
+
+  return splits.map(s => s
+    .replace(RegExp(`${escapeChar}${escapeChar}${dec}`, 'g'), `${escapeChar}${escapeChar}`)
+    .replace(RegExp(`${dec}${dec}`, 'g'), dec));
+}
+
+function getDynamicEscapeChar(disallowed: string[]): string {
+  // Search printable ASCII characters for one that isn't disallowed.
+  // Make it likely that an unusual character is chosen by searching in reverse.
+  for (let i = 126; i >= 32; i--) {
+    const s = String.fromCharCode(i);
+    if (!disallowed.includes(s)) {
+      return s;
+    }
+  }
+  throw new Error("Every printable ASCII character was disallowed.");
 }
 
 export function capitalizeFirstLetter(s: string): string {

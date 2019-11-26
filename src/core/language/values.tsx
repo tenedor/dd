@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {Drawing} from '@drawing/drawing'; // only a type dependency
+import {Drawing, DrawingGroup} from '@drawing/drawing'; // only a type dependency
 import {Row} from '@models/domain_specific/row'; // only a type dependency
 import {RODictionary} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
@@ -49,7 +49,7 @@ export interface RowValue<I extends Identifier = Identifier>
   extends BaseValue<RowType<I>>, PartialRowValue<I> {
   type: RowType<I>,
   dict: RODictionary<Value>,
-  drawing: Drawing,
+  drawing: DrawingGroup,
 }
 
 export interface GridValue<I extends Identifier = Identifier>

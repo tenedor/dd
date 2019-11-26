@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 
+import {GeometryUtils} from '@core/geometry';
 import {Drawing, DrawingUtils} from '@drawing/drawing';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver} from '@language/name_resolver';
@@ -15,7 +16,8 @@ import {Grid} from '@models/domain_specific/grid';
 import {GridColumn} from '@models/domain_specific/grid_column';
 import {Row} from '@models/domain_specific/row';
 import {RODictionary} from '@utils/types';
-import {COORDINATE_SYSTEM_GRID_NAME} from './geometry_utils';
+import {COORDINATE_SYSTEM_CENTER_COLUMN_ID, COORDINATE_SYSTEM_GRID_NAME}
+        from './geometry_utils';
 
 // Draw a regular n-pointed star with density m and the specified side length.
 // See https://en.wikipedia.org/wiki/Regular_polygon#Regular_star_polygons.
@@ -252,16 +254,17 @@ function addCoordinateSystemGrid(
   environment: FormulaEnvironment,
 ) {
   const name = COORDINATE_SYSTEM_GRID_NAME;
+  const centerColumnId = COORDINATE_SYSTEM_CENTER_COLUMN_ID;
   const vectorType = getTypeForInstanceOf(environment, "Vector");
   const rotationType = getTypeForInstanceOf(environment, "Rotation");
   const columns = generateColumns(updateManager, [
-    {name: 'Center', type: vectorType},
+    {name: 'Center', type: vectorType, id: centerColumnId},
     {name: 'Scale', type: TypeUtils.Number}, // TODO generalize to Scalar(Number, Units)
     {name: 'Rotation', type: rotationType}, // TODO generalize to Orientation(Rotation, Reflection)
   ]);
   const gridColumnsData: GridColumnData[] = [
     {column: columns.Center},
-    {column: columns.Scale, defaultValue: ValueUtils.numberOf(100)},
+    {column: columns.Scale, defaultValue: ValueUtils.numberOf(GeometryUtils.defaultScalar)},
     {column: columns.Rotation},
   ];
   const disableCoordinateSystemColumn = true;

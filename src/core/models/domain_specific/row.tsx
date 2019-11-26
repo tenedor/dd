@@ -1,13 +1,16 @@
 import * as _ from 'lodash';
 
-import {CoordinateSystem, GeometryUtils} from '@core/geometry';
-import {Drawing, DRAWING_PRIMITIVE_PATH_ID, DrawingUtils} from '@drawing/drawing';
+import {CoordinateSystem, GeometryUtils, Vector} from '@core/geometry';
+import {Address, AddressUtils} from '@drawing/address';
+import {Affordance, AffordanceUtils} from '@drawing/affordance';
+import {Drawing, DRAWING_PRIMITIVE_PATH_ID, DrawingGroup, DrawingUtils}
+        from '@drawing/drawing';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {Identifier, TypeUtils} from '@language/types';
 import {ListValue, RowValue, Value, ValueOrAST, ValueUtils} from '@language/values';
-import {COORDINATE_SYSTEM_COLUMN_ID, getCoordinateSystemFromValue}
-        from '@standard_library/geometry_utils';
-import {Dictionary, RODictionary} from '@utils/types';
+import {COORDINATE_SYSTEM_CENTER_COLUMN_ID, COORDINATE_SYSTEM_COLUMN_ID,
+        getCoordinateSystemFromValue} from '@standard_library/geometry_utils';
+import {Dictionary, ROArray, RODictionary} from '@utils/types';
 import {keysDiff} from '@utils/utils';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
 import {DictionaryUpdateDescriptor as DictionaryUD, FunctionalDictionaryM}
@@ -58,7 +61,7 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
   private readonly defaultValues?: Row;
   private readonly getPrimitiveDrawingIfAny: (cells: RODictionary<Value>) => Drawing | undefined;
   public readonly cells: Cells;
-  private drawing: Drawing;
+  private drawing: DrawingGroup;
 
   constructor(updateManager: UpdateManager, {
     columns, defaultValues, environment, gridId, manualValues, getPrimitiveDrawing,
@@ -153,25 +156,45 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
 
   private updateDrawing = (): void => {
     const drawingColumns = Object.values(this.columns.d).filter(c => TypeUtils.isRow(TypeUtils.getBaseType(c.type)));
+    const ancestry = new Address([]);
     const drawings: {[pathId: string]: Drawing} = {};
+    let affordances: ROArray<Affordance> = [];
     drawingColumns.forEach(c => {
-      drawings[c.columnId] = Row.makeDrawing(this.cells.get(c.columnId)!.value as ValueWithRows);
+      const value = this.cells.get(c.columnId)!.value as ValueWithRows;
+      const d = Row.getDrawingAndAffordances(value, ancestry.addGroup(c.columnId));
+      drawings[c.columnId] = d.drawing;
+      affordances = affordances.concat(d.affordances);
     });
     const primitiveDrawing = this.getPrimitiveDrawingIfAny(this.getCellValues());
     if (primitiveDrawing !== undefined) {
       drawings[DRAWING_PRIMITIVE_PATH_ID] = primitiveDrawing;
     }
     const transform: CoordinateSystem = this.getCoordinateSystem();
-    this.drawing = DrawingUtils.groupOf({drawings, transform});
+    this.drawing = DrawingUtils.groupOf({drawings, transform, affordances});
   }
 
-  private static makeDrawing = (valueWithRows: ValueWithRows): Drawing => {
+  private static getWrappingAffordances = (drawing: DrawingGroup, ancestry: Address): Affordance[] => {
+    if (DrawingUtils.isEmpty(drawing)) {
+      return [];
+    }
+    const addr = ancestry
+      .addGroup(COORDINATE_SYSTEM_COLUMN_ID)
+      .addGroup(COORDINATE_SYSTEM_CENTER_COLUMN_ID);
+    const centerDragPoint = AffordanceUtils.dragPointOf(addr, drawing.transform.center, "center");
+    return [centerDragPoint];
+  }
+
+  private static getDrawingAndAffordances = (valueWithRows: ValueWithRows, ancestry: Address):
+      {drawing: Drawing, affordances: Affordance[]} => {
     if (ValueUtils.isRow(valueWithRows)) {
-      return valueWithRows.drawing;
+      const {drawing} = valueWithRows;
+      return {drawing, affordances: Row.getWrappingAffordances(drawing, ancestry)};
     }
     const nestedValues = valueWithRows.list as ValueWithRows[];
-    const nestedDrawings = nestedValues.map(Row.makeDrawing);
-    return DrawingUtils.listOf(nestedDrawings);
+    const nesteds = nestedValues.map((v, i) => Row.getDrawingAndAffordances(v, ancestry.addList(i)));
+    const nestedDrawings = nesteds.map(d => d.drawing);
+    const affordances = _.flatMap(nesteds, d => d.affordances);
+    return {drawing: DrawingUtils.listOf(nestedDrawings), affordances};
   }
 
   private getCoordinateSystemValue = (): RowValue | undefined => {
@@ -190,8 +213,24 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
     return _.mapValues(this.cells.d, c => c.value);
   }
 
-  public getDrawing = (): Drawing => {
+  public getDrawing = (): DrawingGroup => {
     return this.drawing;
+  }
+
+  public writeToAddress = (value: Vector, editor: Address, target: Address) => {
+    // TODO: the editor address should always specify a cell. This hack is a holdover
+    // until getViableEditorsForAddress is implemented.
+    if (editor.isEmpty()) {
+      const [cellNode, relativeTarget] = target.unwrapNode();
+      this.writeToAddress(value, new Address([cellNode]), relativeTarget);
+      return;
+    }
+
+    const [node, address] = editor.unwrapNode();
+    if (!AddressUtils.isGroup(node)) {
+      throw new Error("Row-level address node should always specify a cell.");
+    }
+    this.cells.d[node.id].writeToAddress(value, address, target);
   }
 
   public asValue = (): RowValue<I> => {

@@ -2,6 +2,8 @@ import * as _ from 'lodash';
 
 import {CoordinateSystem, Scalar} from '@core/geometry';
 import {ROArray, RODictionary} from '@utils/types';
+import {assertUnreachable} from '@utils/utils';
+import {Affordance} from './affordance';
 
 // for now, use these stand-in types
 type Color = string;
@@ -42,9 +44,10 @@ interface Path extends BasePrimitiveDrawing<DrawingType.PATH> {
   readonly path: SVGPathString,
 }
 
-interface DrawingGroup extends BaseDrawing<DrawingType.GROUP> {
+export interface DrawingGroup extends BaseDrawing<DrawingType.GROUP> {
   readonly drawings: RODictionary<Drawing>,
   readonly transform: CoordinateSystem,
+  readonly affordances: ROArray<Affordance>,
 }
 
 interface DrawingList extends BaseDrawing<DrawingType.LIST> {
@@ -77,8 +80,10 @@ export class DrawingUtils {
     drawingType: DrawingType.PATH, path, fill,
   })
 
-  public static groupOf = ({drawings, transform}: {drawings: RODictionary<Drawing>, transform: CoordinateSystem}): DrawingGroup => ({
-    drawingType: DrawingType.GROUP, drawings, transform,
+  public static groupOf = ({drawings, transform, affordances}: {
+    drawings: RODictionary<Drawing>, transform: CoordinateSystem, affordances: ROArray<Affordance>,
+  }): DrawingGroup => ({
+    drawingType: DrawingType.GROUP, drawings, transform, affordances,
   })
 
   public static listOf = (drawings: ROArray<Drawing>): DrawingList => ({
@@ -90,8 +95,25 @@ export class DrawingUtils {
   // Type Guards
   // ===========
 
-  public static isPrimitive = (v: Drawing): v is PrimitiveDrawing =>
-      !DrawingUtils.isGroup(v) && !DrawingUtils.isList(v)
-  public static isGroup = (v: Drawing): v is DrawingGroup => v.drawingType === DrawingType.GROUP
-  public static isList = (v: Drawing): v is DrawingList => v.drawingType === DrawingType.LIST
+  public static isPrimitive = (d: Drawing): d is PrimitiveDrawing =>
+      !DrawingUtils.isGroup(d) && !DrawingUtils.isList(d)
+  public static isGroup = (d: Drawing): d is DrawingGroup => d.drawingType === DrawingType.GROUP
+  public static isList = (d: Drawing): d is DrawingList => d.drawingType === DrawingType.LIST
+
+
+  // =========
+  // Utilities
+  // =========
+
+  public static isEmpty = (d: Drawing): boolean => {
+    if (DrawingUtils.isPrimitive(d)) {
+      return false;
+    } else if (DrawingUtils.isGroup(d)) {
+      return d.affordances.length === 0 && _.every(d.drawings, dd => DrawingUtils.isEmpty(dd));
+    } else if (DrawingUtils.isList(d)) {
+      return _.every(d.drawings, dd => DrawingUtils.isEmpty(dd));
+    } else {
+      return assertUnreachable(d);
+    }
+  }
 }

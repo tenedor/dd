@@ -83,4 +83,20 @@ export class UnaryOpUtils {
         return assertUnreachable(op);
     }
   }
+
+
+  // =========
+  // Utilities
+  // =========
+
+    public static isAllowedInLiterals = (op: UnaryOp): boolean => {
+      switch (op) {
+        case UnaryOpBB.NOT:
+          return false;
+        case UnaryOpTT.NEGATE:
+          return true;
+        default:
+          return assertUnreachable(op);
+      }
+    }
 }

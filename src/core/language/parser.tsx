@@ -29,6 +29,8 @@ export type ValueParseResult = SuccessfulParseResult | ParseFailure;
 export type ExpressionParseResult = SuccessfulExpressionParseResult | ParseFailure;
 
 export class Parser {
+  private static PARSEABLE_NUMBER_REGEX = /^-?\d+(.\d+)?$/;
+
   private static initialized = false;
   private static _grammar: Namespace;
   private static formulaGrammar: Grammar;
@@ -110,12 +112,29 @@ export class Parser {
     return Parser.formulaGrammar.match(ident, 'unquotedIdent').succeeded();
   }
 
-  public static identToText(ident: string): string {
+  public static identToText = (ident: string): string => {
     return Parser.isValidUnquotedIdent(ident) ? ident : escapeAndQuote(ident, "'");
   }
 
-  public static stringToText(str: string): string {
+  public static stringToText = (str: string): string => {
     return escapeAndQuote(str, '"');
+  }
+
+  public static sanitizeJSNumberForParsing = (n: number): string => {
+    if (Parser.PARSEABLE_NUMBER_REGEX.test(`${n}`)) {
+      return `${n}`;
+
+    // Small numbers are represented with e notation. `toFixed` accepts values up to 20.
+    } else if (Parser.PARSEABLE_NUMBER_REGEX.test(n.toFixed(20))) {
+      return n.toFixed(20);
+    // Unclear if very small values might make it this far, but if so round them to 0.
+    } else if (-1 < n && n < 1) {
+      return "0";
+
+    // This includes NaN, +/-Infinity, and numbers with magnitude larger than about 1e20.
+    } else {
+      throw new Error(`Cannot sanitize ${n}.`);
+    }
   }
 
   public static setGrammarForTests = (source: string) => {

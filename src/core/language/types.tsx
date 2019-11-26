@@ -135,11 +135,11 @@ export class TypeUtils {
   // Type Guards
   // ===========
 
-  public static isPartialRowIdentifier= (id: SchemaIdentifier): id is RowIdentifier =>
+  public static isPartialRowIdentifier = (id: SchemaIdentifier): id is RowIdentifier =>
       id.identifierType === SchemaIdentifierType.PARTIAL_ROW || TypeUtils.isRowIdentifier(id)
-  public static isRowIdentifier= (id: SchemaIdentifier): id is RowIdentifier =>
+  public static isRowIdentifier = (id: SchemaIdentifier): id is RowIdentifier =>
       id.identifierType === SchemaIdentifierType.ROW
-  public static isGridIdentifier= (id: SchemaIdentifier): id is GridIdentifier =>
+  public static isGridIdentifier = (id: SchemaIdentifier): id is GridIdentifier =>
       id.identifierType === SchemaIdentifierType.GRID
   public static isNumber = (t: Type): t is PrimitiveType.NUMBER => t === PrimitiveType.NUMBER
   public static isBoolean = (t: Type): t is PrimitiveType.BOOLEAN => t === PrimitiveType.BOOLEAN

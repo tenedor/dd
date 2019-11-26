@@ -1,4 +1,5 @@
-import {assert, classNames, escape, escapeAndQuote, unescape} from '../utils';
+import {assert, capitalizeFirstLetter, classNames, escape, escapeAndQuote,
+        splitEscapedStringHelper, unescape} from '../utils';
 
 it('assert', () => {
   expect(() => assert(true)).not.toThrow();
@@ -17,6 +18,19 @@ it('unescape', () => {
 
 it('escapeAndQuote', () => {
   expect(escapeAndQuote("ab\\c'd''e", "'")).toBe("'ab\\\\c\\'d\\'\\'e'");
+});
+
+it('splitEscapedString', () => {
+  expect(splitEscapedStringHelper("a/b c/ d/e/f", "/", "!", "~"))
+      .toEqual(["a", "b c", " d", "e", "f"]);
+  expect(splitEscapedStringHelper("a!/b c/! d!!!!/e!!!/f", "/", "!", "~"))
+      .toEqual(["a!/b c", "! d!!!!", "e!!!/f"]);
+  expect(splitEscapedStringHelper("a~!/b c~/! d~!!!!/~~e!!!~/f", "/", "!", "~"))
+      .toEqual(["a~!/b c~", "! d~!!!!", "~~e!!!~", "f"]);
+});
+
+it('capitalizeFirstLetter', () => {
+  expect(capitalizeFirstLetter("alPHa beta. gamma.")).toBe("AlPHa beta. gamma.");
 });
 
 it('classNames', () => {

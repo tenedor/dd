@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 
-import {CoordinateSystem} from '@core/geometry';
+import {CoordinateSystem, GeometryUtils, Vector} from '@core/geometry';
+import {Address, AddressUtils} from '@drawing/address';
 import {CallRes, ResolvedAST, ResolvedASTUtils} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {TypeError} from '@language/language_errors';
@@ -167,23 +168,36 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     }
   }
 
-  public setCoordinates = (coordinates: CoordinateSystem) => {
-    assert(TypeUtils.isRow(this.column.type), "Cannot move a non-shape value.");
+  public writeToAddress = (value: Vector, editor: Address, target: Address) => {
+    assert(TypeUtils.isRow(TypeUtils.getBaseType(this.column.type)), "Cannot move a non-shape value.");
     assert(!this.isCalculated(), "Cannot move a calculated value.");
+
+    if (!editor.isEmpty()) {
+      throw new Error("Moving shapes inside lists or other shapes is not yet supported.");
+    }
+    assert(TypeUtils.isRow(this.column.type), "Cell-level address does not match cell type.");
+
     /*
     const currentAsmts = currentValue.getAssignments().getAssignments();
     const currentCoords = currentAsmts[COORDINATE_SYSTEM_COLUMN_ID] as CallRes<RowType> | undefined;
     */
+    const coordinates = GeometryUtils.coordinateSystemOf(value, GeometryUtils.defaultScalar, GeometryUtils.defaultRotation);
+    this.setCoordinates(coordinates);
+  }
+
+  private setCoordinates = (coordinates: CoordinateSystem) => {
     const ast = Cell.makeCoordinatesAST(coordinates, this.column.nameResolver);
     const asmtUpdates = {[COORDINATE_SYSTEM_COLUMN_ID]: ast};
-    const currentValue = this.manualValue as CallRes<T>;
+    const currentValue = this.getManualValueOrDefault() as CallRes<T>;
     const newValue = currentValue.withAssignments(asmtUpdates);
     this.setManualValue(newValue);
   }
 
   private static makeCoordinatesAST = (coordinates: CoordinateSystem, resolver: NameResolver): ResolvedAST<RowType> => {
     const {x, y} = coordinates.center;
-    const parsed = Parser.parseLiteral(`'Coordinate System'(Center=Vector(X=${x},Y=${y}))`, TypeUtils.RowOf("any"));
+    const xx = Parser.sanitizeJSNumberForParsing(x);
+    const yy = Parser.sanitizeJSNumberForParsing(y);
+    const parsed = Parser.parseLiteral(`'Coordinate System'(Center=Vector(X=${xx},Y=${yy}))`, TypeUtils.RowOf("any"));
     if (parsed.succeeded) {
       return parsed.ast.resolve(resolver) as ResolvedAST<RowType>;
     }

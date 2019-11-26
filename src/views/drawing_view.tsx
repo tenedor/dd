@@ -1,25 +1,20 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
-import {CoordinateSystem} from '@core/geometry';
-import {Drawing, DrawingType} from '@drawing/drawing';
+import {CoordinateSystem, Displacement, GeometryUtils, Position, Vector} from '@core/geometry';
+import {Address, AddressNode, AddressUtils} from '@drawing/address';
+import {AffordanceUtils, WrappedAffordance, WrappedAffordanceId} from '@drawing/affordance';
+import {Drawing, DrawingType, DrawingUtils} from '@drawing/drawing';
 import {Grid} from '@models/domain_specific/grid';
-import {ROArray} from '@utils/types';
+import {Dictionary, ROArray} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
 import {DragListener} from './mouse_move_manager';
 import {UIGlobals} from './ui_globals';
 
-interface XYCoordinate {
-  readonly x: number,
-  readonly y: number,
-}
-
-type Target = XYCoordinate;
-
 interface DragTargetData {
-  index: number,
-  preDragState: Target,
+  affordance: WrappedAffordance,
+  initialPosition: Position,
 }
 
 interface Props extends BaseProps {
@@ -29,7 +24,7 @@ interface Props extends BaseProps {
 }
 
 interface State {
-  fakeTargets: ROArray<Target>,
+  dragUpdate?: {idString: string, position: Position},
 }
 
 export class DrawingView extends BaseComponent<Props, State> {
@@ -40,63 +35,89 @@ export class DrawingView extends BaseComponent<Props, State> {
   constructor(props: Props) {
     super(props);
 
+    this.state = {};
+
     this.dragListener = {
       onDragMove: this.onDrag,
       onDragRelease: this.onDragEnd,
       onDragCancel: this.onDragEnd,
     };
-
-    const fakeTargets = _.range(4).map(i => ({x: i * 30 - 100, y: i * i * 10 - 100}));
-    this.state = {fakeTargets};
   }
 
   public render = (): JSX.Element => {
     const {grids, size} = this.props;
-    const drawings = DrawingView.getDrawings(grids);
-    const renderedDrawings = DrawingView.renderDrawings(drawings);
-    const fakeTargets = this.renderFakeTargets();
+    const {drawing, affordances} = DrawingView.getDrawingAndAffordances(grids);
+    const renderedDrawing = DrawingView.renderDrawing(drawing, 0);
+    const renderedAffordances = this.renderAffordances(affordances);
 
     return (
       <div className="drawing-view" style={{height: size, width: size}}>
         <svg ref={r => this.ref = r || undefined} viewBox={"-100 -100 200 200"}
             style={{backgroundColor: "#888888"}}>
-          {renderedDrawings}
-          {fakeTargets}
+          {renderedDrawing}
+          {renderedAffordances}
         </svg>
       </div>
     );
   }
 
-  private static renderDrawings = (drawings: ROArray<Drawing>): JSX.Element[] => {
-    return drawings.map((d, i) => {
-      switch (d.drawingType) {
+  private static renderDrawing = (drawing: Drawing, i: number): JSX.Element => {
+      switch (drawing.drawingType) {
         case DrawingType.CIRCLE:
-          return <circle key={`d-${i}`} r={d.radius} fill={d.fill} />;
+          return <circle key={`d-${i}`} r={drawing.radius} fill={drawing.fill} />;
         case DrawingType.ELLIPSE:
-          return <ellipse key={`d-${i}`} rx={d.radius1} ry={d.radius2} fill={d.fill} />;
+          return <ellipse key={`d-${i}`} rx={drawing.radius1} ry={drawing.radius2} fill={drawing.fill} />;
         case DrawingType.PATH:
-          return <path key={`d-${i}`} d={d.path} fill={d.fill} />;
+          return <path key={`d-${i}`} d={drawing.path} fill={drawing.fill} />;
         case DrawingType.GROUP:
-          const transform = DrawingView.getTransformForCoordinateSystem(d.transform);
+          const transform = DrawingView.getTransformForCoordinateSystem(drawing.transform);
           return (
             <g key={`d-${i}`} transform={transform}>
-              {DrawingView.renderDrawings(Object.values(d.drawings))}
+              {Object.values(drawing.drawings).map(DrawingView.renderDrawing)}
             </g>
           );
         case DrawingType.LIST:
           return (
             <g key={`d-${i}`}>
-              {DrawingView.renderDrawings(d.drawings)}
+              {drawing.drawings.map(DrawingView.renderDrawing)}
             </g>
           );
         default:
-          return assertUnreachable(d);
+          return assertUnreachable(drawing);
       }
+  }
+
+  private renderAffordances = (affordances: ROArray<WrappedAffordance>): JSX.Element[] => {
+    const {dragUpdate} = this.state;
+    return affordances.map(wa => {
+      const {transform, affordance} = wa;
+      const id = WrappedAffordanceId.buildFromAffordance(wa);
+      const idString = id.encodeAsString();
+      const pos = GeometryUtils.applyCoordinateTransformToPoint(transform, affordance.initialPosition);
+      const {x, y} = dragUpdate && (dragUpdate.idString === idString) ? dragUpdate.position : pos;
+      return <circle key={`a-${idString}`} className={"drag-target"} r={3} cx={x} cy={y}
+          onMouseDown={this.onMousedownTarget} data-id={idString} />;
     });
   }
 
-  public static getDrawings = (grids: ROArray<Grid>): Drawing[] => {
-    return _.flatten(grids.map(g => g.rows.a.map(r => r.getDrawing())));
+  private static getDrawingAndAffordances = (grids: ROArray<Grid>): {
+    drawing: Drawing, affordances: ROArray<WrappedAffordance>,
+  } => {
+    const drawing = DrawingView.getDrawings(grids);
+    const affordances = AffordanceUtils.extractTransformedAffordances(drawing);
+    return {drawing, affordances};
+  }
+
+  private static getDrawings = (grids: ROArray<Grid>): Drawing => {
+    const drawings: Dictionary<Drawing> = {};
+    grids.forEach(g => drawings[g.id] = g.getDrawing());
+    const transform = GeometryUtils.defaultCoordinateSystem;
+    return DrawingUtils.groupOf({drawings, transform, affordances: []});
+  }
+
+  private static getAffordance = (id: WrappedAffordanceId, grids: ROArray<Grid>): WrappedAffordance | undefined => {
+    const {affordances} = DrawingView.getDrawingAndAffordances(grids);
+    return affordances.find(a => WrappedAffordanceId.buildFromAffordance(a).equals(id));
   }
 
   private static getTransformForCoordinateSystem = ({center, scale, rotation}: CoordinateSystem): string => {
@@ -105,7 +126,7 @@ export class DrawingView extends BaseComponent<Props, State> {
     return `translate(${x} ${y}) rotate(${-ccw * 360}) scale(${scale / 100})`;
   }
 
-  private convertMouseVectorToDataVector = (mouseVector: XYCoordinate): XYCoordinate => {
+  private convertMouseVectorToDataVector = (mouseVector: Displacement): Displacement => {
     if (this.ref === undefined) {
       throw new Error("Expected SVG ref to be defined.");
     }
@@ -115,45 +136,80 @@ export class DrawingView extends BaseComponent<Props, State> {
     return {x, y};
   }
 
-  private renderFakeTargets = (): JSX.Element[] => {
-    const {fakeTargets} = this.state;
-    return fakeTargets.map((t, i) => <circle key={`drag-target-${i}`} className={"drag-target"}
-      onMouseDown={this.onMousedownTarget} data-index={i} r={3} cx={t.x} cy={t.y} />);
-  }
-
   private onMousedownTarget = (e: React.MouseEvent) => {
-    const index = parseInt(e.currentTarget.getAttribute("data-index")!, 10);
-    if (isNaN(index)) {
-      throw new Error("Invalid data index on mousedown target.");
-    }
-    this.setDragListener(index);
+    const id = WrappedAffordanceId.parseFromString(e.currentTarget.getAttribute("data-id")!);
+    const x = parseFloat(e.currentTarget.getAttribute("cx")!);
+    const y = parseFloat(e.currentTarget.getAttribute("cy")!);
+    this.setDragListener(id, {x, y});
   }
 
-  private setDragListener = (index: number) => {
-    const preDragState = this.state.fakeTargets[index];
-    this.dragTargetData = {index, preDragState};
+  private setDragListener = (id: WrappedAffordanceId, initialPosition: Position) => {
+    const {grids} = this.props;
+    const affordance = DrawingView.getAffordance(id, grids);
+    if (affordance === undefined) {
+      throw new Error(`Unrecognized affordance id: ${id.encodeAsString()}`);
+    }
+    this.dragTargetData = {affordance, initialPosition};
     this.props.uiGlobals.mouseMoveManager.setDragListener(this.dragListener);
+    const idString = id.encodeAsString();
+    this.setState({dragUpdate: {idString, position: initialPosition}});
   }
 
   private clearDragListener = () => {
     this.dragTargetData = undefined;
     this.props.uiGlobals.mouseMoveManager.clearDragListener(this.dragListener);
+    this.setState({dragUpdate: undefined});
   }
 
   private onDrag = (mousemove: MouseEvent, originMousedown: MouseEvent) => {
-    const {fakeTargets} = this.state;
-    if (!this.dragTargetData) {
-      throw new Error("Expected drag target data to be set.");
+    const {dragUpdate} = this.state;
+    if (!this.dragTargetData || !dragUpdate) {
+      throw new Error("Expected drag target data and drag update state to be set.");
     }
-    const {index, preDragState} = this.dragTargetData;
+    const {idString} = dragUpdate;
+    const {initialPosition, affordance} = this.dragTargetData;
     const dxMouse = mousemove.x - originMousedown.x;
     const dyMouse = mousemove.y - originMousedown.y;
-    const {x: dxData, y: dyData} = this.convertMouseVectorToDataVector({x: dxMouse, y: dyMouse});
-    const x = preDragState.x + dxData;
-    const y = preDragState.y + dyData;
-    const updatedTargets = fakeTargets.slice(0);
-    updatedTargets[index] = {x, y};
-    this.setState({fakeTargets: updatedTargets});
+    const delta = this.convertMouseVectorToDataVector({x: dxMouse, y: dyMouse});
+    const x = initialPosition.x + delta.x;
+    const y = initialPosition.y + delta.y;
+    const position = {x, y};
+    this.setState({dragUpdate: {idString, position}});
+    this.writeNewPositionToModel(position, affordance);
+  }
+
+  private writeNewPositionToModel = (positionInDrawingBasis: Position, affordance: WrappedAffordance) => {
+    const {transform} = affordance;
+    const inverseTransform = GeometryUtils.invertCoordinateTransform(transform);
+    const positionInValueBasis = GeometryUtils.applyCoordinateTransformToPoint(
+      inverseTransform, positionInDrawingBasis);
+    const {editor, target} = this.getValueEditorAndTarget(affordance);
+    this.writeToAddress(positionInValueBasis, editor, target);
+  }
+
+  private getValueEditorAndTarget = ({affordance, ancestry}: WrappedAffordance): {editor: Address, target: Address} => {
+    // FIXME - An affordance should be able to write to any instance in the hierarchy
+    // that could override the current value. Will therefore need to disambiguate.
+    // For now this is simply wrong, and the error is patched downstream.
+    return {editor: ancestry, target: affordance.relativeAddr};
+  }
+
+  private writeToAddress = (value: Vector, editor: Address, target: Address) => {
+    const [node, address] = editor.unwrapNode();
+    const grid = this.getMatchingGrid(node);
+    grid.writeToAddress(value, address, target);
+  }
+
+  private getMatchingGrid = (topLevelNode: AddressNode): Grid => {
+    const {grids} = this.props;
+    if (!AddressUtils.isGroup(topLevelNode)) {
+      throw new Error("Top-level address node should always specify a grid.");
+    }
+    const grid = grids.find(g => g.id === topLevelNode.id);
+    if (grid === undefined) {
+      throw new Error("Top-level address node should always specify a grid.");
+    }
+    return grid;
   }
 
   private onDragEnd = () => {

@@ -325,12 +325,15 @@ export class UnaryOpUnres extends UnaryOpAST<UnresolvedAST> implements Unresolve
 export class UnaryOpRes<R extends Type = Type> extends UnaryOpAST<ResolvedAST<R>> implements ResolvedAST<R, ASTNodeType.UNARY_OP> {
   public readonly type: R;
   public readonly externalDependencies: ROArray<Reference>;
-  public readonly isLiteral = false;
 
   constructor(op: UnaryOp, e: ResolvedAST<R>, type: R) {
     super(op, e);
     this.type = type;
     this.externalDependencies = e.externalDependencies;
+  }
+
+  public get isLiteral(): boolean {
+    return UnaryOpUtils.isAllowedInLiterals(this.op);
   }
 
   public eval = (valueResolver: ValueResolver): Value<R> => {

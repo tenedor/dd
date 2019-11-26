@@ -11,6 +11,7 @@ import {Column} from '@models/domain_specific/column';
 export const coordinateSystemColumnName = "Transform";
 export const COORDINATE_SYSTEM_GRID_NAME = 'Coordinate System';
 // This id should match the UID pattern for columns
+export const COORDINATE_SYSTEM_CENTER_COLUMN_ID = `${ModelType.COLUMN}-_COORDINATE_CENTER_`;
 export const COORDINATE_SYSTEM_COLUMN_ID = `${ModelType.COLUMN}-_COORDINATE_SYSTEM_`;
 
 let coordinateSystemColumn: Column | undefined;

@@ -1,6 +1,8 @@
 import * as _ from 'lodash';
 
-import {Drawing} from '@drawing/drawing';
+import {Vector} from '@core/geometry';
+import {Address, AddressUtils} from '@drawing/address';
+import {Drawing, DrawingUtils} from '@drawing/drawing';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver, ValueNamespace} from '@language/name_resolver';
 import {RelativeValueReference} from '@language/reference';
@@ -178,6 +180,18 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
 
   public get defaultValues(): Row {
     return this.rows.get(0)!;
+  }
+
+  public getDrawing = (): Drawing => {
+    return DrawingUtils.listOf(this.rows.a.map(r => r.getDrawing()));
+  }
+
+  public writeToAddress = (value: Vector, editor: Address, target: Address) => {
+    const [node, address] = editor.unwrapNode();
+    if (!AddressUtils.isList(node)) {
+      throw new Error("Grid-level address node should always specify a row.");
+    }
+    this.rows.a[node.index].writeToAddress(value, address, target);
   }
 
   public isOrExtends = (grid: Grid): boolean => {
