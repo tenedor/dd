@@ -33,7 +33,7 @@ export class GeometryUtils {
   // Default Values
   // ==============
 
-  public static readonly defaultScalar: Scalar = 100;
+  public static readonly defaultScalar: Scalar = 1;
   public static readonly defaultRotation: Rotation = {ccw: 0};
   public static readonly defaultVector: Vector = {x: 0, y: 0};
 
@@ -86,7 +86,7 @@ export class GeometryUtils {
   // =================
 
   public static multiplyScalars = (s1: Scalar, s2: Scalar): Scalar => {
-    return s1 * s2 / 100;
+    return s1 * s2;
   }
 
   public static addRotations = (r1: Rotation, r2: Rotation): Rotation => {
@@ -98,7 +98,7 @@ export class GeometryUtils {
   }
 
   public static scaleVector = (s: Scalar, v: Vector): Vector => {
-    return {x: s / 100 * v.x, y: s / 100 * v.y};
+    return {x: s * v.x, y: s * v.y};
   }
 
   public static rotateVector = (r: Rotation, v: Vector): Vector => {
@@ -142,7 +142,7 @@ export class GeometryUtils {
     // Its inverse is therefore:
     //   g_{T, d}(v) = U * (v - d) = U * v - U * d = f_{U, -U * d}  where U = T^-1
     assert(cs.scale !== 0, "Cannot invert a degenerate coordinate system.");
-    const scale = 100 * 100 / cs.scale;
+    const scale = 1 / cs.scale;
     const rotation = {ccw: -1 * cs.rotation.ccw};
     const uMatrix = {center: {x: 0, y: 0}, scale: -scale, rotation};
     const center = GeometryUtils.applyCoordinateTransformToDelta(uMatrix, cs.center);

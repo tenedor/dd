@@ -123,7 +123,7 @@ export class DrawingView extends BaseComponent<Props, State> {
   private static getTransformForCoordinateSystem = ({center, scale, rotation}: CoordinateSystem): string => {
     const {x, y} = center;
     const {ccw} = rotation;
-    return `translate(${x} ${y}) rotate(${-ccw * 360}) scale(${scale / 100})`;
+    return `translate(${x} ${y}) rotate(${-ccw * 360}) scale(${scale})`;
   }
 
   private convertMouseVectorToDataVector = (mouseVector: Displacement): Displacement => {
