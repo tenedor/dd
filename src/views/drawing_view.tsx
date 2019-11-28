@@ -6,6 +6,7 @@ import {Address, AddressNode, AddressUtils} from '@drawing/address';
 import {AffordanceUtils, WrappedAffordance, WrappedAffordanceId} from '@drawing/affordance';
 import {Drawing, DrawingType, DrawingUtils} from '@drawing/drawing';
 import {Grid} from '@models/domain_specific/grid';
+import {KeyCode} from '@utils/keycode';
 import {Dictionary, ROArray} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
@@ -40,7 +41,8 @@ export class DrawingView extends BaseComponent<Props, State> {
     this.dragListener = {
       onDragMove: this.onDrag,
       onDragRelease: this.onDragEnd,
-      onDragCancel: this.onDragEnd,
+      onDragCancel: this.onDragCancel,
+      onMouseupNeverDragged: this.onMouseupNeverDragged,
     };
   }
 
@@ -51,7 +53,8 @@ export class DrawingView extends BaseComponent<Props, State> {
     const renderedAffordances = this.renderAffordances(affordances);
 
     return (
-      <div className="drawing-view" style={{height: size, width: size}}>
+      <div className="drawing-view" style={{height: size, width: size}} tabIndex={0}
+          onKeyDown={this.onKeyDown}>
         <svg ref={r => this.ref = r || undefined} viewBox={"-100 -100 200 200"}
             style={{backgroundColor: "#888888"}}>
           {renderedDrawing}
@@ -96,7 +99,7 @@ export class DrawingView extends BaseComponent<Props, State> {
       const pos = GeometryUtils.applyCoordinateTransformToPoint(transform, affordance.initialPosition);
       const {x, y} = dragUpdate && (dragUpdate.idString === idString) ? dragUpdate.position : pos;
       return <circle key={`a-${idString}`} className={"drag-target"} r={3} cx={x} cy={y}
-          onMouseDown={this.onMousedownTarget} data-id={idString} />;
+          onMouseDown={this.onMouseDownTarget} data-id={idString} />;
     });
   }
 
@@ -136,7 +139,19 @@ export class DrawingView extends BaseComponent<Props, State> {
     return {x, y};
   }
 
-  private onMousedownTarget = (e: React.MouseEvent) => {
+  private onKeyDown = (e: React.KeyboardEvent) => {
+    const {mouseMoveManager} = this.props.uiGlobals;
+    const {keyCode} = e;
+
+    switch (keyCode) {
+      case KeyCode.ESCAPE:
+        if (this.isListeningToDrag()) {
+          mouseMoveManager.clearDragIfAny();
+        }
+    }
+  }
+
+  private onMouseDownTarget = (e: React.MouseEvent) => {
     const id = WrappedAffordanceId.parseFromString(e.currentTarget.getAttribute("data-id")!);
     const x = parseFloat(e.currentTarget.getAttribute("cx")!);
     const y = parseFloat(e.currentTarget.getAttribute("cy")!);
@@ -144,21 +159,26 @@ export class DrawingView extends BaseComponent<Props, State> {
   }
 
   private setDragListener = (id: WrappedAffordanceId, initialPosition: Position) => {
-    const {grids} = this.props;
+    const {grids, uiGlobals} = this.props;
     const affordance = DrawingView.getAffordance(id, grids);
     if (affordance === undefined) {
       throw new Error(`Unrecognized affordance id: ${id.encodeAsString()}`);
     }
     this.dragTargetData = {affordance, initialPosition};
-    this.props.uiGlobals.mouseMoveManager.setDragListener(this.dragListener);
+    uiGlobals.mouseMoveManager.setDragListener(this.dragListener);
     const idString = id.encodeAsString();
     this.setState({dragUpdate: {idString, position: initialPosition}});
   }
 
   private clearDragListener = () => {
+    const {mouseMoveManager} = this.props.uiGlobals;
     this.dragTargetData = undefined;
-    this.props.uiGlobals.mouseMoveManager.clearDragListener(this.dragListener);
+    mouseMoveManager.clearDragListener(this.dragListener);
     this.setState({dragUpdate: undefined});
+  }
+
+  private isListeningToDrag = (): boolean => {
+    return this.dragTargetData !== undefined;
   }
 
   private onDrag = (mousemove: MouseEvent, originMousedown: MouseEvent) => {
@@ -178,6 +198,23 @@ export class DrawingView extends BaseComponent<Props, State> {
     this.writeNewPositionToModel(position, affordance);
   }
 
+  private onDragEnd = () => {
+    this.clearDragListener();
+  }
+
+  private onDragCancel = () => {
+    if (!this.dragTargetData) {
+      throw new Error("Expected drag target data to be set.");
+    }
+    const {affordance} = this.dragTargetData;
+    this.resetModelPosition(affordance);
+    this.clearDragListener();
+  }
+
+  private onMouseupNeverDragged = () => {
+    this.clearDragListener();
+  }
+
   private writeNewPositionToModel = (positionInDrawingBasis: Position, affordance: WrappedAffordance) => {
     const {transform} = affordance;
     const inverseTransform = GeometryUtils.invertCoordinateTransform(transform);
@@ -185,6 +222,12 @@ export class DrawingView extends BaseComponent<Props, State> {
       inverseTransform, positionInDrawingBasis);
     const {editor, target} = this.getValueEditorAndTarget(affordance);
     this.writeToAddress(positionInValueBasis, editor, target);
+  }
+
+  private resetModelPosition = (affordance: WrappedAffordance) => {
+    const {initialPosition} = affordance.affordance;
+    const {editor, target} = this.getValueEditorAndTarget(affordance);
+    this.writeToAddress(initialPosition, editor, target);
   }
 
   private getValueEditorAndTarget = ({affordance, ancestry}: WrappedAffordance): {editor: Address, target: Address} => {
@@ -210,9 +253,5 @@ export class DrawingView extends BaseComponent<Props, State> {
       throw new Error("Top-level address node should always specify a grid.");
     }
     return grid;
-  }
-
-  private onDragEnd = () => {
-    this.clearDragListener();
   }
 }

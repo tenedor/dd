@@ -8,6 +8,7 @@ export interface DragListener {
   onDragMove?: (mousemove: MouseEvent, originMousedown: MouseEvent) => void,
   onDragRelease?: (mouseup: MouseEvent) => void,
   onDragCancel?: () => void,
+  onMouseupNeverDragged?: (mouseup: MouseEvent) => void,
 }
 
 export class MouseMoveManager {
@@ -75,7 +76,12 @@ export class MouseMoveManager {
 
   private onMouseup = (e: MouseEvent) => {
     this.mouseIsDown = false;
-    this.releaseDragIfAny(e);
+    if (this.dragState && this.dragState.isDragging) {
+      this.onDragRelease(e);
+    } else {
+      this.onMouseupNeverDragged(e);
+    }
+    this.stopWatchingDragEvents();
   }
 
   private onMousemove = (e: MouseEvent) => {
@@ -90,14 +96,7 @@ export class MouseMoveManager {
     this.onDragMove(e, this.dragState.dragOrigin);
   }
 
-  private releaseDragIfAny = (mouseup: MouseEvent) => {
-    if (this.dragState && this.dragState.isDragging) {
-      this.onDragRelease(mouseup);
-    }
-    this.stopWatchingDragEvents();
-  }
-
-  private clearDragIfAny = () => {
+  public clearDragIfAny = () => {
     if (this.dragState && this.dragState.isDragging) {
       this.onDragCancel();
     }
@@ -152,6 +151,12 @@ export class MouseMoveManager {
     const {onDragCancel} = this.dragListener;
     if (onDragCancel) {
       onDragCancel();
+    }
+  }
+
+  private onMouseupNeverDragged = (mouseup: MouseEvent) => {
+    if (this.dragListener && this.dragListener.onMouseupNeverDragged) {
+      this.dragListener.onMouseupNeverDragged(mouseup);
     }
   }
 }
