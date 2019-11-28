@@ -49,7 +49,7 @@ export class DrawingView extends BaseComponent<Props, State> {
   public render = (): JSX.Element => {
     const {grids, size} = this.props;
     const {drawing, affordances} = DrawingView.getDrawingAndAffordances(grids);
-    const renderedDrawing = DrawingView.renderDrawing(drawing, 0);
+    const renderedDrawing = DrawingView.renderDrawing(drawing, 'root');
     const renderedAffordances = this.renderAffordances(affordances);
 
     return (
@@ -57,32 +57,36 @@ export class DrawingView extends BaseComponent<Props, State> {
           onKeyDown={this.onKeyDown}>
         <svg ref={r => this.ref = r || undefined} viewBox={"-100 -100 200 200"}
             style={{backgroundColor: "#888888"}}>
-          {renderedDrawing}
-          {renderedAffordances}
+          <g key="drawings" className="drawings">
+            {renderedDrawing}
+          </g>
+          <g key="affordances" className="affordances">
+            {renderedAffordances}
+          </g>
         </svg>
       </div>
     );
   }
 
-  private static renderDrawing = (drawing: Drawing, i: number): JSX.Element => {
+  private static renderDrawing = (drawing: Drawing, key: string): JSX.Element => {
       switch (drawing.drawingType) {
         case DrawingType.CIRCLE:
-          return <circle key={`d-${i}`} r={drawing.radius} fill={drawing.fill} />;
+          return <circle key={key} r={drawing.radius} fill={drawing.fill} />;
         case DrawingType.ELLIPSE:
-          return <ellipse key={`d-${i}`} rx={drawing.radius1} ry={drawing.radius2} fill={drawing.fill} />;
+          return <ellipse key={key} rx={drawing.radius1} ry={drawing.radius2} fill={drawing.fill} />;
         case DrawingType.PATH:
-          return <path key={`d-${i}`} d={drawing.path} fill={drawing.fill} />;
+          return <path key={key} d={drawing.path} fill={drawing.fill} />;
         case DrawingType.GROUP:
           const transform = DrawingView.getTransformForCoordinateSystem(drawing.transform);
           return (
-            <g key={`d-${i}`} transform={transform}>
-              {Object.values(drawing.drawings).map(DrawingView.renderDrawing)}
+            <g key={key} transform={transform}>
+              {Object.keys(drawing.drawings).sort().map(k => DrawingView.renderDrawing(drawing.drawings[k], `g:${k}`))}
             </g>
           );
         case DrawingType.LIST:
           return (
-            <g key={`d-${i}`}>
-              {drawing.drawings.map(DrawingView.renderDrawing)}
+            <g key={key}>
+              {drawing.drawings.map((d, i) => DrawingView.renderDrawing(d, `l:${i}`))}
             </g>
           );
         default:
