@@ -1,4 +1,4 @@
-import {assert, generateUID} from '@utils/utils';
+import {assert, generateSessionUID} from '@utils/utils';
 import {ModelType} from './model';
 import {DependencyGraphPartitionIndex, DependencyNode, DependencySetUpdateDescriptor,
         DependencySetUpdateListener, DependencyUpdateListener, UpdateDescriptor,
@@ -20,7 +20,7 @@ export class Mutable<D extends UpdateDescriptor = UpdateDescriptor> implements D
   // the model type must be overridden by passing it as a constructor parameter.
   // By contract Mutable must initialize the id.
   constructor(updateManager: UpdateManager, modelType: ModelType = ModelType.MODEL, id?: string) {
-    this.id = id || generateUID(modelType);
+    this.id = id || generateSessionUID(modelType);
     this.updateManager = updateManager;
     this.epoch = updateManager.epoch;
   }

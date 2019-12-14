@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {generateUID} from '@utils/utils';
+import {generateSessionUID} from '@utils/utils';
 import {ModelType} from './model';
 import {DependencyGraphPartitionIndex, DependencyNode, UpdateDescriptor}
         from './update_manager';
@@ -13,7 +13,7 @@ export class Constant<D extends UpdateDescriptor = UpdateDescriptor> implements 
   public readonly dependencyUpdateListeners = new Map();
 
   constructor(uid?: string, modelType: ModelType = ModelType.CONSTANT) {
-    this.id = uid === undefined ? generateUID(modelType) : uid;
+    this.id = uid === undefined ? generateSessionUID(modelType) : uid;
   }
 
   public listenForUpdate() { /* do nothing */ }

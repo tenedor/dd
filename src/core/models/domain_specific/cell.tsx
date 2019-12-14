@@ -151,8 +151,8 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     if (value !== undefined) {
       assert(!isAST(value) || value.isLiteral, "Manual values must be literals.");
       assert(TypeUtils.isAssignableTo(value.type, type, this.environment),
-          new TypeError(`Cannot set manual value of type ${value.type} on cell of type ` +
-          `${this.environment.getNameForType(type)}.`));
+          `Cannot set manual value of type ${value.type} on cell of type ` +
+          `${this.environment.getNameForType(type)}.`, TypeError);
 
       if (isAST(value) && ResolvedASTUtils.isConstant(value)) {
         // can concretize early

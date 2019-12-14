@@ -1,10 +1,13 @@
 import * as _deepEqual from 'deep-equal';
 import * as _ from 'lodash';
 import * as shallow from 'shallow-equals';
+import {Constructor} from './types';
 
-export function assert(e: any, message?: string | Error): true {
+type ErrorConstructor = Constructor<Error, [string]>;
+
+export function assert(e: any, message: string = "", ErrorClass: ErrorConstructor = Error): true {
   if (!e) {
-    throw message instanceof Error ? message : new Error(message);
+    throw new ErrorClass(message);
   }
   return true;
 }
@@ -48,7 +51,14 @@ export function keysDiff(
   return {removedIds, addedIds};
 }
 
-export function generateUID(namespace?: string): string {
+let nextSessionUID = 0;
+export function generateSessionUID(namespace?: string): string {
+  const idString = `0000000000${nextSessionUID++}`;
+  return idString.slice(idString.length - 10, idString.length);
+}
+
+// This is relatively expensive if called for every model
+export function generateGUID(namespace?: string): string {
   // c/o https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
   const uid = (Math.random().toString(36)+'00000000000000000').slice(2, 12);
   return namespace ? `${namespace}-${uid}` : uid;

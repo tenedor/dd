@@ -85,19 +85,19 @@ export class FormulaEnvironment {
 
   public getGridByName = (gridName: string): Grid => {
     const grid = Object.values(this.allGrids).find(g => g.name === gridName);
-    assert(grid !== undefined, new ObjectResolutionError(`Unrecognized grid ${gridName}.`));
+    assert(grid !== undefined, `Unrecognized grid ${gridName}.`, ObjectResolutionError);
     return grid!;
   }
 
   public getGridForType = (gridType: GridType): Grid => {
     const grid = this.allGrids[gridType.schemaId.gridId];
-    assert(grid !== undefined, new ObjectResolutionError(`Unrecognized grid type ${TypeUtils.toString(gridType)}.`));
+    assert(grid !== undefined, `Unrecognized grid type ${TypeUtils.toString(gridType)}.`, ObjectResolutionError);
     return grid!;
   }
 
   public getGridById(gridId: Identifier) {
     const grid = this.allGrids[gridId];
-    assert(grid !== undefined, new ObjectResolutionError(`Unrecognized grid id ${gridId}.`));
+    assert(grid !== undefined, `Unrecognized grid id ${gridId}.`, ObjectResolutionError);
     return grid!;
   }
 
