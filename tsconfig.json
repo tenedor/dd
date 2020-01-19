@@ -26,6 +26,7 @@
       "@drawing/*": ["src/core/drawing/*"],
       "@language/*": ["src/core/language/*"],
       "@models/*": ["src/core/models/*"],
+      "@paths/*": ["src/core/paths/*"],
       "@standard_library/*": ["src/core/standard_library/*"],
       "@test_utils/*": ["src/test_utils/*"],
       "@utils/*": ["src/utils/*"],

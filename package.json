@@ -38,6 +38,7 @@
       "^@drawing(.*)$": "<rootDir>/src/core/drawing$1",
       "^@language(.*)$": "<rootDir>/src/core/language$1",
       "^@models(.*)$": "<rootDir>/src/core/models$1",
+      "^@paths(.*)$": "<rootDir>/src/core/paths$1",
       "^@standard_library(.*)$": "<rootDir>/src/core/standard_library$1",
       "^@test_utils(.*)$": "<rootDir>/src/test_utils$1",
       "^@utils(.*)$": "<rootDir>/src/utils$1",

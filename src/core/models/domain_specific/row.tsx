@@ -1,13 +1,13 @@
 import * as _ from 'lodash';
 
 import {CoordinateSystem, GeometryUtils, Vector} from '@core/geometry';
-import {Address, AddressUtils} from '@drawing/address';
 import {Affordance, AffordanceUtils} from '@drawing/affordance';
 import {Drawing, DRAWING_PRIMITIVE_PATH_ID, DrawingGroup, DrawingUtils}
         from '@drawing/drawing';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {Identifier, TypeUtils} from '@language/types';
 import {ListValue, RowValue, Value, ValueOrAST, ValueUtils} from '@language/values';
+import {Address, AddressUtils} from '@paths/address';
 import {COORDINATE_SYSTEM_CENTER_COLUMN_ID, COORDINATE_SYSTEM_COLUMN_ID,
         getCoordinateSystemFromValue} from '@standard_library/geometry_utils';
 import {Dictionary, ROArray, RODictionary} from '@utils/types';

@@ -2,10 +2,10 @@ import * as _ from 'lodash';
 import * as React from 'react';
 
 import {CoordinateSystem, Displacement, GeometryUtils, Position, Vector} from '@core/geometry';
-import {Address, AddressNode, AddressUtils} from '@drawing/address';
 import {AffordanceUtils, WrappedAffordance, WrappedAffordanceId} from '@drawing/affordance';
 import {Drawing, DrawingType, DrawingUtils} from '@drawing/drawing';
 import {Grid} from '@models/domain_specific/grid';
+import {Address, AddressNode, AddressUtils} from '@paths/address';
 import {KeyCode} from '@utils/keycode';
 import {Dictionary, ROArray} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';

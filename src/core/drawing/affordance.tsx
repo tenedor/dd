@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
 
 import {CoordinateSystem, GeometryUtils, Position} from '@core/geometry';
+import {Address, AddressNode, AddressUtils, EncodingChar} from '@paths/address';
 import {ROArray} from '@utils/types';
 import {assert, assertUnreachable, splitEscapedString} from '@utils/utils';
-import {Address, AddressNode, AddressUtils, EncodingChar} from './address';
 import {Drawing, DrawingUtils} from './drawing';
 
 export enum AffordanceType {
