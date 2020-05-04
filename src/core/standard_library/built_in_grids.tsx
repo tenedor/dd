@@ -177,9 +177,10 @@ function addRows(
   const rowsValues = _.range(rowCount).map(i => ({
     [columns.get(1)!.columnId]: ValueUtils.numberOf(hasParent ? 200 - i * 40 : i * 20),
     [columns.get(2)!.columnId]: ValueUtils.numberOf(i * i * 6),
-    [columns.get(3)!.columnId]: ValueUtils.numberOf((i + 1) * (i + 1) * 2),
-    [columns.get(4)!.columnId]: ValueUtils.stringOf(colors[i + (hasParent ? 2 : 0)]),
-    [columns.get(5)!.columnId]: ValueUtils.stringOf(getStarPath(5 + 2 * i, 2 + 2 * i, sideLength(i))),
+    [columns.get(3)!.columnId]: ValueUtils.numberOf(5 + 2 * i),
+    [columns.get(4)!.columnId]: ValueUtils.numberOf(2 + 2 * i),
+    [columns.get(5)!.columnId]: ValueUtils.numberOf(sideLength(i)),
+    [columns.get(6)!.columnId]: ValueUtils.stringOf(colors[i + (hasParent ? 2 : 0)]),
   }));
   setFirstRowValues(grid, rowsValues[0]);
   const laterRowsValues = rowsValues.slice(1);
@@ -621,6 +622,57 @@ function addDemoArithmeticGrid(
   setFirstRowValues(grid, manualValues);
 }
 
+function addDemoStarGrid(
+  document: Document,
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const {nameResolver} = environment;
+  const parentGrid = environment.getGridByName('Path Shape');
+  const parentColumns = getGridColumnsByName(parentGrid);
+
+  const grid = document.addGridFromGridData({name: "Star", parentGrid, environment});
+
+  const columns = generateColumns(updateManager, [
+    {name: 'Num Points', type: TypeUtils.Number},
+    {name: 'Density', type: TypeUtils.Number},
+    {name: 'Side Length', type: TypeUtils.Number},
+    {name: 'Angle', type: TypeUtils.Number},
+    {name: 'Top Point', type: TypeUtils.ListOf(TypeUtils.Number)},
+    {name: 'Initial Angle', type: TypeUtils.Number},
+    {name: 'Line Angles', type: TypeUtils.ListOf(TypeUtils.Number)},
+    {name: 'Lines', type: TypeUtils.ListOf(TypeUtils.ListOf(TypeUtils.Number))},
+    {name: 'Path Offset', type: TypeUtils.String},
+    {name: 'Path Lines', type: TypeUtils.String},
+  ]);
+  const gridColumnsData: GridColumnData[] = [
+    {column: columns['Num Points']},
+    {column: columns.Density},
+    {column: columns['Side Length']},
+    {column: columns.Angle, expressionString: "If(If = 'Num Points' == 0, Then = 0, Else = Pi() * ('Num Points' - 2 * Density) / Max(Values = ['Num Points', 1]))"},
+    {column: columns['Top Point'], expressionString: "[0, 'Side Length' * 0.5 / Cos(Radians = Angle / 2)]"},
+    {column: columns['Initial Angle'], expressionString: "(3 / 2 * Pi()) + Angle / 2"},
+    {column: columns['Line Angles'], expressionString: "Map(Values = Range(N = 'Num Points', Start = 0), Fn = i -> 'Initial Angle' + i * (Pi() + Angle))"},
+    {column: columns.Lines, expressionString: "Map(Values = 'Line Angles', Fn = angle -> ['Side Length' * Cos(Radians = angle), 'Side Length' * Sin(Radians = angle)])"},
+    {column: columns['Path Offset'], expressionString: `"m" + String(Value = 'Top Point'[1]) + " " + String(Value = -'Top Point'[2])`},
+    {column: columns['Path Lines'], expressionString: `Join(Values = Map(Values = Lines, Fn = line -> "l" + String(Value = line[1]) + " " + String(Value = -line[2])), Separator = " ")`},
+  ];
+  const childGridColumnsData: ChildGridColumnData[] = [
+      {parentGridColumn: parentColumns.Path, expressionString: `'Path Offset' + " " + 'Path Lines' + " z"`},
+  ];
+  const gridColumns = generateGridColumns(updateManager, environment, grid, gridColumnsData);
+  grid.addColumns(gridColumns);
+  setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
+  setColumnExpressions(grid, childGridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
+
+  const manualValues = {
+    [gridColumns[0].columnId]: ValueUtils.numberOf(5),
+    [gridColumns[1].columnId]: ValueUtils.numberOf(2),
+    [gridColumns[2].columnId]: ValueUtils.numberOf(10),
+  };
+  setFirstRowValues(grid, manualValues);
+}
+
 function addDemoShapeGrids(
   document: Document,
   updateManager: UpdateManager,
@@ -632,19 +684,21 @@ function addDemoShapeGrids(
   const columns = generateColumns(updateManager, [
     {name: 'X', type: TypeUtils.Number},
     {name: 'Y', type: TypeUtils.Number},
-    {name: 'Radius', type: TypeUtils.Number},
+    {name: 'Num Points', type: TypeUtils.Number},
+    {name: 'Density', type: TypeUtils.Number},
+    {name: 'Side Length', type: TypeUtils.Number},
     {name: 'Fill', type: TypeUtils.String},
-    {name: 'Path', type: TypeUtils.String},
     {name: 'Shape', type: TypeUtils.RowOf(shapeGridId)},
   ]);
 
   const grid1ColumnsData: GridColumnData[] = [
     {column: columns.X},
     {column: columns.Y},
-    {column: columns.Radius, expressionString: "'Radius Calculator'(In=X).Out"},
+    {column: columns['Num Points']},
+    {column: columns.Density},
+    {column: columns['Side Length']},
     {column: columns.Fill},
-    {column: columns.Path},
-    {column: columns.Shape, width: 150, expressionString: "'Path Shape'(Path=Path,Fill=Fill,Transform='Coordinate System'(Center=Vector(X=X-100,Y=Y-100)))"},
+    {column: columns.Shape, width: 150, expressionString: "Star('Num Points' = 'Num Points', Density = Density, 'Side Length' = 'Side Length', Fill = Fill, Transform = 'Coordinate System'(Center = Vector(X = X - 100, Y = Y - 100)))"},
   ];
   const grid1 = document.addGridFromGridData({name: "Shapes", environment});
   const grid1Columns = generateGridColumns(updateManager, environment, grid1, grid1ColumnsData);
@@ -653,10 +707,10 @@ function addDemoShapeGrids(
   addRows(updateManager, grid1, environment, false);
 
   const grid2ColumnsData: ChildGridColumnData[] = grid1Columns.map(parentGridColumn => {
-    if (parentGridColumn.columnId === columns.Shape.id) {
-      return {parentGridColumn}
+    if (parentGridColumn.columnId === columns.Density.id) {
+      return {parentGridColumn, expressionString: "('Num Points' + 1) / 2"};
     }
-    return {parentGridColumn}
+    return {parentGridColumn};
   });
   const grid2 = document.addGridFromGridData({name: "More Shapes", parentGrid: grid1, environment});
   setColumnExpressions(grid2, grid2ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid2.id)));
@@ -676,6 +730,7 @@ export function addDemoGrids(
   updateManager: UpdateManager,
   environment: FormulaEnvironment,
 ) {
-  addDemoArithmeticGrid(document, updateManager, environment);
+  // addDemoArithmeticGrid(document, updateManager, environment);
+  addDemoStarGrid(document, updateManager, environment);
   addDemoShapeGrids(document, updateManager, environment);
 }
