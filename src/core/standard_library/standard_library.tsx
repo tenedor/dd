@@ -7,8 +7,8 @@ import {ParseError, TypeError} from '@language/language_errors';
 import {Parser} from '@language/parser';
 import {BoundingType, Identifier, LambdaOfAnyType, LambdaType, ListOfAnyType, ListType,
         PrimitiveType, Type, TypeUtils} from '@language/types';
-import {LambdaValue, ListValue, PartialRowValue, PrimitiveValue, RowValue, StringValue,
-        Value, ValueUtils} from '@language/values';
+import {LambdaValue, ListValue, NumberValue, PartialRowValue, PrimitiveValue, RowValue,
+        StringValue, Value, ValueUtils} from '@language/values';
 import {UpdateManager} from '@models/core/update_manager';
 import {BuiltInEval, BuiltInFormula, BuiltInFormulaSpec, Parameter}
         from '@models/domain_specific/constructor';
@@ -325,6 +325,28 @@ const getFormulaDefs = (): {[name: string]: FormulaGenerator} => ({
   /**
    * Arithmetic Formulas
    */
+
+  Min: {
+    returnType: TypeUtils.Number,
+    parameters: {
+      Values: ParameterUtils.listOfType(TypeUtils.Number, ValueUtils.listOf([], TypeUtils.Number)),
+    },
+    eval: ({Values: values}: {Values: ListValue<PrimitiveType.NUMBER>}): number => {
+      const vs = values.list.map((v: NumberValue) => v.value);
+      return Math.min(...vs);
+    },
+  },
+
+  Max: {
+    returnType: TypeUtils.Number,
+    parameters: {
+      Values: ParameterUtils.listOfType(TypeUtils.Number, ValueUtils.listOf([], TypeUtils.Number)),
+    },
+    eval: ({Values: values}: {Values: ListValue<PrimitiveType.NUMBER>}): number => {
+      const vs = values.list.map((v: NumberValue) => v.value);
+      return Math.max(...vs);
+    },
+  },
 
   Sq: {
     returnType: TypeUtils.Number,
