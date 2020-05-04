@@ -399,7 +399,11 @@ export class IndexRes<R extends Type = Type>
     }
     const oneIndexedIndex = idxV.value;
     if (oneIndexedIndex < 1 || oneIndexedIndex > listV.list.length) {
-      throw new OutOfBoundsError(`Index ${oneIndexedIndex} is out of bounds`);
+      let zeroIndexNote = "";
+      if (oneIndexedIndex === 0) {
+        zeroIndexNote = " - list indices start at 1 (not zero!)"
+      }
+      throw new OutOfBoundsError(`Index ${oneIndexedIndex} is out of bounds${zeroIndexNote}`);
     }
     return listV.list[oneIndexedIndex - 1] as Value<R>;
   }

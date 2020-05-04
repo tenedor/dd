@@ -67,7 +67,11 @@ export class FormulaEnvironment {
   }
 
   public getNameForType = (t: Type, opts: {eraseBoundingTypes?: boolean} = {}): string => {
-    if (TypeUtils.isDict(t)) {
+    if (TypeUtils.isLambda(t)) {
+      const inType = this.getNameForType(t.inputType, opts);
+      const outType = this.getNameForType(t.outputType, opts);
+      return `${inType} -> ${outType}`;
+    } else if (TypeUtils.isDict(t)) {
       const name = this.constructorNamespace.getNameForReference(t.schemaId.gridId);
       if (name !== undefined) {
         return name;
@@ -131,7 +135,7 @@ export class FormulaEnvironment {
 
   private signatureToString = (signature: Signature): string => {
     const typeToString = (t: Type) => this.getNameForType(t, {eraseBoundingTypes: true});
-    const valueToString = (v: Value) => ValueUtils.toString(v, this.nameResolver);
+    const valueToString = (v: Value) => ValueUtils.toString(v, this.nameResolver, {quoteStrings: true});
     const params = signature.parameters.map(p => `${p.name}: ${typeToString(p.type)} = ${valueToString(p.defaultValue)}`);
     return `${signature.name}(${params.join(", ")}): ${typeToString(signature.returnType)}`;
   }
@@ -143,7 +147,7 @@ export class FormulaEnvironment {
 
   private printSignatureWithColors = (signature: Signature, short: number) => {
     const typeToString = (t: Type) => this.getNameForType(t, {eraseBoundingTypes: true});
-    const valueToString = (v: Value) => ValueUtils.toString(v, this.nameResolver);
+    const valueToString = (v: Value) => ValueUtils.toString(v, this.nameResolver, {quoteStrings: true});
     const color = (c: string) => `color: ${c};`;
     const params = signature.parameters.map(p => {
       if (short < 1) {

@@ -32,6 +32,8 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
     this.addDrawingSurface();
     this.grids.listenForUpdate(this, this.onGridsUpdated);
     this.drawingSurfaceInfos.listenForUpdate(this, this.onDrawingSurfaceInfosUpdated);
+
+    this.environment.printSignatures(0);
   }
 
   public addDemoGrids = () => {

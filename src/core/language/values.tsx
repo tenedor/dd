@@ -235,7 +235,7 @@ export class ValueUtils {
     return v;
   }
 
-  public static toString = (v: Value, resolver: NameResolver): string => {
+  public static toString = (v: Value, resolver: NameResolver, options: {quoteStrings?: boolean} = {}): string => {
     if (ValueUtils.isLambda(v)) {
       return 'fn'; // TODO
     } else if (ValueUtils.isDict(v)) {
@@ -254,7 +254,7 @@ export class ValueUtils {
       const values = v.list.map(e => ValueUtils.toString(e, resolver));
       return `[${values.join(", ")}]`;
     } else if (ValueUtils.isPrimitive(v)) {
-      return `${v.value}`;
+      return options.quoteStrings && ValueUtils.isString(v) ? `"${v.value}"` : `${v.value}`;
     } else {
       return assertUnreachable(v);
     }
