@@ -78,6 +78,16 @@ export class Parser {
     return Parser.failureOf(match.message || `Failed to parse row literal ${unparsed}`);
   }
 
+  private static parseListLiteral = (unparsed: string): ValueParseResult => {
+    Parser.ensureInitialized();
+    const match = Parser.formulaGrammar.match(unparsed, "GroupExp");
+    if (match.succeeded()) {
+      const ast = Parser.formulaSemantics(match).toAST() as ListUnres;
+      return Parser.success(ast);
+    }
+    return Parser.failureOf(match.message || `Failed to parse list literal ${unparsed}`);
+  }
+
   public static parseLiteral = (unparsed: string, type: Type): ValueParseResult => {
     if (!TypeUtils.supportsLiterals(type)) {
       return Parser.failureOf(`Literal ${type} values are not supported.`);
@@ -89,7 +99,7 @@ export class Parser {
       return Parser.parseString(unparsed);
     } else if (TypeUtils.isList(type)) {
       // for now
-      return Parser.failureOf(`Literal ${type} values are not currently supported.`);
+      return Parser.parseListLiteral(unparsed);
     } else if (TypeUtils.isRow(type)) {
       return Parser.parseRowLiteral(unparsed);
     } else {
