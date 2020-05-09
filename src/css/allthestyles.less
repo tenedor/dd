@@ -1,8 +1,11 @@
 // all blame for the monolithic stylesheet goes to my laziness to learn webpack
 
 @z-index-pop-up: 1;
+@z-index-pinned-header: 2;
+
 @text-color: black;
 @default-value-text-color: #888888;
+@document-padding: 80px;
 
 body {
   margin: 0;
@@ -22,7 +25,7 @@ body {
 
 #root {
   .text();
-  padding: 80px;
+  padding: @document-padding;
 }
 
 *:focus {
@@ -107,6 +110,33 @@ input, textarea, select, button {
     position: absolute;
     top: 0px;
     z-index: @z-index-pop-up;
+  }
+}
+
+.drawings-panel {
+  .document-spacer {
+    display: none;
+    visibility: hidden;
+  }
+
+  &.pinned {
+    margin-top: -@document-padding;
+    padding: 20px 0;
+
+    .content {
+      background: white;
+      border-bottom: 1px #ccc solid;
+      left: 0;
+      padding: 20px @document-padding;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: @z-index-pinned-header;
+    }
+
+    .document-spacer {
+      display: block;
+    }
   }
 }
 
@@ -197,6 +227,14 @@ input, textarea, select, button {
 
   &::after {
     content: '-';
+  }
+}
+
+.pin-header {
+  width: 44px;
+
+  &::after {
+    content: 'pin';
   }
 }
 

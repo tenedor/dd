@@ -4,6 +4,7 @@ import * as React from 'react';
 import {Document, DrawingSurfaceInfos} from '@models/domain_specific/document';
 import {Grid} from '@models/domain_specific/grid';
 import {ROArray} from '@utils/types';
+import {classNames} from '@utils/utils';
 import {BaseComponent, BaseProps} from './base_component';
 import {DrawingView} from './drawing_view';
 import {TableView} from './table_view';
@@ -18,6 +19,7 @@ interface Props extends BaseProps {
 
 interface State {
   drawingSurfaceSize: number,
+  pinHeader: boolean,
   showAddGridMenu?: {x: number, y: number},
 }
 
@@ -25,20 +27,40 @@ export class DocumentView extends BaseComponent<Props, State> {
   constructor(props: Props) {
     super(props);
 
-    this.state = {drawingSurfaceSize: 300};
+    this.state = {drawingSurfaceSize: 300, pinHeader: false};
   }
 
   public render = () => {
     const {document, epoch} = this.props;
     const {grids, drawingSurfaceInfos: drawingSurfacesInfo} = document;
-    const drawingSurfaces = this.renderDrawingSurfaces(epoch, drawingSurfacesInfo);
-    const addButtons = this.renderAddButtons();
+    const drawingsPanel = this.renderDrawingsPanel(epoch, drawingSurfacesInfo);
     const tables = this.renderTables(epoch, grids.a);
     return (
       <div>
-        {drawingSurfaces}
-        {addButtons}
+        {drawingsPanel}
         {tables}
+      </div>
+    );
+  }
+
+  private renderDrawingsPanel = (epoch: number, infos: DrawingSurfaceInfos) => {
+    const drawingSurfaces = this.renderDrawingSurfaces(epoch, infos);
+    const addButtons = this.renderAddButtons();
+    const dummyDrawingSurfaces = this.renderDummyDrawingSurfaces(infos.length);
+    const dummyAddButtons = this.renderAddButtons();
+    const className = classNames("drawings-panel", {
+      pinned: this.state.pinHeader,
+    });
+    return (
+      <div className={className}>
+        <div className="content">
+          {drawingSurfaces}
+          {addButtons}
+        </div>
+        <div className="document-spacer">
+          {dummyDrawingSurfaces}
+          {dummyAddButtons}
+        </div>
       </div>
     );
   }
@@ -49,6 +71,19 @@ export class DocumentView extends BaseComponent<Props, State> {
     const drawingViews = infos.a.map((info, i) => (
       <DrawingView key={`dv-${i}`} epoch={epoch} uiGlobals={uiGlobals} grids={info.a}
           size={drawingSurfaceSize} />
+    ));
+    return (
+      <div className="drawing-surfaces">
+        {drawingViews}
+      </div>
+    );
+  }
+
+  private renderDummyDrawingSurfaces = (numDrawings: number) => {
+    const {drawingSurfaceSize} = this.state;
+    const sizing = {height: drawingSurfaceSize, width: drawingSurfaceSize};
+    const drawingViews = _.range(numDrawings).map(i => (
+      <div className="drawing-view" key={`dv-${i}`} style={sizing} />
     ));
     return (
       <div className="drawing-surfaces">
@@ -68,6 +103,7 @@ export class DocumentView extends BaseComponent<Props, State> {
           <div className="add-drawing-surface click-target" onClick={this.onClickAddDrawingSurface} />
           <div className="increase-surface-size click-target" onClick={this.onClickIncreaseSurfaceSize} />
           <div className="decrease-surface-size click-target" onClick={this.onClickDecreaseSurfaceSize} />
+          <div className="pin-header click-target" onClick={this.onClickPinHeader} />
         </div>
     );
   }
@@ -152,6 +188,10 @@ export class DocumentView extends BaseComponent<Props, State> {
 
   private onClickDecreaseSurfaceSize = (e: React.MouseEvent) => {
     this.setState({drawingSurfaceSize: this.state.drawingSurfaceSize - 20});
+  }
+
+  private onClickPinHeader = (e: React.MouseEvent) => {
+    this.setState({pinHeader: !this.state.pinHeader});
   }
 
   private gridMenuIsOpen = () => {
