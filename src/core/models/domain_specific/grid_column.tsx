@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 import {ExpressionRes} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver} from '@language/name_resolver';
-import {GridType, Type} from '@language/types';
+import {Type} from '@language/types';
 import {ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
@@ -12,6 +12,7 @@ import {Column, ColumnUpdateDescriptor} from './column';
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 
 export const DEFAULT_COLUMN_WIDTH = 100;
+export const MIN_COLUMN_WIDTH = 20;
 
 interface GridColumnData<T extends Type, C extends Type, P extends Type = Type> {
   column: Column<C>;
@@ -112,6 +113,16 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
 
   public setName = (name: string) => {
     this.column.setName(name);
+  }
+
+  public setWidth = (width: number) => {
+    width = Math.max(MIN_COLUMN_WIDTH, width);
+    if (this._width === width) {
+      return;
+    }
+    this._width = width;
+    const descriptor = {type: GridColumnUpdateType.WIDTH_UPDATED};
+    this.onSelfMutated([descriptor]);
   }
 
   private onColumnUpdated = (epoch: number, updates: ColumnUpdateDescriptor[]): GridColumnUpdateDescriptor[] => {

@@ -214,7 +214,7 @@ export class TableView extends BaseComponent<Props, State> {
       const {columnId, name} = column;
       const key = `column-header-${columnId}`;
       const cellIndexString = this.stringEncodeCellIndex({columnId, rowIndex: -1});
-      return <CellView key={key} dataCellId={cellIndexString} value={name} isHeader={true} />;
+      return <CellView key={key} dataCellId={cellIndexString} value={name} isHeader={true} setWidth={column.setWidth} />;
     });
   }
 

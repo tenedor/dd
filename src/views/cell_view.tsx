@@ -7,9 +7,10 @@ interface Props {
   value: string;
   isHeader?: boolean;
   isDefaultValue?: boolean;
+  setWidth?: (delta: number) => void;
 }
 
-export function CellView({dataCellId, value, isHeader, isDefaultValue}: Props) {
+export function CellView({dataCellId, value, isHeader, isDefaultValue, setWidth}: Props) {
   const className = classNames("cell-view", {
     header: !!isHeader,
     defaultValue: !!isDefaultValue,
@@ -19,6 +20,7 @@ export function CellView({dataCellId, value, isHeader, isDefaultValue}: Props) {
       <div className="value">
         {value}
       </div>
+      {!!setWidth ? <div className="resizer"/> : []}
     </div>
   );
 }

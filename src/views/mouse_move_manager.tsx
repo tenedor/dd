@@ -4,11 +4,11 @@ interface DragState {
 }
 
 export interface DragListener {
-  onDragStart?: (mousedown: MouseEvent) => void,
+  onDragStart?: (mousedown: MouseEvent, originMousedown: MouseEvent) => void,
   onDragMove?: (mousemove: MouseEvent, originMousedown: MouseEvent) => void,
-  onDragRelease?: (mouseup: MouseEvent) => void,
-  onDragCancel?: () => void,
-  onMouseupNeverDragged?: (mouseup: MouseEvent) => void,
+  onDragRelease?: (mouseup: MouseEvent, originMousedown: MouseEvent) => void,
+  onDragCancel?: (originMousedown: MouseEvent) => void,
+  onMouseupNeverDragged?: (mouseup: MouseEvent, originMousedown: MouseEvent) => void,
 }
 
 export class MouseMoveManager {
@@ -76,10 +76,13 @@ export class MouseMoveManager {
 
   private onMouseup = (e: MouseEvent) => {
     this.mouseIsDown = false;
-    if (this.dragState && this.dragState.isDragging) {
-      this.onDragRelease(e);
-    } else {
-      this.onMouseupNeverDragged(e);
+    if (this.dragState) {
+      const {dragOrigin, isDragging} = this.dragState;
+      if (isDragging) {
+        this.onDragRelease(e, dragOrigin);
+      } else {
+        this.onMouseupNeverDragged(e, dragOrigin);
+      }
     }
     this.stopWatchingDragEvents();
   }
@@ -90,15 +93,15 @@ export class MouseMoveManager {
     }
     const {dragOrigin, isDragging} = this.dragState;
     if (!isDragging) {
-      this.onDragStart(e);
+      this.onDragStart(e, dragOrigin);
       this.dragState = {dragOrigin, isDragging: true};
     }
-    this.onDragMove(e, this.dragState.dragOrigin);
+    this.onDragMove(e, dragOrigin);
   }
 
   public clearDragIfAny = () => {
     if (this.dragState && this.dragState.isDragging) {
-      this.onDragCancel();
+      this.onDragCancel(this.dragState.dragOrigin);
     }
     this.stopWatchingDragEvents();
   }
@@ -114,13 +117,13 @@ export class MouseMoveManager {
     this.dragState = undefined;
   }
 
-  private onDragStart = (mousedown: MouseEvent) => {
+  private onDragStart = (mousedown: MouseEvent, originMousedown: MouseEvent) => {
     if (this.dragListener === undefined) {
       throw new Error("Expected drag listener to be defined");
     }
     const {onDragStart} = this.dragListener;
     if (onDragStart) {
-      onDragStart(mousedown);
+      onDragStart(mousedown, originMousedown);
     }
   }
 
@@ -134,29 +137,29 @@ export class MouseMoveManager {
     }
   }
 
-  private onDragRelease = (mouseup: MouseEvent) => {
+  private onDragRelease = (mouseup: MouseEvent, originMousedown: MouseEvent) => {
     if (this.dragListener === undefined) {
       throw new Error("Expected drag listener to be defined");
     }
     const {onDragRelease} = this.dragListener;
     if (onDragRelease) {
-      onDragRelease(mouseup);
+      onDragRelease(mouseup, originMousedown);
     }
   }
 
-  private onDragCancel = () => {
+  private onDragCancel = (originMousedown: MouseEvent) => {
     if (this.dragListener === undefined) {
       throw new Error("Expected drag listener to be defined");
     }
     const {onDragCancel} = this.dragListener;
     if (onDragCancel) {
-      onDragCancel();
+      onDragCancel(originMousedown);
     }
   }
 
-  private onMouseupNeverDragged = (mouseup: MouseEvent) => {
+  private onMouseupNeverDragged = (mouseup: MouseEvent, originMousedown: MouseEvent) => {
     if (this.dragListener && this.dragListener.onMouseupNeverDragged) {
-      this.dragListener.onMouseupNeverDragged(mouseup);
+      this.dragListener.onMouseupNeverDragged(mouseup, originMousedown);
     }
   }
 }

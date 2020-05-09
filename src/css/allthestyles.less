@@ -1,7 +1,8 @@
 // all blame for the monolithic stylesheet goes to my laziness to learn webpack
 
-@z-index-pop-up: 1;
-@z-index-pinned-header: 2;
+@z-index-column-resizer: 1;
+@z-index-pop-up: 2;
+@z-index-pinned-header: 3;
 
 @text-color: black;
 @default-value-text-color: #888888;
@@ -302,6 +303,7 @@ input, textarea, select, button {
   border: 1px solid #cccccc;
   cursor: default;
   padding: 4px 0;
+  position: relative;
 
   &.defaultValue {
     color: @default-value-text-color;
@@ -330,6 +332,16 @@ input, textarea, select, button {
      * Alternatively, consider replacing every cell-view div with a textarea...
      */
     white-space: pre-wrap;
+  }
+
+  .resizer-view {
+    cursor: col-resize;
+    height: 100%;
+    position: absolute;
+    right: -6px;
+    top: 0;
+    width: 10px;
+    z-index: @z-index-column-resizer;
   }
 }
 
