@@ -31,10 +31,10 @@ export class DocumentView extends BaseComponent<Props, State> {
   }
 
   public render = () => {
-    const {document, epoch} = this.props;
+    const {document, epoch, uiGlobals} = this.props;
     const {grids, drawingSurfaceInfos: drawingSurfacesInfo} = document;
     const drawingsPanel = this.renderDrawingsPanel(epoch, drawingSurfacesInfo);
-    const tables = this.renderTables(epoch, grids.a);
+    const tables = DocumentView.renderTables(epoch, grids.a, uiGlobals);
     return (
       <div>
         {drawingsPanel}
@@ -149,11 +149,11 @@ export class DocumentView extends BaseComponent<Props, State> {
       );
   }
 
-  private renderTables = (epoch: number, grids: ROArray<Grid>) => {
+  private static renderTables = (epoch: number, grids: ROArray<Grid>, uiGlobals: UIGlobals) => {
     return grids.map(grid =>
       <div key={`grid-${grid.id}`} className="grid">
         <TitleEditorView key='title' title={grid.name} onSetTitle={grid.setName} epoch={epoch} />
-        <TableView key={`table-${grid.id}`} epoch={epoch} grid={grid} />
+        <TableView key={`table-${grid.id}`} epoch={epoch} grid={grid} uiGlobals={uiGlobals} />
       </div>
     );
   }

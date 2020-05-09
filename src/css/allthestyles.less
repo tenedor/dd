@@ -334,7 +334,7 @@ input, textarea, select, button {
     white-space: pre-wrap;
   }
 
-  .resizer-view {
+  .resizer {
     cursor: col-resize;
     height: 100%;
     position: absolute;
@@ -379,6 +379,9 @@ input, textarea, select, button {
   }
 
   textarea {
+    // default white background should be fine, but aliasing issues during screen zoom
+    // can cause textarea to overlap the containing element's border and cover it up
+    background: transparent;
     border: none;
     cursor: default;
     height: 100%;

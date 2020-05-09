@@ -1,7 +1,8 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
-import {Type, TypeUtils} from '@language/types';
+import {MIN_COLUMN_WIDTH} from '@core/models/domain_specific/grid_column';
+import {Identifier, Type, TypeUtils} from '@language/types';
 import {Cell} from '@models/domain_specific/cell';
 import {CellIndex, Grid} from '@models/domain_specific/grid';
 import {Row} from '@models/domain_specific/row';
@@ -9,6 +10,8 @@ import {KeyCode} from '@utils/keycode';
 import {BaseComponent, BaseProps} from './base_component';
 import {CellEditorView} from './cell_editor_view';
 import {CellView} from './cell_view';
+import {ColumnHeaderView} from './column_header_view';
+import {UIGlobals} from './ui_globals';
 import {PopUpView} from './utilities/pop_up_view';
 
 interface TableIndex {
@@ -21,8 +24,14 @@ interface TableRange {
   end: TableIndex,
 }
 
+interface TableLayoutStyles {
+  gridTemplateColumns: string,
+  width: number,
+}
+
 interface Props extends BaseProps {
   grid: Grid,
+  uiGlobals: UIGlobals,
 }
 
 interface State {
@@ -32,10 +41,14 @@ interface State {
 }
 
 export class TableView extends BaseComponent<Props, State> {
+
+  private readonly tableRef: React.RefObject<HTMLDivElement>;
+
   constructor(props: Props) {
     super(props);
 
     this.state = {selectedCell: {row: 0, column: 0}, listDepthForNewColumnType: 0};
+    this.tableRef = React.createRef<HTMLDivElement>();
   }
 
   public render = () => {
@@ -43,10 +56,7 @@ export class TableView extends BaseComponent<Props, State> {
     const {selectedCell} = this.state;
 
     const columnWidths = columns.a.map(c => c.width);
-    const tableStyles = {
-      gridTemplateColumns: columnWidths.map(w => w + "px").join(" "),
-      width: columnWidths.reduce((sum, w) => sum + w, 0),
-    };
+    const tableStyles = TableView.buildTableLayoutStyles(columnWidths);
 
     const columnHeaders = this.renderColumnHeaders();
     const renderedRows = rows.a.map(this.renderRow);
@@ -55,7 +65,8 @@ export class TableView extends BaseComponent<Props, State> {
 
     return (
       <div className="table-view" tabIndex={0} onKeyDown={this.onKeyDown} onKeyUp={this.onKeyUp}>
-        <div className="table-view-content" style={tableStyles} onMouseDown={this.onMouseDown}>
+        <div className="table-view-content" style={tableStyles} onMouseDown={this.onMouseDown}
+            ref={this.tableRef}>
           {columnHeaders}
           {renderedRows}
           {cellEditor}
@@ -67,6 +78,21 @@ export class TableView extends BaseComponent<Props, State> {
         <div className="add-row" onClick={this.onClickAddRow} />
       </div>
     );
+  }
+
+  private static buildTableLayoutStyles = (columnWidths: number[]): TableLayoutStyles => {
+    return {
+      gridTemplateColumns: columnWidths.map(w => w + "px").join(" "),
+      width: columnWidths.reduce((sum, w) => sum + w, 0),
+    };
+  }
+
+  private setTableLayout = (layout: TableLayoutStyles) => {
+    const ref = this.tableRef.current;
+    if (ref !== null) {
+      ref.style.gridTemplateColumns = layout.gridTemplateColumns;
+      ref.style.width = layout.width + "px";
+    }
   }
 
   private getCellIndexFromTableIndex = (tableIndex: TableIndex): CellIndex => {
@@ -209,23 +235,44 @@ export class TableView extends BaseComponent<Props, State> {
   }
 
   private renderColumnHeaders = () => {
-    const {columns} = this.props.grid;
+    const {grid, uiGlobals} = this.props;
+    const {columns} = grid;
     return columns.a.map(column => {
       const {columnId, name} = column;
       const key = `column-header-${columnId}`;
       const cellIndexString = this.stringEncodeCellIndex({columnId, rowIndex: -1});
-      return <CellView key={key} dataCellId={cellIndexString} value={name} isHeader={true} setWidth={column.setWidth} />;
+      return <ColumnHeaderView key={key} dataCellId={cellIndexString} value={name}
+          columnId={columnId} resize={this.resizeColumn} transientResize={this.transientResizeColumn}
+          uiGlobals={uiGlobals} />;
     });
   }
 
+  private resizeColumn = (columnId: Identifier, offset: number) => {
+    const {columns} = this.props.grid;
+    const column = columns.getByKey(columnId);
+    if (column === undefined) {
+      throw new Error(`Unrecognized column id ${columnId}`);
+    }
+    column.setWidth(column.width + offset);
+  }
+
+  private transientResizeColumn = (columnId: Identifier, offset: number) => {
+    const {columns} = this.props.grid;
+    const columnWidths = columns.a.map(c =>
+      c.columnId === columnId ? Math.max(c.width + offset, MIN_COLUMN_WIDTH) : c.width);
+    const layout = TableView.buildTableLayoutStyles(columnWidths);
+    this.setTableLayout(layout);
+  }
+
   private renderRow = (row: Row, rowIndex: number) => {
-    const {grid} = this.props;
+    const {grid, uiGlobals} = this.props;
     const {cells} = row;
     return grid.columns.a.map(({columnId}) => {
       const cellIndexString = this.stringEncodeCellIndex({columnId, rowIndex});
       const displayValue = cells.d[columnId].getDisplayValue();
       const isDefaultValue = cells.d[columnId].valueIsDefault();
-      return <CellView key={cellIndexString} dataCellId={cellIndexString} value={displayValue} isDefaultValue={isDefaultValue} />;
+      return <CellView key={cellIndexString} dataCellId={cellIndexString} value={displayValue}
+          isDefaultValue={isDefaultValue} uiGlobals={uiGlobals} />;
     });
   }
 
