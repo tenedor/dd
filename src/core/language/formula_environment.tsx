@@ -122,56 +122,9 @@ export class FormulaEnvironment {
     return commonAncestor ? TypeUtils.GridOf(commonAncestor.id) : TypeUtils.ListOfAny;
   }
 
-  private getSignatures = (): Signature[] => {
+  public getSignatures = (): Signature[] => {
     const formulaSignatures = Object.values(this.builtInFormulasByGridId).map(f => f.getSignature());
     const gridSignatures = Object.values(this.grids).map(g => g.gridConstructor.getSignature());
     return formulaSignatures.concat(gridSignatures);
-  }
-
-  public getSignatureStrings = (): string[] => {
-    const signatures = this.getSignatures();
-    return signatures.map(this.signatureToString);
-  }
-
-  private signatureToString = (signature: Signature): string => {
-    const typeToString = (t: Type) => this.getNameForType(t, {eraseBoundingTypes: true});
-    const valueToString = (v: Value) => ValueUtils.toString(v, this.nameResolver, {quoteStrings: true});
-    const params = signature.parameters.map(p => `${p.name}: ${typeToString(p.type)} = ${valueToString(p.defaultValue)}`);
-    return `${signature.name}(${params.join(", ")}): ${typeToString(signature.returnType)}`;
-  }
-
-  public printSignatures = (short: number = 0) => {
-    const signatures = this.getSignatures();
-    signatures.forEach(s => this.printSignatureWithColors(s, short));
-  }
-
-  private printSignatureWithColors = (signature: Signature, short: number) => {
-    const typeToString = (t: Type) => this.getNameForType(t, {eraseBoundingTypes: true});
-    const valueToString = (v: Value) => ValueUtils.toString(v, this.nameResolver, {quoteStrings: true});
-    const color = (c: string) => `color: ${c};`;
-    const params = signature.parameters.map(p => {
-      if (short < 1) {
-        return `%c${p.name}%c = ${valueToString(p.defaultValue)}%c: ${typeToString(p.type)}`;
-      } else if (short < 2) {
-        return `%c${p.name}%c = ${valueToString(p.defaultValue)}`;
-      } else if (short < 3) {
-        return `%c${p.name}%c: ${typeToString(p.type)}`;
-      } else {
-        return `%c${p.name}`;
-      }
-    });
-
-    const paramColors = _.flatten(signature.parameters.map(p => {
-      if (short < 1) {
-        return [color("blue"), color("#666"), color("#999")];
-      } else if (short < 2) {
-        return [color("blue"), color("#999")];
-      } else if (short < 3) {
-        return [color("blue"), color("#999")];
-      } else {
-        return [color("blue")];
-      }
-    }));
-    console.log(`%c${signature.name}(${params.join(", ")}): %c${typeToString(signature.returnType)}`, color("orange"), ...paramColors, color("green"));
   }
 }

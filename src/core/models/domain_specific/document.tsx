@@ -17,7 +17,7 @@ export type DrawingSurfaceInfos = FunctionalArrayM<FunctionalArrayM<Grid, GridUp
 export interface DocumentUpdateDescriptor extends UpdateDescriptor<DocumentUpdateType> {}
 
 export class Document extends Mutable<DocumentUpdateDescriptor> {
-  private readonly environment: FormulaEnvironment;
+  public readonly environment: FormulaEnvironment;
   public readonly grids: Grids;
   public readonly drawingSurfaceInfos: DrawingSurfaceInfos;
 
@@ -32,8 +32,6 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
     this.addDrawingSurface();
     this.grids.listenForUpdate(this, this.onGridsUpdated);
     this.drawingSurfaceInfos.listenForUpdate(this, this.onDrawingSurfaceInfosUpdated);
-
-    this.environment.printSignatures(0);
   }
 
   public addDemoGrids = () => {

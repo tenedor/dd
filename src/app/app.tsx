@@ -7,11 +7,13 @@ import {SimpleUpdateManager, UpdateDescriptor} from '@models/core/update_manager
 import {AppUpdateType} from '@models/core/update_types';
 import {Document, DocumentUpdateDescriptor} from '@models/domain_specific/document';
 import {AppView} from '@views/app_view';
+import {ConsoleUI} from './console_ui';
 
 export interface AppUpdateDescriptor extends UpdateDescriptor<AppUpdateType> {}
 
 export class App extends Mutable {
-  private document: Document;
+  private readonly document: Document;
+  private readonly consoleUI: ConsoleUI;
   private appViewRef?: AppView;
 
   constructor(modelType: ModelType = ModelType.APP) {
@@ -19,6 +21,9 @@ export class App extends Mutable {
     this.document = new Document(this.updateManager);
     this.document.listenForUpdate(this, this.onDocumentUpdated);
     this.document.addDemoGrids();
+
+    this.consoleUI = new ConsoleUI(this.document, "dd");
+    (window as any).dd = this.consoleUI;
   }
 
   private onDocumentUpdated = (epoch: number, updates: DocumentUpdateDescriptor[]) => {
