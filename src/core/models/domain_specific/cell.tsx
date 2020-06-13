@@ -38,7 +38,7 @@ interface CellData<T extends Type> {
   defaultValue?: Cell<T>,
   getRowContext: () => RowContext,
   gridId: Identifier,
-  manualValue?: ValueOrAST<T>,
+  manualValue?: ValueOrAST<T>, // a manualValue implies T extends SupportsLiteralsType
 }
 
 export interface CellUpdateDescriptor extends UpdateDescriptor<CellUpdateType> {}

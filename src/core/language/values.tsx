@@ -97,7 +97,7 @@ export class ValueUtils {
     return {value, type: PrimitiveType.STRING};
   }
 
-  public static primitiveOfInferType = (value: primitiveValue): Value => {
+  public static primitiveOfInferType = (value: primitiveValue): PrimitiveValue => {
     if (typeof value === 'number') {
       return ValueUtils.numberOf(value);
     } else if (typeof value === 'boolean') {
@@ -105,7 +105,7 @@ export class ValueUtils {
     } else if (typeof value === 'string') {
       return ValueUtils.stringOf(value);
     } else {
-      throw new Error('This code should never be reached.');
+      return assertUnreachable(value);
     }
   }
 

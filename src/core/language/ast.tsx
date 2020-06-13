@@ -504,17 +504,18 @@ export class CallUnres extends CallAST<AssignmentsUnres> implements UnresolvedAS
   }
 
   public resolve = (resolver: NameResolver) => {
-    const constructorR = resolver.resolveConstructorReference(this.name);
-    const {returnType, resolutionTimeTypeHelper} = constructorR.model;
+    const constructorRef = resolver.resolveConstructorReference(this.name);
+    const constructor = constructorRef.model;
+    const {returnType, resolutionTimeTypeHelper} = constructor;
     if (resolutionTimeTypeHelper) {
       const {asmtsR, asmtTypesByName} = this.isLambdaHelper(resolutionTimeTypeHelper) ?
-        this.asmts.resolveForConstructorWithResolutionTimeTypes(resolver, constructorR, resolutionTimeTypeHelper) :
-        this.asmts.resolveForConstructor(resolver, constructorR);
+        this.asmts.resolveForConstructorWithResolutionTimeTypes(resolver, constructorRef, resolutionTimeTypeHelper) :
+        this.asmts.resolveForConstructor(resolver, constructorRef);
       const _returnType = resolutionTimeTypeHelper.resolveCallReturnType(asmtTypesByName, resolver.environment);
-      return new CallRes(constructorR, asmtsR, _returnType);
+      return new CallRes(constructor, asmtsR, _returnType);
     } else {
-      const {asmtsR} = this.asmts.resolveForConstructor(resolver, constructorR);
-      return new CallRes(constructorR, asmtsR, returnType);
+      const {asmtsR} = this.asmts.resolveForConstructor(resolver, constructorRef);
+      return new CallRes(constructor, asmtsR, returnType);
     }
   }
 
@@ -531,30 +532,31 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
     implements ResolvedAST<R, ASTNodeType.CALL> {
   public readonly type: R;
   public readonly externalDependencies: ROArray<Reference>;
-  private readonly constructorRef: ConstructorReference<R, I>;
+  private readonly _constructor: Constructor<R, I>;
 
-  constructor(constructorRef: ConstructorReference<R, I>, asmts: AssignmentsRes<I>, type: R) {
+  constructor(constructor: Constructor<R, I>, asmts: AssignmentsRes<I>, type: R) {
     super(asmts);
     this.type = type;
+    const constructorRef = ReferenceUtils.buildReferenceForConstructor(constructor);
     this.externalDependencies = asmts.externalDependencies.concat([constructorRef]);
-    this.constructorRef = constructorRef;
+    this._constructor = constructor;
   }
 
   public get constructor(): Constructor<R, I> {
-    return this.constructorRef.model;
+    return this._constructor;
   }
 
   public get isLiteral() {
-    return ReferenceUtils.isConstructorLiteral(this.constructorRef) && this.asmts.isLiteral;
+    return this.constructor.isConstructorLiteral && this.asmts.isLiteral;
   }
 
   public eval = (valueResolver: ValueResolver): Value<R> => {
     const asmtsV = this.asmts.eval(valueResolver);
-    return this.constructorRef.model.eval(valueResolver, asmtsV, this.type);
+    return this.constructor.eval(valueResolver, asmtsV, this.type);
   }
 
   public toText = (resolver: NameResolver): string => {
-    const constructorName = this.constructorRef.getName(resolver)
+    const constructorName = this.constructor.name;
     return `${Parser.identToText(constructorName)}(${this.asmts.toText(resolver)})`;
   }
 
@@ -563,9 +565,9 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
   }
 
   public withAssignments = (asmts: RODictionary<ResolvedAST>): CallRes<R, I>  => {
-    const {constructorRef, type} = this;
+    const {constructor, type} = this;
     const mergedAsmts = this.asmts.withAssignments(asmts);
-    return new CallRes(constructorRef, mergedAsmts, type);
+    return new CallRes(constructor, mergedAsmts, type);
   }
 
   // TODO update this given resolution-time types
@@ -573,8 +575,8 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
     constructorRef: ConstructorReference<R, I>,
   ): CallRes<R, I> => {
     const {assignmentsType, returnType} = constructorRef.model;
-    const asmts = new AssignmentsRes({}, [], constructorRef, assignmentsType);
-    return new CallRes(constructorRef, asmts, returnType);
+    const asmts = new AssignmentsRes({}, [], assignmentsType);
+    return new CallRes(constructorRef.model, asmts, returnType);
   }
 }
 
@@ -658,7 +660,7 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
     const asmtTypes = _.mapValues(asmtsR, asmt => asmt.type);
     nameResolver.validateConstructorAssignments(constructorRef, asmtTypes);
     const asmtOrderR = this.asmtOrder.map(name => nameResolver.resolveValueReference(name).id);
-    return new AssignmentsRes(asmtsR, asmtOrderR, constructorRef, assignmentsType);
+    return new AssignmentsRes(asmtsR, asmtOrderR, assignmentsType);
   }
 
   private static resolveForResolutionTimeTypes(
@@ -694,12 +696,8 @@ export class AssignmentsRes<I extends Identifier = Identifier>
   public readonly type: PartialRowType<I>;
   public readonly externalDependencies: ROArray<Reference>;
 
-  private readonly constructorRef: ConstructorReference;
-
-  constructor(asmts: RODictionary<ResolvedAST>, asmtOrder: ROArray<string>,
-      constructorRef: ConstructorReference, type: PartialRowType<I>) {
+  constructor(asmts: RODictionary<ResolvedAST>, asmtOrder: ROArray<string>, type: PartialRowType<I>) {
     super(asmts, asmtOrder);
-    this.constructorRef = constructorRef;
     this.type = type;
     this.externalDependencies = ResolvedASTUtils.mergeDeps(...Object.values(asmts));
   }
@@ -713,8 +711,12 @@ export class AssignmentsRes<I extends Identifier = Identifier>
     return ValueUtils.partialRowOf(asmtsV, this.type.schemaId.gridId);
   }
 
+  protected get constructorId() {
+    return this.type.schemaId.gridId;
+  }
+
   protected asmtIdToText(asmtId: string, resolver: NameResolver): string {
-    const name = resolver.nameForIdInConstructor(asmtId, this.constructorRef);
+    const name = resolver.nameForConstructorAssignment(this.constructorId, asmtId);
     return Parser.identToText(name);
   }
 
@@ -727,11 +729,11 @@ export class AssignmentsRes<I extends Identifier = Identifier>
   }
 
   public withAssignments = (asmts: RODictionary<ResolvedAST>): AssignmentsRes<I>  => {
-    const {asmts: originalAsmts, asmtOrder, constructorRef, type} = this;
+    const {asmts: originalAsmts, asmtOrder, type} = this;
     const asmtsMerged = _.extend({}, originalAsmts, asmts);
     const newAsmts = Object.keys(asmts).filter(id => !(id in originalAsmts));
     const asmtOrderMerged = asmtOrder.concat(newAsmts);
-    return new AssignmentsRes(asmtsMerged, asmtOrderMerged, constructorRef, type);
+    return new AssignmentsRes(asmtsMerged, asmtOrderMerged, type);
   }
 }
 

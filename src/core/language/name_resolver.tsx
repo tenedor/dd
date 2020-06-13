@@ -129,6 +129,10 @@ export class NameResolver {
     return ref;
   }
 
+  public resolveNamespaceForConstructor = <I extends Identifier> (gridId: I): ValueNamespace => {
+    return this.resolveGridConstructorFromId(gridId).model.namespace;
+  }
+
   private resolveNamespace = (id: Identifier): ValueNamespace => {
     const namespace = this.namespaceResolver.resolveNamespace(id);
     if (!namespace) {
@@ -141,9 +145,9 @@ export class NameResolver {
     return this.iteratorType;
   }
 
-  public nameForIdInConstructor = (id: Identifier, constructor: ConstructorReference): string => {
-    const {namespace} = constructor.model;
-    const name = namespace.getNameForReference(id);
+  public nameForConstructorAssignment = (constructorId: Identifier, assignmentId: Identifier): string => {
+    const namespace = this.resolveNamespaceForConstructor(constructorId);
+    const name = namespace.getNameForReference(assignmentId);
     return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
   }
 

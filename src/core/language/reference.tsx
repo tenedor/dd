@@ -139,8 +139,4 @@ export class ReferenceUtils {
   public static isConstructorReference = (r: Reference): r is ConstructorReference => {
     return r.referenceType === ReferenceType.ABSOLUTE_CONSTRUCTOR;
   }
-
-  public static isConstructorLiteral = (r: ConstructorReference): boolean => {
-    return r.model.isConstructorLiteral;
-  }
 }
