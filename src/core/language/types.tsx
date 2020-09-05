@@ -86,7 +86,7 @@ export type LambdaOfAnyType = LambdaType<BoundingType.BOTTOM, BoundingType.TOP>;
 
 // ListType only supports literals if its item type is Bottom or is a
 // SupportsLiteralsType, but TypeScript's types cannot express this concept.
-export type SupportsLiteralsType = PrimitiveType | ListType | RowType;
+export type SupportsLiteralsType = PrimitiveType | ListType<SupportsLiteralsType> | RowType;
 
 export type Type = PrimitiveType | ListTypeBase | DictType |
   LambdaTypeBase | BoundingType;

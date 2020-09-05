@@ -1,10 +1,11 @@
 import * as _ from 'lodash';
 
-import {Drawing, DrawingGroup} from '@drawing/drawing'; // only a type dependency
+import {DrawingGroup} from '@drawing/drawing'; // only a type dependency
 import {Row} from '@models/domain_specific/row'; // only a type dependency
 import {RODictionary} from '@utils/types';
 import {assertUnreachable} from '@utils/utils';
-import {CallRes, ResolvedAST} from './ast';
+import {BooleanRes, CallRes, ListRes, NumberRes, PrimitiveRes, ResolvedAST, StringRes}
+        from './ast';
 import {FormulaEnvironment} from './formula_environment';
 import {TypeError} from './language_errors';
 import {NameResolver} from './name_resolver';
@@ -199,28 +200,32 @@ export class ValueUtils {
   // Utilities
   // =========
 
-  public static get defaultNumber() { return ValueUtils.numberOf(0); }
-  public static get defaultBoolean() { return ValueUtils.booleanOf(false); }
-  public static get defaultString() { return ValueUtils.stringOf(""); }
+  private static get defaultNumber(): NumberRes { return PrimitiveRes.numberOf(0); }
+  private static get defaultBoolean(): BooleanRes { return PrimitiveRes.booleanOf(false); }
+  private static get defaultString(): StringRes { return PrimitiveRes.stringOf(""); }
 
-  public static defaultListOfType = <T extends Type> (itemType: T) => ValueUtils.listOf([], itemType)
+  private static defaultListOfType = <T extends SupportsLiteralsType> (itemType: T, resolver: NameResolver): ListRes<T> => {
+    const itemDefaultValue = ValueUtils.getDefaultValue(itemType, resolver);
+    return new ListRes([itemDefaultValue], itemType);
+  }
 
-  public static getDefaultValue = <T extends SupportsLiteralsType> (type: T & SupportsLiteralsType, resolver: NameResolver): ValueOrAST<T> => {
+  public static getDefaultValue = <T extends SupportsLiteralsType> (type: T & SupportsLiteralsType, resolver: NameResolver): ResolvedAST<T> => {
     // Apologies to R. Milner for the type casts, here and elsewhere...
     //
     // Typescript does not support enum generics properly and needs help.
     // See https://github.com/Microsoft/TypeScript/issues/24085
+    const cast = (astRes: ResolvedAST): ResolvedAST<T> => astRes as ResolvedAST<T>;
     if (TypeUtils.isNumber(type)) {
-      return ValueUtils.defaultNumber as Value<T>;
+      return cast(ValueUtils.defaultNumber);
     } else if (TypeUtils.isString(type)) {
-      return ValueUtils.defaultString as Value<T>;
+      return cast(ValueUtils.defaultString);
     } else if (TypeUtils.isBoolean(type)) {
-      return ValueUtils.defaultBoolean as Value<T>;
+      return cast(ValueUtils.defaultBoolean);
     } else if (TypeUtils.isList(type)) {
-      return ValueUtils.defaultListOfType(type.itemType) as Value<T>;
+      return cast(ValueUtils.defaultListOfType(type.itemType, resolver));
     } else if (TypeUtils.isRow(type)) {
       const constructorRef = resolver.resolveGridConstructorFromId(type.schemaId.gridId);
-      return CallRes.buildDefaultConstructorCall(constructorRef) as CallRes<T>;
+      return cast(CallRes.buildDefaultConstructorCall(constructorRef));
     } else {
       return assertUnreachable(type);
     }

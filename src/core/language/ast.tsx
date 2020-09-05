@@ -931,4 +931,12 @@ export class PrimitiveRes<T extends PrimitiveType = PrimitiveType> extends Primi
   public eval = (valueResolver: ValueResolver): Value<T> => {
     return ValueUtils.primitiveOf(this.value, this.type);
   }
+
+  public static numberOf = (value: number): NumberRes => new PrimitiveRes(value, PrimitiveType.NUMBER);
+  public static booleanOf = (value: boolean): BooleanRes => new PrimitiveRes(value, PrimitiveType.BOOLEAN);
+  public static stringOf = (value: string): StringRes => new PrimitiveRes(value, PrimitiveType.STRING);
 }
+
+export type NumberRes = PrimitiveRes<PrimitiveType.NUMBER>;
+export type BooleanRes = PrimitiveRes<PrimitiveType.BOOLEAN>;
+export type StringRes = PrimitiveRes<PrimitiveType.STRING>;
