@@ -194,13 +194,21 @@ export class Parser {
       IndexExp_project(e1, _dot, e2) {
         return new ProjectUnres(e1.toAST(), e2.toAST());
       },
-      CallExp_call(id, _p1, asmts, _c, _p2) {
+      CallExp_formula(id, _p1, asmts, _c, _p2) {
         const asmtPTuples = asmts.toAST() as Array<[string, UnresolvedAST]>;
         const asmtsPList = asmtPTuples.map(([asmtId, e]) => ({[asmtId]: e}));
         const asmtsP = _.extend({}, ...asmtsPList) as RODictionary<UnresolvedAST>;
         const asmtIds = asmtPTuples.map(([asmtId, _e]) => asmtId);
         const assignmentsUnres = new AssignmentsUnres(asmtsP, asmtIds);
-        return new CallUnres(id.toAST(), assignmentsUnres);
+        return new CallUnres(id.toAST(), assignmentsUnres, false);
+      },
+      CallExp_constructor(id, _p1, asmts, _c, _p2) {
+        const asmtPTuples = asmts.toAST() as Array<[string, UnresolvedAST]>;
+        const asmtsPList = asmtPTuples.map(([asmtId, e]) => ({[asmtId]: e}));
+        const asmtsP = _.extend({}, ...asmtsPList) as RODictionary<UnresolvedAST>;
+        const asmtIds = asmtPTuples.map(([asmtId, _e]) => asmtId);
+        const assignmentsUnres = new AssignmentsUnres(asmtsP, asmtIds);
+        return new CallUnres(id.toAST(), assignmentsUnres, true);
       },
       Assignment(id, _op, e) {
         // Strictly speaking this is not a toAST operation...
