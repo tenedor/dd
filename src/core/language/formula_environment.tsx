@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {BuiltInFormula, Signature} from '@models/domain_specific/constructor'; // only a type dependency
+import {Constructor, Signature} from '@models/domain_specific/constructor'; // only a type dependency
 import {Grid} from '@models/domain_specific/grid'; // only a type dependency
 import {Dictionary, ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
@@ -8,10 +8,9 @@ import {ObjectResolutionError} from './language_errors';
 import {buildNamespace, ConstructorNamespace, NameResolver, ValueNamespace} from './name_resolver';
 import {ReferenceUtils} from './reference';
 import {GridType, Identifier, ListOfAnyType, Type, TypeUtils} from './types';
-import {Value, ValueUtils} from './values';
 
 export class FormulaEnvironment {
-  private readonly builtInFormulasByGridId: Dictionary<BuiltInFormula>;
+  private readonly builtInFormulasByGridId: Dictionary<Constructor>;
   private readonly grids: Dictionary<Grid>;
   private readonly valueNamespace: ValueNamespace;
   private readonly constructorNamespace: ConstructorNamespace;
@@ -32,7 +31,7 @@ export class FormulaEnvironment {
   }
 
   private resolveNamespace = (objectId: Identifier): ValueNamespace | undefined => {
-    const object = (this.grids[objectId] || this.builtInFormulasByGridId[objectId]) as Grid | BuiltInFormula | undefined;
+    const object = (this.grids[objectId] || this.builtInFormulasByGridId[objectId]) as Grid | Constructor | undefined;
     const namespace = object && object.namespace;
     return namespace;
   }
@@ -41,7 +40,7 @@ export class FormulaEnvironment {
     return this.grids;
   }
 
-  public addBuiltInFormula = (formula: BuiltInFormula) => {
+  public addBuiltInFormula = (formula: Constructor) => {
     this.builtInFormulasByGridId[formula.id] = formula;
     const formulaRef = ReferenceUtils.buildReferenceForConstructor(formula);
     this.constructorNamespace.addBuiltInFormula(formula.name, formulaRef);

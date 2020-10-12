@@ -25,7 +25,7 @@ export interface Signature {
   returnType: Type,
 }
 
-interface BaseConstructor<R extends Type, I extends Identifier = Identifier> extends DependencyNode {
+export interface Constructor<R extends Type = Type, I extends Identifier = Identifier> extends DependencyNode {
   readonly id: string,
   readonly isConstructorLiteral: boolean,
   name: string,
@@ -36,8 +36,6 @@ interface BaseConstructor<R extends Type, I extends Identifier = Identifier> ext
   resolutionTimeTypeHelper?: ResolutionTimeTypeHelper,
   getSignature: () => Signature,
 }
-
-export type Constructor<R extends Type = Type, I extends Identifier = Identifier> = BaseConstructor<R, I>;
 
 export interface ConstructorData<I extends Identifier = Identifier> {
   columns: GridColumns,
@@ -52,7 +50,7 @@ export interface ConstructorData<I extends Identifier = Identifier> {
 export interface ConstructorUpdateDescriptor extends UpdateDescriptor<ConstructorUpdateType> {}
 
 export class GridConstructor<I extends Identifier = Identifier>
-    extends Mutable<ConstructorUpdateDescriptor> implements BaseConstructor<RowType<I>, I> {
+    extends Mutable<ConstructorUpdateDescriptor> implements Constructor<RowType<I>, I> {
   private readonly columns: GridColumns;
   private readonly defaultValues: Row;
   private readonly environment: FormulaEnvironment;
@@ -173,7 +171,7 @@ export interface BuiltInFormulaSpec<R extends Type = Type, I extends Identifier 
 }
 
 export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identifier>
-    extends Constant implements BaseConstructor<R, I> {
+    extends Constant implements Constructor<R, I> {
   public readonly name: string;
   public readonly isConstructorLiteral = false;
   public readonly returnType: R;

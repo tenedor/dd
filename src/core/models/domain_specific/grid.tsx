@@ -5,7 +5,7 @@ import {Drawing, DrawingUtils} from '@drawing/drawing';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {NameResolver, ValueNamespace} from '@language/name_resolver';
 import {RelativeValueReference} from '@language/reference';
-import {Identifier, Type, TypeUtils} from '@language/types';
+import {Identifier, RowType, Type, TypeUtils} from '@language/types';
 import {GridValue, Value} from '@language/values';
 import {Address, AddressUtils} from '@paths/address';
 import {getCoordinateSystemColumn} from '@standard_library/geometry_utils';
@@ -17,7 +17,7 @@ import {Mutable} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {GridUpdateType} from '../core/update_types';
 import {Column} from './column';
-import {ConstructorUpdateDescriptor, GridConstructor} from './constructor';
+import {Constructor, ConstructorUpdateDescriptor, GridConstructor} from './constructor';
 import {DEFAULT_COLUMN_WIDTH, GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {Row, RowUpdateDescriptor} from './row';
 
@@ -52,7 +52,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   public readonly columns: GridColumns;
   public readonly rows: Rows;
   public readonly namespace: ValueNamespace;
-  public readonly gridConstructor: GridConstructor<I>;
+  public readonly gridConstructor: Constructor<RowType<I>, I>;
 
   constructor(
     updateManager: UpdateManager,
