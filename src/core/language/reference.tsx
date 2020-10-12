@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {Model} from '@models/core/model'; // Only a type dependency
+import {DependencyNode} from '@models/core/update_manager'; // Only a type dependency
 import {Constructor} from '@models/domain_specific/constructor'; // Only a type dependency
 import {Grid} from '@models/domain_specific/grid'; // Only a type dependency
 import {IdentifierPrefix} from '@utils/identifier_prefixes';
@@ -10,7 +10,7 @@ import {GridType, Identifier, Type, TypeUtils} from './types';
 import {ValueResolver} from './value_resolver';
 import {Value} from './values';
 
-export type ModelWithValue = Model & {value: Value};
+export type ValueDependency = DependencyNode & {readonly value: Value};
 
 export enum ReferenceType {
   ABSOLUTE_CONSTRUCTOR = "ABSOLUTE_CONSTRUCTOR",
@@ -30,7 +30,7 @@ interface BaseReference<R extends ReferenceType> {
 }
 
 export interface AbsoluteReference<R extends AbsoluteReferenceType = AbsoluteReferenceType> extends BaseReference<R> {
-  readonly model: Model,
+  readonly model: DependencyNode,
 }
 
 export type RelativeReference = BaseReference<RelativeReferenceType>;
@@ -75,9 +75,9 @@ export class AbsoluteValueReference<T extends Type = Type>
     extends BaseValueReference<T, ReferenceType.ABSOLUTE_VALUE>
     implements AbsoluteReference<ReferenceType.ABSOLUTE_VALUE> {
 
-  public readonly model: ModelWithValue;
+  public readonly model: ValueDependency;
 
-  constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string, model: ModelWithValue) {
+  constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string, model: ValueDependency) {
     super(id, type, getName, ReferenceType.ABSOLUTE_VALUE);
     this.model = model;
   }

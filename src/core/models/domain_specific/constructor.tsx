@@ -11,9 +11,9 @@ import {PartialRowValue, RowValue, Value, ValueUtils} from '@language/values';
 import {ROArray, RODictionary} from '@utils/types';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
 import {Constant} from '../core/constant';
-import {Model, ModelType} from '../core/model';
+import {ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
-import {SimpleUpdateManager, UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {DependencyNode, SimpleUpdateManager, UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {ArrayUpdateType, ConstructorUpdateType, GridColumnUpdateType} from '../core/update_types';
 import {GridColumns} from './grid';
 import {GridColumnUpdateDescriptor} from './grid_column';
@@ -25,7 +25,7 @@ export interface Signature {
   returnType: Type,
 }
 
-interface BaseConstructor<R extends Type, I extends Identifier = Identifier> {
+interface BaseConstructor<R extends Type, I extends Identifier = Identifier> extends DependencyNode {
   readonly id: string,
   readonly isConstructorLiteral: boolean,
   name: string,
@@ -37,7 +37,7 @@ interface BaseConstructor<R extends Type, I extends Identifier = Identifier> {
   getSignature: () => Signature,
 }
 
-export type Constructor<R extends Type = Type, I extends Identifier = Identifier> = BaseConstructor<R, I> & Model;
+export type Constructor<R extends Type = Type, I extends Identifier = Identifier> = BaseConstructor<R, I>;
 
 export interface ConstructorData<I extends Identifier = Identifier> {
   columns: GridColumns,

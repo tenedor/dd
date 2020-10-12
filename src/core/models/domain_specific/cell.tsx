@@ -6,7 +6,7 @@ import {FormulaEnvironment} from '@language/formula_environment';
 import {TypeError} from '@language/language_errors';
 import {NameResolver} from '@language/name_resolver';
 import {Parser} from '@language/parser';
-import {AbsoluteValueReference, ModelWithValue, Reference, ReferenceUtils,
+import {AbsoluteValueReference, Reference, ReferenceUtils, ValueDependency,
         ValueReference} from '@language/reference';
 import {Identifier, RowType, Type, TypeUtils} from '@language/types';
 import {ValueResolver} from '@language/value_resolver';
@@ -15,7 +15,7 @@ import {Address} from '@paths/address';
 import {COORDINATE_SYSTEM_COLUMN_ID} from '@standard_library/geometry_utils';
 import {RODictionary} from '@utils/types';
 import {assert, keysDiff} from '@utils/utils';
-import {Model, ModelType} from '../core/model';
+import {ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
 import {DependencyNode, DependencySetUpdateDescriptor, UpdateDescriptor, UpdateListener,
         UpdateManager} from '../core/update_manager';
@@ -48,8 +48,8 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   private readonly defaultValue?: Cell<T>;
   private readonly getRowContext: () => RowContext;
   private readonly gridId: Identifier;
-  private dependencies: RODictionary<Model>;
-  private valueDependencies: RODictionary<ModelWithValue>;
+  private dependencies: RODictionary<DependencyNode>;
+  private valueDependencies: RODictionary<ValueDependency>;
   private manualValue?: ValueOrAST<T>;
   private _value: Value<T>;
   private readonly permanentDependencies: DependencyNode[] = [];
@@ -216,7 +216,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     }
   }
 
-  private resolveDependencies = (dependencyRefs: readonly Reference[]): RODictionary<Model> => {
+  private resolveDependencies = (dependencyRefs: readonly Reference[]): RODictionary<DependencyNode> => {
     const absoluteReferences = dependencyRefs.filter(ReferenceUtils.isAbsoluteReference);
     const relativeReferences = dependencyRefs.filter(ReferenceUtils.isRelativeReference);
     const absoluteDependenciesList = absoluteReferences.map(r => r.model);
@@ -226,7 +226,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   // Duplicate functionality of resolveDependencies in order to get stricter typing
-  private resolveValueDependencies = (dependencyRefs: readonly ValueReference[]): RODictionary<ModelWithValue> => {
+  private resolveValueDependencies = (dependencyRefs: readonly ValueReference[]): RODictionary<ValueDependency> => {
     const absoluteReferences = dependencyRefs.filter(ReferenceUtils.isAbsoluteReference) as AbsoluteValueReference[];
     const relativeReferences = dependencyRefs.filter(ReferenceUtils.isRelativeReference);
     const absoluteDependenciesList = absoluteReferences.map(r => r.model);

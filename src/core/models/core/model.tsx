@@ -1,6 +1,3 @@
-import {Constant} from './constant';
-import {Mutable} from './mutable';
-
 export enum ModelType {
   APP = 'app',
   ARRAY = 'arr',
@@ -16,5 +13,3 @@ export enum ModelType {
   MODEL = 'model',
   ROW = 'row',
 }
-
-export type Model = Constant | Mutable;
