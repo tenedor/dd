@@ -1,37 +1,38 @@
 import * as _ from 'lodash';
 
-import {Constructor, Signature} from '@models/domain_specific/constructor'; // only a type dependency
 import {Grid} from '@models/domain_specific/grid'; // only a type dependency
+import {Procedure, Signature} from '@models/domain_specific/procedure'; // only a type dependency
 import {Dictionary, ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
 import {ObjectResolutionError} from './language_errors';
-import {buildNamespace, ConstructorNamespace, NameResolver, ValueNamespace} from './name_resolver';
+import {buildNamespace, NameResolver, ProcedureNamespace, ValueNamespace}
+        from './name_resolver';
 import {ReferenceUtils} from './reference';
 import {GridType, Identifier, ListOfAnyType, Type, TypeUtils} from './types';
 
 export class FormulaEnvironment {
-  private readonly builtInFormulasByGridId: Dictionary<Constructor>;
+  private readonly builtInFormulasByGridId: Dictionary<Procedure>;
   private readonly grids: Dictionary<Grid>;
   private readonly valueNamespace: ValueNamespace;
-  private readonly constructorNamespace: ConstructorNamespace;
+  private readonly procedureNamespace: ProcedureNamespace;
   private readonly _nameResolver: NameResolver;
 
   constructor() {
     this.builtInFormulasByGridId = {};
     this.grids = {};
     this.valueNamespace = buildNamespace({});
-    this.constructorNamespace = new ConstructorNamespace();
+    this.procedureNamespace = new ProcedureNamespace();
     this._nameResolver = this.buildNameResolver();
   }
 
   private buildNameResolver = (): NameResolver => {
     const namespaceResolver = {resolveNamespace: this.resolveNamespace};
     // TODO clarify the role of NameResolver vs FormulaEnvironment
-    return new NameResolver(namespaceResolver, this.constructorNamespace, this.valueNamespace, this);
+    return new NameResolver(namespaceResolver, this.procedureNamespace, this.valueNamespace, this);
   }
 
   private resolveNamespace = (objectId: Identifier): ValueNamespace | undefined => {
-    const object = (this.grids[objectId] || this.builtInFormulasByGridId[objectId]) as Grid | Constructor | undefined;
+    const object = (this.grids[objectId] || this.builtInFormulasByGridId[objectId]) as Grid | Procedure | undefined;
     const namespace = object && object.namespace;
     return namespace;
   }
@@ -40,20 +41,20 @@ export class FormulaEnvironment {
     return this.grids;
   }
 
-  public addBuiltInFormula = (formula: Constructor) => {
+  public addBuiltInFormula = (formula: Procedure) => {
     this.builtInFormulasByGridId[formula.id] = formula;
-    const formulaRef = ReferenceUtils.buildReferenceForConstructor(formula);
-    this.constructorNamespace.addBuiltInFormula(formula.name, formulaRef);
+    const formulaRef = ReferenceUtils.buildReferenceForProcedure(formula);
+    this.procedureNamespace.addBuiltInFormula(formula.name, formulaRef);
   }
 
   public addGrid = (grid: Grid): void => {
     this.grids[grid.id] = grid;
-    this.constructorNamespace.addGrid(grid);
+    this.procedureNamespace.addGrid(grid);
   }
 
   public removeGrid = (gridId: string): void => {
     delete this.grids[gridId];
-    this.constructorNamespace.removeGrid(gridId);
+    this.procedureNamespace.removeGrid(gridId);
   }
 
   public get nameResolver(): NameResolver {
@@ -71,7 +72,7 @@ export class FormulaEnvironment {
       const outType = this.getNameForType(t.outputType, opts);
       return `${inType} -> ${outType}`;
     } else if (TypeUtils.isDict(t)) {
-      const name = this.constructorNamespace.getNameForReference(t.schemaId.gridId);
+      const name = this.procedureNamespace.getNameForReference(t.schemaId.gridId);
       if (name !== undefined) {
         return name;
       }

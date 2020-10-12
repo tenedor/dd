@@ -17,8 +17,8 @@ import {Mutable} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {GridUpdateType} from '../core/update_types';
 import {Column} from './column';
-import {Constructor, ConstructorUpdateDescriptor, GridConstructor} from './constructor';
 import {DEFAULT_COLUMN_WIDTH, GridColumn, GridColumnUpdateDescriptor} from './grid_column';
+import {Constructor, ConstructorUpdateDescriptor, Procedure} from './procedure';
 import {Row, RowUpdateDescriptor} from './row';
 
 export type GridColumns = FunctionalKeyedArray<GridColumn, GridColumnUpdateDescriptor, 'columnId'>;
@@ -52,7 +52,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   public readonly columns: GridColumns;
   public readonly rows: Rows;
   public readonly namespace: ValueNamespace;
-  public readonly gridConstructor: Constructor<RowType<I>, I>;
+  public readonly gridConstructor: Procedure<RowType<I>, I>;
 
   constructor(
     updateManager: UpdateManager,
@@ -152,11 +152,11 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     }
   }
 
-  private buildConstructor = (): GridConstructor<I> => {
+  private buildConstructor = (): Constructor<I> => {
     const {columns, defaultValues, environment, getPrimitiveDrawing, id: gridId, namespace} = this;
     // TODO create a Primitive mutable model and make this.name a Primitive
     const getName = () => this.name;
-    return new GridConstructor(this.updateManager, {
+    return new Constructor(this.updateManager, {
       columns, defaultValues, environment, getPrimitiveDrawing, gridId, getName, namespace,
     });
   }

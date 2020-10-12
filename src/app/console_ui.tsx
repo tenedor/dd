@@ -5,8 +5,8 @@ import {Type} from '@language/types';
 import {Value, ValueUtils} from '@language/values';
 import {UpdateDescriptor} from '@models/core/update_manager';
 import {AppUpdateType} from '@models/core/update_types';
-import {Signature} from '@models/domain_specific/constructor';
 import {Document} from '@models/domain_specific/document';
+import {Signature} from '@models/domain_specific/procedure';
 
 export interface AppUpdateDescriptor extends UpdateDescriptor<AppUpdateType> {}
 

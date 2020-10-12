@@ -10,8 +10,8 @@ import {BoundingType, Identifier, LambdaOfAnyType, LambdaType, ListOfAnyType, Li
 import {LambdaValue, ListValue, NumberValue, PartialRowValue, PrimitiveValue, RowValue,
         StringValue, Value, ValueUtils} from '@language/values';
 import {UpdateManager} from '@models/core/update_manager';
-import {BuiltInEval, BuiltInFormula, BuiltInFormulaSpec, Parameter}
-        from '@models/domain_specific/constructor';
+import {BuiltInEval, BuiltInFormula, BuiltInFormulaSpec, Parameter, Procedure}
+        from '@models/domain_specific/procedure';
 import {RODictionary} from '@utils/types';
 import {loadBuiltInGrids} from './built_in_grids';
 
@@ -432,11 +432,11 @@ const getFormulaDefs = (): {[name: string]: FormulaGenerator} => ({
   },
 });
 
-const getBuiltInFormulas = (): RODictionary<BuiltInFormula> => {
-return _.mapValues(getFormulaDefs(), (def, name) => {
-  const spec = generateFormulaSpec(def, name);
-  return new BuiltInFormula(spec);
-});
+const getBuiltInFormulas = (): RODictionary<Procedure> => {
+  return _.mapValues(getFormulaDefs(), (def, name) => {
+    const spec = generateFormulaSpec(def, name);
+    return new BuiltInFormula(spec);
+  });
 }
 
 export const loadStandardLibrary = (updateManager: UpdateManager): FormulaEnvironment => {
@@ -446,7 +446,7 @@ export const loadStandardLibrary = (updateManager: UpdateManager): FormulaEnviro
   return environment;
 }
 
-export const getExampleFormulaForTesting = (): BuiltInFormula => {
+export const getExampleFormulaForTesting = (): Procedure => {
   const def: FormulaGenerator = {
     returnType: TypeUtils.Number,
     parameters: {

@@ -80,7 +80,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     } else if (TypeUtils.supportsLiterals(type)) {
       const builtInDefault = ValueUtils.getDefaultValue(type, nameResolver);
       if (isCallAST(builtInDefault)) {
-      this.addPermanentListener(builtInDefault.constructor, this.onRootDefaultValueUpdated);
+      this.addPermanentListener(builtInDefault.procedure, this.onRootDefaultValueUpdated);
       }
     }
 
@@ -206,13 +206,13 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
   private addManualValueListeners = () => {
     if (isCallAST(this.manualValue)) {
-      this.addDynamicListener(this.manualValue.constructor, this.onValueConstructorUpdated);
+      this.addDynamicListener(this.manualValue.procedure, this.onValueProcedureUpdated);
     }
   }
 
   private removeManualValueListeners = () => {
     if (isCallAST(this.manualValue)) {
-      this.removeDynamicListener(this.manualValue.constructor);
+      this.removeDynamicListener(this.manualValue.procedure);
     }
   }
 
@@ -257,7 +257,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return [];
   }
 
-  private onValueConstructorUpdated = (epoch: number, updates: UpdateDescriptor[]): CellUpdateDescriptor[] => {
+  private onValueProcedureUpdated = (epoch: number, updates: UpdateDescriptor[]): CellUpdateDescriptor[] => {
     return this.onDependencyUpdatedHelper(epoch);
   }
 

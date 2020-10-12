@@ -4,7 +4,7 @@ import {Grid} from '@models/domain_specific/grid'; // Only a type dependency
 import {RODictionary} from '@utils/types';
 import {FormulaEnvironment} from './formula_environment';
 import {ObjectResolutionError, TypeError, ValueResolutionError} from './language_errors';
-import {ConstructorReference, Reference, ReferenceUtils, ValueReference} from './reference';
+import {ProcedureReference, Reference, ReferenceUtils, ValueReference} from './reference';
 import {BoundingType, DictType, Identifier, RowType, Type, TypeUtils} from './types';
 
 interface Namespace<R extends Reference> {
@@ -15,8 +15,8 @@ interface Namespace<R extends Reference> {
 export type ValueNamespace = Namespace<ValueReference>;
 
 
-export class ConstructorNamespace implements Namespace<ConstructorReference> {
-  private readonly nameToReferenceMap: {[name: string]: ConstructorReference};
+export class ProcedureNamespace implements Namespace<ProcedureReference> {
+  private readonly nameToReferenceMap: {[name: string]: ProcedureReference};
   private readonly idToNameMap: {[id: string]: string};
   private readonly grids: {[id: string]: Grid};
 
@@ -26,10 +26,10 @@ export class ConstructorNamespace implements Namespace<ConstructorReference> {
     this.grids = {};
   }
 
-  public getReferenceForName = (name: string): ConstructorReference | undefined => {
+  public getReferenceForName = (name: string): ProcedureReference | undefined => {
     const grid = Object.values(this.grids).find(g => g.name === name);
     return grid ?
-      ReferenceUtils.buildReferenceForConstructor(grid.gridConstructor) :
+      ReferenceUtils.buildReferenceForProcedure(grid.gridConstructor) :
       this.nameToReferenceMap[name];
   }
 
@@ -39,14 +39,14 @@ export class ConstructorNamespace implements Namespace<ConstructorReference> {
     return grid ? grid.name : this.idToNameMap[refId];
   }
 
-  public getReferenceForGridId = <I extends Identifier> (gridId: I): ConstructorReference<RowType<I>, I> | undefined => {
+  public getReferenceForGridId = <I extends Identifier> (gridId: I): ProcedureReference<RowType<I>, I> | undefined => {
     const grid = this.grids[gridId as string] as Grid<I>;
     return grid ?
-      ReferenceUtils.buildReferenceForConstructor(grid.gridConstructor) :
+      ReferenceUtils.buildReferenceForProcedure(grid.gridConstructor) :
       undefined;
   }
 
-  public addBuiltInFormula = (name: string, ref: ConstructorReference) => {
+  public addBuiltInFormula = (name: string, ref: ProcedureReference) => {
     this.nameToReferenceMap[name] = ref;
     this.idToNameMap[ref.id] = name;
   }
@@ -84,7 +84,7 @@ export interface NamespaceResolver {
 
 export class NameResolver {
   private readonly namespaceResolver: NamespaceResolver;
-  private readonly constructorNamespace: ConstructorNamespace;
+  private readonly procedureNamespace: ProcedureNamespace;
   private readonly valueNamespace: ValueNamespace;
   // TODO clarify the role of NameResolver vs FormulaEnvironment
   public readonly environment: FormulaEnvironment;
@@ -93,13 +93,13 @@ export class NameResolver {
 
   constructor(
     namespaceResolver: NamespaceResolver,
-    constructorNamespace: ConstructorNamespace,
+    procedureNamespace: ProcedureNamespace,
     valueNamespace: ValueNamespace,
     environment: FormulaEnvironment,
     iteratorType: Type = BoundingType.BOTTOM,
   ) {
     this.namespaceResolver = namespaceResolver;
-    this.constructorNamespace = constructorNamespace;
+    this.procedureNamespace = procedureNamespace;
     this.valueNamespace = valueNamespace;
     this.environment = environment;
     this.iteratorType = iteratorType;
@@ -113,24 +113,24 @@ export class NameResolver {
     return ref;
   }
 
-  public resolveConstructorReference = (name: string): ConstructorReference => {
-    const ref = this.constructorNamespace.getReferenceForName(name);
+  public resolveProcedureReference = (name: string): ProcedureReference => {
+    const ref = this.procedureNamespace.getReferenceForName(name);
     if (!ref) {
       throw new NameResolutionError(`No formula or grid exists with name '${name}'`);
     }
     return ref;
   }
 
-  public resolveGridConstructorFromId = <I extends Identifier> (gridId: I): ConstructorReference<RowType<I>, I> => {
-    const ref = this.constructorNamespace.getReferenceForGridId(gridId);
+  public resolveProcedureFromId = <I extends Identifier> (gridId: I): ProcedureReference<RowType<I>, I> => {
+    const ref = this.procedureNamespace.getReferenceForGridId(gridId);
     if (!ref) {
-      throw new NameResolutionError(`No constructor exists for grid with id '${gridId}'`);
+      throw new NameResolutionError(`No procedure exists for grid with id '${gridId}'`);
     }
     return ref;
   }
 
-  public resolveNamespaceForConstructor = <I extends Identifier> (gridId: I): ValueNamespace => {
-    return this.resolveGridConstructorFromId(gridId).model.namespace;
+  public resolveNamespaceForProcedure = <I extends Identifier> (gridId: I): ValueNamespace => {
+    return this.resolveProcedureFromId(gridId).model.namespace;
   }
 
   private resolveNamespace = (id: Identifier): ValueNamespace => {
@@ -145,8 +145,8 @@ export class NameResolver {
     return this.iteratorType;
   }
 
-  public nameForConstructorAssignment = (constructorId: Identifier, assignmentId: Identifier): string => {
-    const namespace = this.resolveNamespaceForConstructor(constructorId);
+  public nameForProcedureAssignment = (procedureId: Identifier, assignmentId: Identifier): string => {
+    const namespace = this.resolveNamespaceForProcedure(procedureId);
     const name = namespace.getNameForReference(assignmentId);
     return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
   }
@@ -156,22 +156,22 @@ export class NameResolver {
     return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
   }
 
-  public nameForConstructorId = (id: Identifier): string => {
-    const name = this.constructorNamespace.getNameForReference(id);
+  public nameForProcedureId = (id: Identifier): string => {
+    const name = this.procedureNamespace.getNameForReference(id);
     return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
   }
 
-  public validateConstructorAssignments =
-      (constructor: ConstructorReference, asmtTypesById: RODictionary<Type>): void => {
-    const {namespace} = constructor.model;
+  public validateProcedureAssignments =
+      (procedure: ProcedureReference, asmtTypesById: RODictionary<Type>): void => {
+    const {namespace} = procedure.model;
     Object.keys(asmtTypesById).forEach(id => {
       const name = namespace.getNameForReference(id);
       if (!name) {
-        throw new TypeError(`Assignment to \`${id}\` does not match constructor \`${constructor.id}\``);
+        throw new TypeError(`Assignment to \`${id}\` does not match procedure \`${procedure.id}\``);
       }
       const ref = namespace.getReferenceForName(name);
       if (!ref) {
-        throw new TypeError(`Assignment to \`${id}\` does not match constructor \`${constructor.id}\``);
+        throw new TypeError(`Assignment to \`${id}\` does not match procedure \`${procedure.id}\``);
       } else {
         const {type} = ref;
         TypeUtils.validateIsAssignableTo(asmtTypesById[id], type, this.environment,
@@ -181,7 +181,7 @@ export class NameResolver {
   }
 
   public resolverWith = (valueNamespace: ValueNamespace): NameResolver => {
-    return new NameResolver(this.namespaceResolver, this.constructorNamespace, valueNamespace, this.environment);
+    return new NameResolver(this.namespaceResolver, this.procedureNamespace, valueNamespace, this.environment);
   }
 
   public resolverFor = (dict: DictType): NameResolver => {
@@ -196,7 +196,7 @@ export class NameResolver {
 
   public extendWithNamespace = (namespace: ValueNamespace): NameResolver => {
     const stackedNamespace = NameResolver.extendNamespace(this.valueNamespace, namespace);
-    return new NameResolver(this.namespaceResolver, this.constructorNamespace, stackedNamespace, this.environment);
+    return new NameResolver(this.namespaceResolver, this.procedureNamespace, stackedNamespace, this.environment);
   }
 
   private static extendNamespace = (parentNamespace: ValueNamespace, namespace: ValueNamespace): ValueNamespace => {
@@ -207,6 +207,6 @@ export class NameResolver {
   }
 
   public extendWithIteratorType = (iteratorType: Type) => {
-    return new NameResolver(this.namespaceResolver, this.constructorNamespace, this.valueNamespace, this.environment, iteratorType);
+    return new NameResolver(this.namespaceResolver, this.procedureNamespace, this.valueNamespace, this.environment, iteratorType);
   }
 }

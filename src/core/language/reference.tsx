@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 
 import {DependencyNode} from '@models/core/update_manager'; // Only a type dependency
-import {Constructor} from '@models/domain_specific/constructor'; // Only a type dependency
 import {Grid} from '@models/domain_specific/grid'; // Only a type dependency
+import {Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
 import {IdentifierPrefix} from '@utils/identifier_prefixes';
 import {NameResolver} from './name_resolver';
 import {Parser} from './parser';
@@ -12,13 +12,13 @@ import {Value} from './values';
 
 export type ValueDependency = DependencyNode & {readonly value: Value};
 
-export enum ReferenceType {
-  ABSOLUTE_CONSTRUCTOR = "ABSOLUTE_CONSTRUCTOR",
+enum ReferenceType {
+  ABSOLUTE_PROCEDURE = "ABSOLUTE_PROCEDURE",
   ABSOLUTE_VALUE = "ABSOLUTE_VALUE",
   RELATIVE_VALUE = "RELATIVE_VALUE",
 }
 
-type AbsoluteReferenceType = ReferenceType.ABSOLUTE_CONSTRUCTOR | ReferenceType.ABSOLUTE_VALUE;
+type AbsoluteReferenceType = ReferenceType.ABSOLUTE_PROCEDURE | ReferenceType.ABSOLUTE_VALUE;
 type RelativeReferenceType = ReferenceType.RELATIVE_VALUE;
 type ValueReferenceType = ReferenceType.ABSOLUTE_VALUE | ReferenceType.RELATIVE_VALUE;
 
@@ -96,9 +96,9 @@ export class GridReference<I extends Identifier = Identifier> extends AbsoluteVa
   }
 }
 
-export interface ConstructorReference<R extends Type = Type, I extends Identifier = Identifier>
-    extends AbsoluteReference<ReferenceType.ABSOLUTE_CONSTRUCTOR> {
-  readonly model: Constructor<R, I>,
+export interface ProcedureReference<R extends Type = Type, I extends Identifier = Identifier>
+    extends AbsoluteReference<ReferenceType.ABSOLUTE_PROCEDURE> {
+  readonly model: Procedure<R, I>,
 }
 
 export class ReferenceUtils {
@@ -107,15 +107,15 @@ export class ReferenceUtils {
   // Constructors
   // ============
 
-  public static buildReferenceForConstructor = <R extends Type, I extends Identifier> (
-    constructor: Constructor<R, I>,
-  ): ConstructorReference<R, I> => {
-    const {id} = constructor;
+  public static buildReferenceForProcedure = <R extends Type, I extends Identifier> (
+    procedure: Procedure<R, I>,
+  ): ProcedureReference<R, I> => {
+    const {id} = procedure;
     return {
       id,
-      referenceType: ReferenceType.ABSOLUTE_CONSTRUCTOR,
-      model: constructor,
-      getName: (resolver: NameResolver) => constructor.name,
+      referenceType: ReferenceType.ABSOLUTE_PROCEDURE,
+      model: procedure,
+      getName: (resolver: NameResolver) => procedure.name,
     }
   }
 
@@ -129,14 +129,14 @@ export class ReferenceUtils {
   }
 
   public static isAbsoluteReference = (r: Reference): r is AbsoluteReference => {
-    return [ReferenceType.ABSOLUTE_CONSTRUCTOR, ReferenceType.ABSOLUTE_VALUE].includes(r.referenceType);
+    return [ReferenceType.ABSOLUTE_PROCEDURE, ReferenceType.ABSOLUTE_VALUE].includes(r.referenceType);
   }
 
   public static isValueReference = (r: Reference): r is ValueReference => {
     return [ReferenceType.ABSOLUTE_VALUE, ReferenceType.RELATIVE_VALUE].includes(r.referenceType);
   }
 
-  public static isConstructorReference = (r: Reference): r is ConstructorReference => {
-    return r.referenceType === ReferenceType.ABSOLUTE_CONSTRUCTOR;
+  public static isProcedureReference = (r: Reference): r is ProcedureReference => {
+    return r.referenceType === ReferenceType.ABSOLUTE_PROCEDURE;
   }
 }

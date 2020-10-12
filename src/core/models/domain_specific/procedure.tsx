@@ -25,7 +25,7 @@ export interface Signature {
   returnType: Type,
 }
 
-export interface Constructor<R extends Type = Type, I extends Identifier = Identifier> extends DependencyNode {
+export interface Procedure<R extends Type = Type, I extends Identifier = Identifier> extends DependencyNode {
   readonly id: string,
   readonly isConstructorLiteral: boolean,
   name: string,
@@ -35,6 +35,14 @@ export interface Constructor<R extends Type = Type, I extends Identifier = Ident
   eval: (valueResolver: ValueResolver, asmts: PartialRowValue<I>, runtimeResolvedReturnType?: Type) => Value<R>;
   resolutionTimeTypeHelper?: ResolutionTimeTypeHelper,
   getSignature: () => Signature,
+}
+
+interface ConstructorLiteral<R extends Type = Type, I extends Identifier = Identifier> extends Procedure<R, I> {
+  readonly isConstructorLiteral: true,
+}
+
+interface LossyProcedure<R extends Type = Type, I extends Identifier = Identifier> extends Procedure<R, I> {
+  readonly isConstructorLiteral: false,
 }
 
 export interface ConstructorData<I extends Identifier = Identifier> {
@@ -49,8 +57,8 @@ export interface ConstructorData<I extends Identifier = Identifier> {
 
 export interface ConstructorUpdateDescriptor extends UpdateDescriptor<ConstructorUpdateType> {}
 
-export class GridConstructor<I extends Identifier = Identifier>
-    extends Mutable<ConstructorUpdateDescriptor> implements Constructor<RowType<I>, I> {
+export class Constructor<I extends Identifier = Identifier>
+    extends Mutable<ConstructorUpdateDescriptor> implements ConstructorLiteral<RowType<I>, I> {
   private readonly columns: GridColumns;
   private readonly defaultValues: Row;
   private readonly environment: FormulaEnvironment;
@@ -171,7 +179,7 @@ export interface BuiltInFormulaSpec<R extends Type = Type, I extends Identifier 
 }
 
 export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identifier>
-    extends Constant implements Constructor<R, I> {
+    extends Constant implements LossyProcedure<R, I> {
   public readonly name: string;
   public readonly isConstructorLiteral = false;
   public readonly returnType: R;

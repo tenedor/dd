@@ -1,8 +1,8 @@
 import * as _deepEqual from 'deep-equal';
 import * as _ from 'lodash';
 import * as shallow from 'shallow-equals';
-import {Constructor} from './types';
 
+type Constructor<T, A extends any[] = any[]> = new (...args: A) => T;
 type ErrorConstructor = Constructor<Error, [string]>;
 
 export function assert(e: any, message: string = "", ErrorClass: ErrorConstructor = Error): true {

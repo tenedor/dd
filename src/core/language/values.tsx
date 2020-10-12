@@ -224,7 +224,7 @@ export class ValueUtils {
     } else if (TypeUtils.isList(type)) {
       return cast(ValueUtils.defaultListOfType(type.itemType, resolver));
     } else if (TypeUtils.isRow(type)) {
-      const constructorRef = resolver.resolveGridConstructorFromId(type.schemaId.gridId);
+      const constructorRef = resolver.resolveProcedureFromId(type.schemaId.gridId);
       return cast(CallRes.buildDefaultConstructorCall(constructorRef));
     } else {
       return assertUnreachable(type);
@@ -244,7 +244,7 @@ export class ValueUtils {
     if (ValueUtils.isLambda(v)) {
       return 'fn'; // TODO
     } else if (ValueUtils.isDict(v)) {
-      const gridName = resolver.nameForConstructorId(v.type.schemaId.gridId);
+      const gridName = resolver.nameForProcedureId(v.type.schemaId.gridId);
       const escapedName = Parser.identToText(gridName);
       if (ValueUtils.isGrid(v)) {
         return `${escapedName}`;
