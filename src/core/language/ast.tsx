@@ -1,4 +1,4 @@
-import * as _ from 'lodash';
+    import * as _ from 'lodash';
 
 import {Constructor} from '@models/domain_specific/constructor'; // Only a type dependency
 import {Dictionary, ROArray, RODictionary} from '@utils/types';
@@ -487,9 +487,11 @@ abstract class CallAST<A extends AST<ASTNodeType.ASSIGNMENTS>> implements AST<AS
   public readonly nodeType = ASTNodeType.CALL;
 
   protected readonly asmts: A;
+  protected readonly isConstructor: boolean;
 
-  constructor(asmts: A) {
+  constructor(asmts: A, isConstructor: boolean) {
     this.asmts = asmts;
+    this.isConstructor = isConstructor;
   }
 
   public abstract toText(resolver: NameResolver): string;
@@ -498,8 +500,8 @@ abstract class CallAST<A extends AST<ASTNodeType.ASSIGNMENTS>> implements AST<AS
 export class CallUnres extends CallAST<AssignmentsUnres> implements UnresolvedAST<ASTNodeType.CALL> {
   private readonly name: string;
 
-  constructor(name: string, asmts: AssignmentsUnres) {
-    super(asmts);
+  constructor(name: string, asmts: AssignmentsUnres, isConstructor: boolean) {
+    super(asmts, isConstructor);
     this.name = name;
   }
 
@@ -511,10 +513,10 @@ export class CallUnres extends CallAST<AssignmentsUnres> implements UnresolvedAS
         this.asmts.resolveForConstructorWithResolutionTimeTypes(resolver, constructorR, resolutionTimeTypeHelper) :
         this.asmts.resolveForConstructor(resolver, constructorR);
       const _returnType = resolutionTimeTypeHelper.resolveCallReturnType(asmtTypesByName, resolver.environment);
-      return new CallRes(constructorR, asmtsR, _returnType);
+      return new CallRes(constructorR, asmtsR, this.isConstructor, _returnType);
     } else {
       const {asmtsR} = this.asmts.resolveForConstructor(resolver, constructorR);
-      return new CallRes(constructorR, asmtsR, returnType);
+      return new CallRes(constructorR, asmtsR, this.isConstructor, returnType);
     }
   }
 
@@ -523,7 +525,8 @@ export class CallUnres extends CallAST<AssignmentsUnres> implements UnresolvedAS
   }
 
   public toText = (resolver: NameResolver): string => {
-    return `${this.name}(${this.asmts.toText(resolver)})`;
+    const asmts = this.asmts.toText(resolver);
+    return this.isConstructor ? `${this.name}{${asmts}}` : `${this.name}(${asmts})`;
   }
 }
 
@@ -533,8 +536,9 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
   public readonly externalDependencies: ROArray<Reference>;
   private readonly constructorRef: ConstructorReference<R, I>;
 
-  constructor(constructorRef: ConstructorReference<R, I>, asmts: AssignmentsRes<I>, type: R) {
-    super(asmts);
+  constructor(constructorRef: ConstructorReference<R, I>, asmts: AssignmentsRes<I>,
+      isConstructor: boolean, type: R) {
+    super(asmts, isConstructor);
     this.type = type;
     this.externalDependencies = asmts.externalDependencies.concat([constructorRef]);
     this.constructorRef = constructorRef;
@@ -554,8 +558,10 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
   }
 
   public toText = (resolver: NameResolver): string => {
-    const constructorName = this.constructorRef.getName(resolver)
-    return `${Parser.identToText(constructorName)}(${this.asmts.toText(resolver)})`;
+    const rawName = this.constructorRef.getName(resolver)
+    const name = Parser.identToText(rawName);
+    const asmts = this.asmts.toText(resolver);
+    return this.isConstructor ? `${name}{${asmts}}` : `${name}(${asmts})`;
   }
 
   public getAssignments = (): AssignmentsRes<I> => {
@@ -563,9 +569,9 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
   }
 
   public withAssignments = (asmts: RODictionary<ResolvedAST>): CallRes<R, I>  => {
-    const {constructorRef, type} = this;
+    const {constructorRef, type, isConstructor} = this;
     const mergedAsmts = this.asmts.withAssignments(asmts);
-    return new CallRes(constructorRef, mergedAsmts, type);
+    return new CallRes(constructorRef, mergedAsmts, isConstructor, type);
   }
 
   // TODO update this given resolution-time types
@@ -574,7 +580,7 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
   ): CallRes<R, I> => {
     const {assignmentsType, returnType} = constructorRef.model;
     const asmts = new AssignmentsRes({}, [], constructorRef, assignmentsType);
-    return new CallRes(constructorRef, asmts, returnType);
+    return new CallRes(constructorRef, asmts, true, returnType);
   }
 }
 

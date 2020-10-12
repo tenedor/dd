@@ -249,7 +249,7 @@ export class ValueUtils {
       if (ValueUtils.isGrid(v)) {
         return `${escapedName}`;
       } else if (ValueUtils.isRow(v)) {
-        return `${escapedName}(...)`;
+        return `${escapedName}{...}`;
       } else if (ValueUtils.isPartialRow(v)) {
         return `Partial Row of ${escapedName}`;
       } else {

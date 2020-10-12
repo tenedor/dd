@@ -47,7 +47,8 @@ export const ohmGrammar = '\
       | CallExp\n\
   \n\
     CallExp\n\
-      = ident #"(" ListOf<Assignment, ","> ","? ")"  -- call\n\
+      = ident #"(" ListOf<Assignment, ","> ","? ")"  -- formula\n\
+      | ident #"{" ListOf<Assignment, ","> ","? "}"  -- constructor\n\
       | IdentExp\
   \n\
     Assignment\n\

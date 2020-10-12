@@ -45,7 +45,8 @@ Formula {
     | CallExp
 
   CallExp
-    = ident #"(" ListOf<Assignment, ","> ","? ")"  -- call
+    = ident #"(" ListOf<Assignment, ","> ","? ")"  -- formula
+    | ident #"{" ListOf<Assignment, ","> ","? "}"  -- constructor
     | IdentExp
 
   Assignment
