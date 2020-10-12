@@ -1,14 +1,14 @@
 import * as _ from 'lodash';
 
-import {Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
+import {Constructor, Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
 import {Dictionary, ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
 import {FormulaEnvironment} from './formula_environment';
 import {OutOfBoundsError, TypeError} from './language_errors';
 import {buildNamespace, NameResolver, ValueNamespace} from './name_resolver';
 import {Parser} from './parser';
-import {ProcedureReference, Reference, ReferenceUtils, RelativeValueReference,
-        ValueReference} from './reference';
+import {Reference, ReferenceUtils, RelativeValueReference, ValueReference}
+        from './reference';
 import {DictType, GridType, Identifier, LambdaType, ListType, PartialRowType,
         PrimitiveType, RowType, Type, TypeUtils} from './types';
 import {UnaryOp, UnaryOpUtils} from './unary_op';
@@ -440,7 +440,7 @@ export class ProjectUnres extends ProjectAST<UnresolvedAST> implements Unresolve
     if (!ResolvedASTUtils.resolvesToDict(dictR)) {
       throw new TypeError("Can only project values from grids and rows");
     }
-    const refR = resolver.resolverFor(dictR.type).resolveValueReference(this.name);
+    const refR = resolver.resolverFor(dictR.type).resolveValueReferenceByName(this.name);
     return new ProjectRes(dictR, refR);
   }
 
@@ -506,17 +506,18 @@ export class CallUnres extends CallAST<AssignmentsUnres> implements UnresolvedAS
   }
 
   public resolve = (resolver: NameResolver) => {
-    const procedureRef = resolver.resolveProcedureReference(this.name);
-    const procedure = procedureRef.model;
+    const procedure = this.isConstructor ?
+      resolver.resolveConstructorByName(this.name) :
+      resolver.resolveFormulaByName(this.name);
     const {returnType, resolutionTimeTypeHelper} = procedure;
     if (resolutionTimeTypeHelper) {
       const {asmtsR, asmtTypesByName} = this.isLambdaHelper(resolutionTimeTypeHelper) ?
-        this.asmts.resolveForProcedureWithResolutionTimeTypes(resolver, procedureRef, resolutionTimeTypeHelper) :
-        this.asmts.resolveForProcedure(resolver, procedureRef);
+        this.asmts.resolveForProcedureWithResolutionTimeTypes(resolver, procedure, resolutionTimeTypeHelper) :
+        this.asmts.resolveForProcedure(resolver, procedure);
       const _returnType = resolutionTimeTypeHelper.resolveCallReturnType(asmtTypesByName, resolver.environment);
       return new CallRes(procedure, asmtsR, this.isConstructor, _returnType);
     } else {
-      const {asmtsR} = this.asmts.resolveForProcedure(resolver, procedureRef);
+      const {asmtsR} = this.asmts.resolveForProcedure(resolver, procedure);
       return new CallRes(procedure, asmtsR, this.isConstructor, returnType);
     }
   }
@@ -576,12 +577,12 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
   }
 
   // TODO update this given resolution-time types
-  public static buildDefaultConstructorCall = <R extends Type, I extends Identifier> (
-    constructorRef: ProcedureReference<R, I>,
-  ): CallRes<R, I> => {
-    const {assignmentsType, returnType} = constructorRef.model;
+  public static buildDefaultConstructorCall = <I extends Identifier> (
+    constructor: Constructor<I>,
+  ): CallRes<RowType<I>, I> => {
+    const {assignmentsType, returnType} = constructor;
     const asmts = new AssignmentsRes({}, [], assignmentsType);
-    return new CallRes(constructorRef.model, asmts, true, returnType);
+    return new CallRes(constructor, asmts, true, returnType);
   }
 }
 
@@ -618,20 +619,20 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
 
   public resolveForProcedure = (
     resolver: NameResolver,
-    procedureRef: ProcedureReference,
+    procedure: Procedure,
   ): {asmtsR: AssignmentsRes, asmtTypesByName: RODictionary<Type>} => {
-    const {assignmentsType} = procedureRef.model;
+    const {assignmentsType} = procedure;
     const nameResolver = resolver.resolverFor(assignmentsType);
-    const referencesByName = _.mapValues(this.asmts, (_e, name) => nameResolver.resolveValueReference(name));
+    const referencesByName = _.mapValues(this.asmts, (_e, name) => nameResolver.resolveValueReferenceByName(name));
     const asmtsRByName = _.mapValues(this.asmts, (e, name) => AssignmentsUnres.resolveAsmt(e, resolver, referencesByName[name].type));
-    const asmtsR = this.resolveFromResolvedAsmtsByName(asmtsRByName, referencesByName, nameResolver, procedureRef);
+    const asmtsR = this.resolveFromResolvedAsmtsByName(asmtsRByName, referencesByName, nameResolver, procedure);
     const asmtTypesByName = _.mapValues(asmtsRByName, e => e.type);
     return {asmtsR, asmtTypesByName};
   }
 
   public resolveForProcedureWithResolutionTimeTypes = (
     resolver: NameResolver,
-    procedureRef: ProcedureReference,
+    procedure: Procedure,
     resolutionTimeTypeHelper: LambdaResolutionTimeTypeHelper,
   ): {asmtsR: AssignmentsRes, asmtTypesByName: RODictionary<Type>} => {
     // On resolution-time types:
@@ -643,13 +644,13 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
     // Therefore, neither T nor U is a lambda type
     // Therefore, can resolve lambda input type T by resolving the column(s) specifying T
     // Therefore, can resolve all non-lambda columns first and from them get lambda input type
-    const {assignmentsType} = procedureRef.model;
+    const {assignmentsType} = procedure;
     const nameResolver = resolver.resolverFor(assignmentsType);
     const asmts = _.defaults({}, this.asmts, resolutionTimeTypeHelper.resolutionTimeAsmtDefaultValues);
-    const referencesByName = _.mapValues(asmts, (_e, name) => nameResolver.resolveValueReference(name));
+    const referencesByName = _.mapValues(asmts, (_e, name) => nameResolver.resolveValueReferenceByName(name));
     const asmtsRByName = AssignmentsUnres.resolveForResolutionTimeTypes(
         asmts, resolver, referencesByName, resolutionTimeTypeHelper);
-    const asmtsR = this.resolveFromResolvedAsmtsByName(asmtsRByName, referencesByName, nameResolver, procedureRef);
+    const asmtsR = this.resolveFromResolvedAsmtsByName(asmtsRByName, referencesByName, nameResolver, procedure);
     const asmtTypesByName = _.mapValues(asmtsRByName, e => e.type);
     return {asmtsR, asmtTypesByName};
   }
@@ -658,13 +659,13 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
     asmtsRByName: RODictionary<ResolvedAST>,
     referencesByName: RODictionary<ValueReference>,
     nameResolver: NameResolver,
-    procedureRef: ProcedureReference,
+    procedure: Procedure,
   ): AssignmentsRes => {
-    const {assignmentsType} = procedureRef.model;
+    const {assignmentsType} = procedure;
     const asmtsR = _.mapKeys(asmtsRByName, (_e, name) => referencesByName[name].id);
     const asmtTypes = _.mapValues(asmtsR, asmt => asmt.type);
-    nameResolver.validateProcedureAssignments(procedureRef, asmtTypes);
-    const asmtOrderR = this.asmtOrder.map(name => nameResolver.resolveValueReference(name).id);
+    nameResolver.validateProcedureAssignments(procedure, asmtTypes);
+    const asmtOrderR = this.asmtOrder.map(name => nameResolver.resolveValueReferenceByName(name).id);
     return new AssignmentsRes(asmtsR, asmtOrderR, assignmentsType);
   }
 
@@ -762,7 +763,7 @@ export class IdentifierUnres extends IdentifierAST implements UnresolvedAST<ASTN
   }
 
   public resolve = (resolver: NameResolver) => {
-    const refR = resolver.resolveValueReference(this.name);
+    const refR = resolver.resolveValueReferenceByName(this.name);
     return new IdentifierRes(refR);
   }
 

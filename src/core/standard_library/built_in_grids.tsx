@@ -147,7 +147,7 @@ function getTypeForInstanceOf(
   environment: FormulaEnvironment,
   gridName: string,
 ): Type {
-  return environment.nameResolver.resolveProcedureReference(gridName).model.returnType;
+  return environment.nameResolver.resolveConstructorByName(gridName).returnType;
 }
 
 function makeLiteral(literalExpression: string, type: Type, environment: FormulaEnvironment): Value {

@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 
 import {Grid} from '@models/domain_specific/grid'; // only a type dependency
-import {Procedure, Signature} from '@models/domain_specific/procedure'; // only a type dependency
+import {BuiltInFormula, Procedure, Signature} from '@models/domain_specific/procedure'; // only a type dependency
 import {Dictionary, ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
 import {ObjectResolutionError} from './language_errors';
@@ -41,7 +41,7 @@ export class FormulaEnvironment {
     return this.grids;
   }
 
-  public addBuiltInFormula = (formula: Procedure) => {
+  public addBuiltInFormula = (formula: BuiltInFormula) => {
     this.builtInFormulasByGridId[formula.id] = formula;
     const formulaRef = ReferenceUtils.buildReferenceForProcedure(formula);
     this.procedureNamespace.addBuiltInFormula(formula.name, formulaRef);

@@ -10,15 +10,17 @@ import {GridValue, Value} from '@language/values';
 import {Address, AddressUtils} from '@paths/address';
 import {getCoordinateSystemColumn} from '@standard_library/geometry_utils';
 import {RODictionary} from '@utils/types';
-import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from '../collections/functional_array';
+import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM}
+        from '../collections/functional_array';
 import {FunctionalKeyedArray} from '../collections/functional_keyed_array';
 import {ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {GridUpdateType} from '../core/update_types';
 import {Column} from './column';
-import {DEFAULT_COLUMN_WIDTH, GridColumn, GridColumnUpdateDescriptor} from './grid_column';
-import {Constructor, ConstructorUpdateDescriptor, Procedure} from './procedure';
+import {DEFAULT_COLUMN_WIDTH, GridColumn, GridColumnUpdateDescriptor}
+        from './grid_column';
+import {Constructor, ConstructorUpdateDescriptor, GridConstructor} from './procedure';
 import {Row, RowUpdateDescriptor} from './row';
 
 export type GridColumns = FunctionalKeyedArray<GridColumn, GridColumnUpdateDescriptor, 'columnId'>;
@@ -52,7 +54,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   public readonly columns: GridColumns;
   public readonly rows: Rows;
   public readonly namespace: ValueNamespace;
-  public readonly gridConstructor: Procedure<RowType<I>, I>;
+  public readonly gridConstructor: Constructor<I>;
 
   constructor(
     updateManager: UpdateManager,
@@ -156,7 +158,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     const {columns, defaultValues, environment, getPrimitiveDrawing, id: gridId, namespace} = this;
     // TODO create a Primitive mutable model and make this.name a Primitive
     const getName = () => this.name;
-    return new Constructor(this.updateManager, {
+    return new GridConstructor(this.updateManager, {
       columns, defaultValues, environment, getPrimitiveDrawing, gridId, getName, namespace,
     });
   }

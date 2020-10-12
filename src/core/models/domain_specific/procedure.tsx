@@ -37,11 +37,11 @@ export interface Procedure<R extends Type = Type, I extends Identifier = Identif
   getSignature: () => Signature,
 }
 
-interface ConstructorLiteral<R extends Type = Type, I extends Identifier = Identifier> extends Procedure<R, I> {
+export interface Constructor<I extends Identifier = Identifier> extends Procedure<RowType<I>, I> {
   readonly isConstructorLiteral: true,
 }
 
-interface LossyProcedure<R extends Type = Type, I extends Identifier = Identifier> extends Procedure<R, I> {
+export interface Formula<R extends Type = Type, I extends Identifier = Identifier> extends Procedure<R, I> {
   readonly isConstructorLiteral: false,
 }
 
@@ -57,8 +57,8 @@ export interface ConstructorData<I extends Identifier = Identifier> {
 
 export interface ConstructorUpdateDescriptor extends UpdateDescriptor<ConstructorUpdateType> {}
 
-export class Constructor<I extends Identifier = Identifier>
-    extends Mutable<ConstructorUpdateDescriptor> implements ConstructorLiteral<RowType<I>, I> {
+export class GridConstructor<I extends Identifier = Identifier>
+    extends Mutable<ConstructorUpdateDescriptor> implements Constructor<I> {
   private readonly columns: GridColumns;
   private readonly defaultValues: Row;
   private readonly environment: FormulaEnvironment;
@@ -179,7 +179,7 @@ export interface BuiltInFormulaSpec<R extends Type = Type, I extends Identifier 
 }
 
 export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identifier>
-    extends Constant implements LossyProcedure<R, I> {
+    extends Constant implements Formula<R, I> {
   public readonly name: string;
   public readonly isConstructorLiteral = false;
   public readonly returnType: R;

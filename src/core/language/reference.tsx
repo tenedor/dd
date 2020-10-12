@@ -13,12 +13,13 @@ import {Value} from './values';
 export type ValueDependency = DependencyNode & {readonly value: Value};
 
 enum ReferenceType {
-  ABSOLUTE_PROCEDURE = "ABSOLUTE_PROCEDURE",
+  CONSTRUCTOR = "CONSTRUCTOR",
+  FORMULA = "FORMULA",
   ABSOLUTE_VALUE = "ABSOLUTE_VALUE",
   RELATIVE_VALUE = "RELATIVE_VALUE",
 }
 
-type AbsoluteReferenceType = ReferenceType.ABSOLUTE_PROCEDURE | ReferenceType.ABSOLUTE_VALUE;
+type AbsoluteReferenceType = ReferenceType.CONSTRUCTOR | ReferenceType.ABSOLUTE_VALUE;
 type RelativeReferenceType = ReferenceType.RELATIVE_VALUE;
 type ValueReferenceType = ReferenceType.ABSOLUTE_VALUE | ReferenceType.RELATIVE_VALUE;
 
@@ -97,7 +98,7 @@ export class GridReference<I extends Identifier = Identifier> extends AbsoluteVa
 }
 
 export interface ProcedureReference<R extends Type = Type, I extends Identifier = Identifier>
-    extends AbsoluteReference<ReferenceType.ABSOLUTE_PROCEDURE> {
+    extends AbsoluteReference<ReferenceType.CONSTRUCTOR> {
   readonly model: Procedure<R, I>,
 }
 
@@ -113,7 +114,7 @@ export class ReferenceUtils {
     const {id} = procedure;
     return {
       id,
-      referenceType: ReferenceType.ABSOLUTE_PROCEDURE,
+      referenceType: ReferenceType.CONSTRUCTOR,
       model: procedure,
       getName: (resolver: NameResolver) => procedure.name,
     }
@@ -129,14 +130,10 @@ export class ReferenceUtils {
   }
 
   public static isAbsoluteReference = (r: Reference): r is AbsoluteReference => {
-    return [ReferenceType.ABSOLUTE_PROCEDURE, ReferenceType.ABSOLUTE_VALUE].includes(r.referenceType);
+    return [ReferenceType.CONSTRUCTOR, ReferenceType.ABSOLUTE_VALUE].includes(r.referenceType);
   }
 
   public static isValueReference = (r: Reference): r is ValueReference => {
     return [ReferenceType.ABSOLUTE_VALUE, ReferenceType.RELATIVE_VALUE].includes(r.referenceType);
-  }
-
-  public static isProcedureReference = (r: Reference): r is ProcedureReference => {
-    return r.referenceType === ReferenceType.ABSOLUTE_PROCEDURE;
   }
 }

@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 
 import {Grid} from '@models/domain_specific/grid'; // Only a type dependency
+import {Constructor, Formula, Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
 import {RODictionary} from '@utils/types';
 import {FormulaEnvironment} from './formula_environment';
 import {ObjectResolutionError, TypeError, ValueResolutionError} from './language_errors';
@@ -105,7 +106,7 @@ export class NameResolver {
     this.iteratorType = iteratorType;
   }
 
-  public resolveValueReference = (name: string): ValueReference => {
+  public resolveValueReferenceByName = (name: string): ValueReference => {
     const ref = this.valueNamespace.getReferenceForName(name);
     if (!ref) {
       throw new ValueResolutionError(`No value with name '${name}' exists in this scope`);
@@ -113,24 +114,37 @@ export class NameResolver {
     return ref;
   }
 
-  public resolveProcedureReference = (name: string): ProcedureReference => {
+  public resolveConstructorByName = (name: string): Constructor => {
     const ref = this.procedureNamespace.getReferenceForName(name);
     if (!ref) {
-      throw new NameResolutionError(`No formula or grid exists with name '${name}'`);
+      throw new NameResolutionError(`No grid exists with name '${name}'`);
     }
-    return ref;
+    return ref.model;
   }
 
-  public resolveProcedureFromId = <I extends Identifier> (gridId: I): ProcedureReference<RowType<I>, I> => {
+  public resolveFormulaByName = (name: string): Formula => {
+    const ref = this.procedureNamespace.getReferenceForName(name);
+    if (!ref) {
+      throw new NameResolutionError(`No formula exists with name '${name}'`);
+    }
+    return ref.model;
+  }
+
+  public resolveConstructorById = <I extends Identifier> (gridId: I): Constructor<I> => {
     const ref = this.procedureNamespace.getReferenceForGridId(gridId);
     if (!ref) {
       throw new NameResolutionError(`No procedure exists for grid with id '${gridId}'`);
     }
-    return ref;
+    return ref.model;
   }
 
-  public resolveNamespaceForProcedure = <I extends Identifier> (gridId: I): ValueNamespace => {
-    return this.resolveProcedureFromId(gridId).model.namespace;
+  // FIXME delete this
+  public resolveProcedureById = <I extends Identifier> (gridId: I): Procedure<RowType<I>, I> => {
+    const ref = this.procedureNamespace.getReferenceForGridId(gridId);
+    if (!ref) {
+      throw new NameResolutionError(`No procedure exists for grid with id '${gridId}'`);
+    }
+    return ref.model;
   }
 
   private resolveNamespace = (id: Identifier): ValueNamespace => {
@@ -146,7 +160,8 @@ export class NameResolver {
   }
 
   public nameForProcedureAssignment = (procedureId: Identifier, assignmentId: Identifier): string => {
-    const namespace = this.resolveNamespaceForProcedure(procedureId);
+    // FIXME this is probably wrong
+    const {namespace} = this.resolveProcedureById(procedureId);
     const name = namespace.getNameForReference(assignmentId);
     return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
   }
@@ -156,14 +171,15 @@ export class NameResolver {
     return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
   }
 
-  public nameForProcedureId = (id: Identifier): string => {
+  public nameForConstructorId = (id: Identifier): string => {
     const name = this.procedureNamespace.getNameForReference(id);
     return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
   }
 
+  // FIXME move this to Procedure class
   public validateProcedureAssignments =
-      (procedure: ProcedureReference, asmtTypesById: RODictionary<Type>): void => {
-    const {namespace} = procedure.model;
+      (procedure: Procedure, asmtTypesById: RODictionary<Type>): void => {
+    const {namespace} = procedure;
     Object.keys(asmtTypesById).forEach(id => {
       const name = namespace.getNameForReference(id);
       if (!name) {
