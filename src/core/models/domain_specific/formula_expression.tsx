@@ -1,8 +1,9 @@
 import {ExpressionRes} from '@language/ast';
-import {FormulaEnvironment, ReferenceResolver} from '@language/formula_environment';
+import {FormulaEnvironment} from '@language/formula_environment';
 import {TypeError} from '@language/language_errors';
 import {NameResolver} from '@language/name_resolver';
 import {Reference} from '@language/reference';
+import {ReferenceResolver} from '@language/reference_resolver';
 import {Type, TypeUtils} from '@language/types';
 import {Value} from '@language/values';
 import {ROArray} from '@utils/types';

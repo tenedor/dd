@@ -6,11 +6,12 @@ import {RODictionary} from '@utils/types';
 import {assert, assertUnreachable} from '@utils/utils';
 import {BooleanRes, CallRes, ListRes, NumberRes, PrimitiveRes, ResolvedAST, StringRes}
         from './ast';
-import {FormulaEnvironment, ReferenceResolver} from './formula_environment';
+import {FormulaEnvironment} from './formula_environment';
 import {ObjectResolutionError, TypeError} from './language_errors';
 import {Namespace} from './name_resolver';
 import {Parser} from './parser';
 import {ConstructorReference} from './reference';
+import {ReferenceResolver} from './reference_resolver';
 import {BoundingType, DictType, GridIdentifier, GridType, Identifier, LambdaType,
         ListType, PartialRowType, PrimitiveType, RowIdentifier, RowType, SchemaIdentifier,
         SupportsLiteralsType, Type, TypeUtils} from './types';
