@@ -2,7 +2,6 @@ import * as _ from 'lodash';
 
 import {ROArray} from '@utils/types';
 import {assertUnreachable, capitalizeFirstLetter} from '@utils/utils';
-import {FormulaEnvironment} from './formula_environment';
 import {TypeError} from './language_errors';
 
 export type Identifier = string;
@@ -92,6 +91,13 @@ export type Type = PrimitiveType | ListTypeBase | DictType |
   LambdaTypeBase | BoundingType;
 
 
+export interface TypeEnvironment {
+  isAssignableTo(t1: GridType, t2: GridType): boolean;
+  getUnionType(t1: GridType, t2: GridType): GridType | ListOfAnyType;
+  typeToString(t: Type, opts?: {eraseBoundingTypes?: boolean}): string;
+}
+
+
 export class TypeUtils {
 
   // ============
@@ -178,7 +184,7 @@ export class TypeUtils {
   // Types Logic
   // ===========
 
-  public static isAssignableTo = (t1: Type, t2: Type, environment: FormulaEnvironment): boolean => {
+  public static isAssignableTo = (t1: Type, t2: Type, environment: TypeEnvironment): boolean => {
     if (TypeUtils.isBottom(t1)) {
       return true;
     }
@@ -235,12 +241,12 @@ export class TypeUtils {
   }
 
   public static validateIsAssignableTo = <T extends Type> (
-    t1: Type, t2: T, environment: FormulaEnvironment, errorMessage?: string,
+    t1: Type, t2: T, environment: TypeEnvironment, errorMessage?: string,
   ): t1 is T => {
     if (!TypeUtils.isAssignableTo(t1, t2, environment)) {
       throw new TypeError(errorMessage ||
-        `Expected type ${environment.getGlobalNamespace().typeToString(t1)} to be assignable ` +
-        `to type ${environment.getGlobalNamespace().typeToString(t2)}`);
+        `Expected type ${environment.typeToString(t1)} to be assignable ` +
+        `to type ${environment.typeToString(t2)}`);
     }
     return true;
   }
@@ -252,18 +258,18 @@ export class TypeUtils {
     return TypeUtils.isAssignableTo_NoEnvironment(t1, t2) && TypeUtils.isAssignableTo_NoEnvironment(t2, t1);
   }
 
-  private static isGridAssignableTo = (t1: GridType, t2: GridType, environment: FormulaEnvironment): boolean => {
+  private static isGridAssignableTo = (t1: GridType, t2: GridType, environment: TypeEnvironment): boolean => {
     return environment.isAssignableTo(t1, t2);
   }
 
-  private static isRowAssignableTo = (t1: PartialRowType, t2: PartialRowType, environment: FormulaEnvironment): boolean => {
+  private static isRowAssignableTo = (t1: PartialRowType, t2: PartialRowType, environment: TypeEnvironment): boolean => {
     const g1 = TypeUtils.GridOf(t1.schemaId.gridId);
     const g2 = TypeUtils.GridOf(t2.schemaId.gridId);
     return TypeUtils.isGridAssignableTo(g1, g2, environment);
   }
 
   // The intersection is the widest type that can be assigned to any of the input types
-  public static intersect = (t1: Type, t2: Type, environment: FormulaEnvironment): Type => {
+  public static intersect = (t1: Type, t2: Type, environment: TypeEnvironment): Type => {
     if (TypeUtils.isTop(t1) || TypeUtils.isTop(t2)) {
       return TypeUtils.isTop(t1) ? t2 : t1;
     } else if (TypeUtils.isLambda(t1) && TypeUtils.isLambda(t2)) {
@@ -297,12 +303,12 @@ export class TypeUtils {
     }
   }
 
-  public static intersectAll = (types: Type[], environment: FormulaEnvironment): Type => {
+  public static intersectAll = (types: Type[], environment: TypeEnvironment): Type => {
     return _.reduce(types, (t1, t2) => TypeUtils.intersect(t1, t2, environment), BoundingType.TOP);
   }
 
   // The union is the narrowest type to which any of the input types can be assigned
-  public static union = (t1: Type, t2: Type, environment: FormulaEnvironment): Type => {
+  public static union = (t1: Type, t2: Type, environment: TypeEnvironment): Type => {
     if (TypeUtils.isBottom(t1) || TypeUtils.isBottom(t2)) {
       return TypeUtils.isBottom(t1) ? t2 : t1;
     } else if (TypeUtils.isLambda(t1) && TypeUtils.isLambda(t2)) {
@@ -324,22 +330,22 @@ export class TypeUtils {
     }
   }
 
-  public static unionAll = (types: Type[], environment: FormulaEnvironment): Type => {
+  public static unionAll = (types: Type[], environment: TypeEnvironment): Type => {
     return _.reduce(types, (t1, t2) => TypeUtils.union(t1, t2, environment), BoundingType.BOTTOM);
   }
 
-  private static gridUnion = (t1: GridType, t2: GridType, environment: FormulaEnvironment): GridType | ListOfAnyType => {
+  private static gridUnion = (t1: GridType, t2: GridType, environment: TypeEnvironment): GridType | ListOfAnyType => {
     return environment.getUnionType(t1, t2);
   }
 
-  private static rowUnion = (t1: RowType, t2: RowType, environment: FormulaEnvironment): RowType | BoundingType.TOP => {
+  private static rowUnion = (t1: RowType, t2: RowType, environment: TypeEnvironment): RowType | BoundingType.TOP => {
     const g1 = TypeUtils.GridOf(t1.schemaId.gridId);
     const g2 = TypeUtils.GridOf(t2.schemaId.gridId);
     const gridUnion = TypeUtils.gridUnion(g1, g2, environment);
     return TypeUtils.isGrid(gridUnion) ? TypeUtils.RowOf(gridUnion.schemaId.gridId) : BoundingType.TOP;
   }
 
-  private static partialRowUnion = (t1: PartialRowType, t2: PartialRowType, environment: FormulaEnvironment): PartialRowType | BoundingType.TOP => {
+  private static partialRowUnion = (t1: PartialRowType, t2: PartialRowType, environment: TypeEnvironment): PartialRowType | BoundingType.TOP => {
     const g1 = TypeUtils.GridOf(t1.schemaId.gridId);
     const g2 = TypeUtils.GridOf(t2.schemaId.gridId);
     const gridUnion = TypeUtils.gridUnion(g1, g2, environment);

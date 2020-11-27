@@ -10,8 +10,8 @@ import {ObjectResolutionError} from './language_errors';
 import {Namespace} from './name_resolver';
 import {ConstructorReference, FormulaReference, Reference, ReferenceUtils,
         ValueReference} from './reference';
-import {GridType, Identifier, ListOfAnyType, PartialRowType, Type, TypeUtils}
-        from './types';
+import {GridType, Identifier, ListOfAnyType, PartialRowType, Type, TypeEnvironment,
+        TypeUtils} from './types';
 import {DictValue, Value} from './values';
 
 export interface ReferenceResolver {
@@ -20,12 +20,6 @@ export interface ReferenceResolver {
   resolveValue<T extends Type>(ref: ValueReference<T>): Value<T> | undefined;
   resolveConstructor<I extends Identifier>(ref: ConstructorReference<I>): Constructor<I> | undefined;
   resolveFormula<R extends Type, I extends Identifier>(ref: FormulaReference<R, I>): Formula<R, I> | undefined;
-}
-
-
-export interface TypeEnvironment {
-  isAssignableTo(t1: GridType, t2: GridType): boolean;
-  getUnionType(t1: GridType, t2: GridType): GridType | ListOfAnyType;
 }
 
 
