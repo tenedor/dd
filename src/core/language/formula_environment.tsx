@@ -6,8 +6,8 @@ import {BuiltInFormula, Constructor, Formula, Procedure, Signature}
 import {Dictionary, ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
 import {ObjectResolutionError} from './language_errors';
-import {Namespace} from './name_resolver';
 import {DictReferenceResolver} from './reference/dict_reference_resolver';
+import {Namespace} from './reference/namespace';
 import {ConstructorReference, FormulaReference, Reference, ReferenceUtils,
         ValueReference} from './reference/reference';
 import {ReferenceResolver} from './reference/reference_resolver';

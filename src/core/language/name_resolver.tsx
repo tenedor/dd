@@ -5,19 +5,10 @@ import {BuiltInFormula, Constructor, Formula, Procedure} from '@models/domain_sp
 import {RODictionary} from '@utils/types';
 import {FormulaEnvironment} from './formula_environment';
 import {ObjectResolutionError, TypeError, ValueResolutionError} from './language_errors';
-import {ConstructorReference, FormulaReference, ProcedureReference, Reference, ReferenceUtils, ValueReference} from './reference';
+import {Namespace} from './reference/namespace';
+import {ProcedureReference, Reference, ReferenceUtils, ValueReference}
+        from './reference/reference';
 import {BoundingType, DictType, Identifier, RowType, Type, TypeUtils} from './types';
-
-export interface Namespace {
-  getReferenceName(ref: Reference): string | undefined;
-  getGridNameById(gridId: Identifier): string | undefined;
-  typeToString(t: Type, opts?: {eraseBoundingTypes?: boolean}): string;
-
-  getGridIdByName(name: string): Identifier | undefined;
-  getValueReferenceByName(name: string): ValueReference | undefined;
-  getConstructorReferenceByName(name: string): ConstructorReference | undefined;
-  getFormulaReferenceByName(name: string): FormulaReference | undefined;
-}
 
 export type ValueNamespace = Namespace<ValueReference>;
 

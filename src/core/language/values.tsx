@@ -8,8 +8,8 @@ import {BooleanRes, CallRes, ListRes, NumberRes, PrimitiveRes, ResolvedAST, Stri
         from './ast';
 import {FormulaEnvironment} from './formula_environment';
 import {ObjectResolutionError, TypeError} from './language_errors';
-import {Namespace} from './name_resolver';
 import {Parser} from './parser';
+import {Namespace} from './reference/namespace';
 import {ConstructorReference} from './reference/reference';
 import {ReferenceResolver} from './reference/reference_resolver';
 import {BoundingType, DictType, GridIdentifier, GridType, Identifier, LambdaType,

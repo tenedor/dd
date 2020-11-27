@@ -2,8 +2,8 @@ import * as _ from 'lodash';
 
 import {CoordinateSystem} from '@core/geometry';
 import {FormulaEnvironment} from '@language/formula_environment';
-import {Namespace} from '@language/name_resolver';
-import {Identifier, Type, TypeUtils} from '@language/types';
+import {Namespace} from '@language/reference/namespace';
+import {Type, TypeUtils} from '@language/types';
 import {NumberValue, RowValue, Value} from '@language/values';
 import {ModelType} from '@models/core/model';
 import {UpdateManager} from '@models/core/update_manager';
