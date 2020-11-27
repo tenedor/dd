@@ -11,25 +11,30 @@ import {ConstructorReference, FormulaReference, Reference, ReferenceUtils,
         ValueReference} from './reference';
 import {GridType, Identifier, ListOfAnyType, PartialRowType, Type, TypeUtils}
         from './types';
-import {PartialRowValue, Value} from './values';
+import {ValueResolver} from './value_resolver';
+import {DictValue, Value} from './values';
 
 export interface ReferenceResolver {
   getGridById<I extends Identifier>(gridId: I): Grid<I> | undefined;
+
   resolveValue<T extends Type>(ref: ValueReference<T>): Value<T> | undefined;
   resolveConstructor<I extends Identifier>(ref: ConstructorReference<I>): Constructor<I> | undefined;
   resolveFormula<R extends Type, I extends Identifier>(ref: FormulaReference<R, I>): Formula<R, I> | undefined;
 }
 
 
-export interface FormulaEnvironment {
-  getGlobalNamespace(): Namespace;
-  getInstanceNamespace(type: PartialRowType): Namespace | undefined;
-
-  getGlobalResolver(): ReferenceResolver;
-  getInstanceResolver(instance: PartialRowValue): ReferenceResolver | undefined;
-
+export interface TypeEnvironment {
   isAssignableTo(t1: GridType, t2: GridType): boolean;
   getUnionType(t1: GridType, t2: GridType): GridType | ListOfAnyType;
+}
+
+
+export interface FormulaEnvironment extends TypeEnvironment {
+  getGlobalNamespace(): Namespace;
+  getInstanceNamespace(type: PartialRowType): Namespace;
+
+  getGlobalResolver(): ReferenceResolver;
+  getInstanceResolver(instance: DictValue): ReferenceResolver;
 
   getAllExtensibleGrids(): ROArray<Grid>;
   getAllowedColumnTypes(): Type[];
@@ -163,7 +168,7 @@ export class LanguageEnvironmentImpl extends LanguageEnvironmentRegistry impleme
     return this;
   }
 
-  public getInstanceNamespace = (type: PartialRowType): Namespace | undefined => {
+  public getInstanceNamespace = (type: PartialRowType): Namespace => {
     // TODO
   }
 
@@ -171,8 +176,8 @@ export class LanguageEnvironmentImpl extends LanguageEnvironmentRegistry impleme
     return this;
   }
 
-  public getInstanceResolver = (instance: PartialRowValue): ReferenceResolver | undefined => {
-    // TODO
+  public getInstanceResolver = (instance: DictValue): ReferenceResolver => {
+    return new ValueResolver(this, instance);
   }
 
   private getGridForType = <I extends Identifier>(gridType: GridType<I>): Grid<I> => {

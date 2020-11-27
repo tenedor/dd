@@ -3,7 +3,6 @@ import * as _ from 'lodash';
 import {DependencyNode} from '@models/core/update_manager'; // Only a type dependency
 import {Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
 import {Identifier, RowType, Type, TypeUtils} from './types';
-import {ValueResolver} from './value_resolver';
 import {Value} from './values';
 
 export type ValueDependency = DependencyNode & {readonly value: Value};
@@ -29,10 +28,6 @@ export class ValueReference<T extends Type = Type> implements BaseReference<Refe
   constructor(id: Identifier, type: T) {
     this.id = id;
     this.type = type;
-  }
-
-  public eval = (valueResolver: ValueResolver): Value<T> => {
-    return valueResolver.evalValueReference(this);
   }
 
   /*

@@ -5,26 +5,28 @@ import {Constructor, Formula} from '@models/domain_specific/procedure';
 import {ReferenceResolver} from './formula_environment';
 import {ConstructorReference, FormulaReference, ValueReference} from './reference';
 import {Identifier, Type} from './types';
-import {DictValue, Value} from './values';
+import {Value} from './values';
 
-export class ValueResolver implements ReferenceResolver {
-  private readonly globalResolver: ReferenceResolver;
-  private readonly instance: DictValue;
+export class LambdaReferenceResolver implements ReferenceResolver {
+  private readonly baseResolver: ReferenceResolver;
+  private readonly id: Identifier;
+  private readonly value: Value;
 
-  constructor(globalResolver: ReferenceResolver, instance: DictValue) {
-    this.globalResolver = globalResolver;
-    this.instance = instance;
+  constructor(baseResolver: ReferenceResolver, id: Identifier, value: Value) {
+    this.baseResolver = baseResolver;
+    this.id = id;
+    this.value = value;
   }
 
   public resolveValue = <T extends Type>(ref: ValueReference<T>): Value<T> | undefined => {
-    return this.instance.dict[ref.id] as Value<T> | undefined;
+    return ref.id === this.id ? this.value as Value<T> : this.baseResolver.resolveValue(ref);
   }
 
-  // Pass-throughs to global resolver
+  // Pass-throughs to base resolver
   public getGridById = <I extends Identifier>(gridId: I): Grid<I> | undefined =>
-      this.globalResolver.getGridById(gridId);
+      this.baseResolver.getGridById(gridId);
   public resolveConstructor = <I extends Identifier>(ref: ConstructorReference<I>): Constructor<I> | undefined =>
-      this.globalResolver.resolveConstructor(ref);
+      this.baseResolver.resolveConstructor(ref);
   public resolveFormula = <R extends Type, I extends Identifier>(ref: FormulaReference<R, I>): Formula<R, I> | undefined =>
-      this.globalResolver.resolveFormula(ref);
+      this.baseResolver.resolveFormula(ref);
 }

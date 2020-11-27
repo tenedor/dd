@@ -61,7 +61,7 @@ export interface GridValue<I extends Identifier = Identifier>
   list: Array<RowValue<I>>,
 }
 
-type DictValue = PartialRowValue | GridValue;
+export type DictValue<I extends Identifier = Identifier> = PartialRowValue<I> | GridValue<I>;
 
 export interface LambdaValue<I extends Type = Type, O extends Type = Type>
     extends BaseValue<LambdaType<I, O>> {

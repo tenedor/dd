@@ -3,8 +3,9 @@ import * as _ from 'lodash';
 import {Constructor, Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
 import {Dictionary, ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
-import {FormulaEnvironment} from './formula_environment';
-import {OutOfBoundsError, TypeError} from './language_errors';
+import {FormulaEnvironment, ReferenceResolver} from './formula_environment';
+import {LambdaReferenceResolver} from './lambda_reference_resolver';
+import {OutOfBoundsError, TypeError, ValueResolutionError} from './language_errors';
 import {buildNamespace, NameResolver, ValueNamespace} from './name_resolver';
 import {Parser} from './parser';
 import {Reference, ReferenceUtils, ValueReference}
@@ -68,7 +69,7 @@ export interface ResolvedAST<R extends Type = Type, N extends ASTNodeType = ASTN
   readonly type: R;
   readonly externalDependencies: ROArray<Reference>;
   readonly isLiteral: boolean;
-  eval: (valueResolver: ValueResolver) => Value<R>;
+  eval: (resolver: ReferenceResolver) => Value<R>;
 }
 
 
@@ -163,8 +164,8 @@ export class ExpressionRes<R extends Type = Type> extends ExpressionAST<Resolved
     return this.e.isLiteral;
   }
 
-  public eval = (valueResolver: ValueResolver): Value<R> => {
-    return this.e.eval(valueResolver);
+  public eval = (resolver: ReferenceResolver): Value<R> => {
+    return this.e.eval(resolver);
   }
 }
 
@@ -226,11 +227,9 @@ export class LambdaRes<RI extends Type = Type, RO extends Type = Type>
     this.iteratorNamespace = identNamespace;
   }
 
-  public eval = (valueResolver: ValueResolver): LambdaValue<RI, RO> => {
+  public eval = (resolver: ReferenceResolver): LambdaValue<RI, RO> => {
     const lambda = (input: Value<RI>): Value<RO> => {
-      const iteratorValueLookup = {[this.ident.getRef().id]: input};
-      const iteratorResolver = valueResolver.resolverFor(iteratorValueLookup);
-      const res = valueResolver.extendWith(iteratorResolver);
+      const res = new LambdaReferenceResolver(resolver, this.ident.getRef().id, input);
       return this.e.eval(res);
     }
     return ValueUtils.lambdaOf(lambda, this.type);
@@ -287,9 +286,9 @@ export class BinaryOpRes<T1 extends Type = Type, T2 extends Type = Type, R exten
     this.externalDependencies = ResolvedASTUtils.mergeDeps(e1, e2);
   }
 
-  public eval = (valueResolver: ValueResolver): Value<R> => {
-    const eV1Thunk = () => this.e1.eval(valueResolver);
-    const eV2Thunk = () => this.e2.eval(valueResolver);
+  public eval = (resolver: ReferenceResolver): Value<R> => {
+    const eV1Thunk = () => this.e1.eval(resolver);
+    const eV2Thunk = () => this.e2.eval(resolver);
     return BinaryOpUtils.evalOp(this.op, eV1Thunk, eV2Thunk) as Value<R>;
   }
 }
@@ -336,8 +335,8 @@ export class UnaryOpRes<R extends Type = Type> extends UnaryOpAST<ResolvedAST<R>
     return UnaryOpUtils.isAllowedInLiterals(this.op);
   }
 
-  public eval = (valueResolver: ValueResolver): Value<R> => {
-    const eV = this.e.eval(valueResolver);
+  public eval = (resolver: ReferenceResolver): Value<R> => {
+    const eV = this.e.eval(resolver);
     return UnaryOpUtils.evalOp(this.op, eV) as Value<R>;
   }
 }
@@ -389,9 +388,9 @@ export class IndexRes<R extends Type = Type>
     this.externalDependencies = ResolvedASTUtils.mergeDeps(list, idx);
   }
 
-  public eval = (valueResolver: ValueResolver): Value<R> => {
-    const listV = this.list.eval(valueResolver);
-    const idxV = this.idx.eval(valueResolver);
+  public eval = (resolver: ReferenceResolver): Value<R> => {
+    const listV = this.list.eval(resolver);
+    const idxV = this.idx.eval(resolver);
     if (!ValueUtils.isList(listV)) {
       throw new TypeError("Can only index into lists and grids");
     } else if (!ValueUtils.isNumber(idxV)) {
@@ -463,12 +462,16 @@ export class ProjectRes<R extends Type = Type> extends ProjectAST<ResolvedAST<Di
     this.ref = ref;
   }
 
-  public eval = (valueResolver: ValueResolver): Value<R> => {
-    const dictV = this.dict.eval(valueResolver);
+  public eval = (resolver: ReferenceResolver): Value<R> => {
+    const dictV = this.dict.eval(resolver);
     if (!ValueUtils.isDict(dictV)) {
       throw new TypeError("Can only project values from grids and rows");
     }
-    const refV = this.ref.eval(valueResolver.resolverFor(dictV.dict));
+    const instanceResolver = new ValueResolver(resolver, dictV);
+    const refV = instanceResolver.resolveValue(this.ref);
+    if (refV === undefined) {
+      throw new ValueResolutionError(`No value found for reference ${this.ref.id}`);
+    }
     return refV;
   }
 
@@ -555,9 +558,9 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
     return this.procedure.isConstructorLiteral && this.asmts.isLiteral;
   }
 
-  public eval = (valueResolver: ValueResolver): Value<R> => {
-    const asmtsV = this.asmts.eval(valueResolver);
-    return this.procedure.eval(valueResolver, asmtsV, this.type);
+  public eval = (resolver: ReferenceResolver): Value<R> => {
+    const asmtsV = this.asmts.eval(resolver);
+    return this.procedure.eval(asmtsV, this.type);
   }
 
   public toText = (resolver: NameResolver): string => {
@@ -712,8 +715,8 @@ export class AssignmentsRes<I extends Identifier = Identifier>
     return _.every(this.asmts, a => a.isLiteral);
   }
 
-  public eval = (valueResolver: ValueResolver): PartialRowValue<I> => {
-    const asmtsV = _.mapValues(this.asmts, e => e.eval(valueResolver));
+  public eval = (resolver: ReferenceResolver): PartialRowValue<I> => {
+    const asmtsV = _.mapValues(this.asmts, e => e.eval(resolver));
     return ValueUtils.partialRowOf(asmtsV, this.type.schemaId.gridId);
   }
 
@@ -790,8 +793,12 @@ export class IdentifierRes<R extends Type = Type> extends IdentifierAST
     this.ref = ref;
   }
 
-  public eval = (valueResolver: ValueResolver): Value<R> => {
-    return this.ref.eval(valueResolver);
+  public eval = (resolver: ReferenceResolver): Value<R> => {
+    const refV = resolver.resolveValue(this.ref);
+    if (refV === undefined) {
+      throw new ValueResolutionError(`No value found for reference ${this.ref.id}`);
+    }
+    return refV;
   }
 
   public getRef = (): ValueReference<R> => {
@@ -844,8 +851,8 @@ export class ParenthesesRes<R extends Type = Type> extends ParenthesesAST<Resolv
     this.externalDependencies = e.externalDependencies;
   }
 
-  public eval = (valueResolver: ValueResolver): Value<R> => {
-    return this.e.eval(valueResolver);
+  public eval = (resolver: ReferenceResolver): Value<R> => {
+    return this.e.eval(resolver);
   }
 }
 
@@ -892,8 +899,8 @@ export class ListRes<T extends Type = Type> extends ListAST<ResolvedAST<T>>
     return _.every(this.es, e => e.isLiteral);
   }
 
-  public eval = (valueResolver: ValueResolver): ListValue<T> => {
-    const esV = this.es.map(e => e.eval(valueResolver));
+  public eval = (resolver: ReferenceResolver): ListValue<T> => {
+    const esV = this.es.map(e => e.eval(resolver));
     return ValueUtils.listOf(esV, this.type.itemType);
   }
 }
@@ -936,7 +943,7 @@ export class PrimitiveRes<T extends PrimitiveType = PrimitiveType> extends Primi
   public readonly externalDependencies: ROArray<Reference> = [];
   public readonly isLiteral = true;
 
-  public eval = (valueResolver: ValueResolver): Value<T> => {
+  public eval = (resolver: ReferenceResolver): Value<T> => {
     return ValueUtils.primitiveOf(this.value, this.type);
   }
 

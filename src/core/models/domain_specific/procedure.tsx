@@ -6,8 +6,7 @@ import {FormulaEnvironment} from '@language/formula_environment';
 import {buildNamespace, ValueNamespace} from '@language/name_resolver';
 import {FormulaReference, ValueReference} from '@language/reference';
 import {Identifier, PartialRowType, RowType, Type, TypeUtils} from '@language/types';
-import {ValueResolver} from '@language/value_resolver';
-import {PartialRowValue, RowValue, Value, ValueUtils} from '@language/values';
+import {PartialRowValue, RowValue, Value} from '@language/values';
 import {ROArray, RODictionary} from '@utils/types';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
 import {Constant} from '../core/constant';
@@ -39,7 +38,7 @@ export interface Procedure<R extends Type = Type, I extends Identifier = Identif
   returnType: R,
   namespace: ValueNamespace,
   assignmentsType: PartialRowType<I>,
-  eval: (valueResolver: ValueResolver, asmts: PartialRowValue<I>, runtimeResolvedReturnType?: Type) => Value<R>;
+  eval: (asmts: PartialRowValue<I>, runtimeResolvedReturnType?: Type) => Value<R>;
   resolutionTimeTypeHelper?: ResolutionTimeTypeHelper,
   getSignature: () => Signature,
 }
@@ -101,7 +100,7 @@ export class GridConstructor<I extends Identifier = Identifier>
     return this.getName();
   }
 
-  public eval = (valueResolver: ValueResolver, asmts: PartialRowValue<I>): RowValue<I> => {
+  public eval = (asmts: PartialRowValue<I>): RowValue<I> => {
     const {columns, defaultValues, environment, getPrimitiveDrawing, gridId} = this;
     const updateManager = new SimpleUpdateManager();
     const manualValues = _.extend({}, asmts.dict);
@@ -189,7 +188,7 @@ export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identi
   public readonly returnType: R;
   public readonly namespace: ValueNamespace;
   public readonly assignmentsType: PartialRowType<I>;
-  public readonly eval: (valueResolver: ValueResolver, asmts: PartialRowValue<I>, runtimeResolvedReturnType?: Type) => Value<R>;
+  public readonly eval: (asmts: PartialRowValue<I>, runtimeResolvedReturnType?: Type) => Value<R>;
   public readonly resolutionTimeTypeHelper?: ResolutionTimeTypeHelper;
   private readonly signature: Signature;
 
@@ -199,7 +198,7 @@ export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identi
     this.returnType = formula.returnType;
     this.namespace = BuiltInFormula.buildNamespace(formula.parameters);
     this.assignmentsType = TypeUtils.PartialRowOf(formula.id);
-    this.eval = (valueResolver: ValueResolver, asmts: PartialRowValue<I>, runtimeResolvedReturnType?: Type) =>
+    this.eval = (asmts: PartialRowValue<I>, runtimeResolvedReturnType?: Type) =>
         formula.eval(asmts, runtimeResolvedReturnType);
     this.resolutionTimeTypeHelper = formula.resolutionTimeTypeHelper;
     this.signature = BuiltInFormula.buildSignature(formula);
