@@ -3,14 +3,14 @@ import * as _ from 'lodash';
 import {Constructor, Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
 import {Dictionary, ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
-import {DictReferenceResolver} from './dict_reference_resolver';
 import {FormulaEnvironment} from './formula_environment';
-import {LambdaReferenceResolver} from './lambda_reference_resolver';
 import {OutOfBoundsError, TypeError, ValueResolutionError} from './language_errors';
 import {buildNamespace, NameResolver, ValueNamespace} from './name_resolver';
 import {Parser} from './parser';
-import {Reference, ReferenceUtils, ValueReference} from './reference';
-import {ReferenceResolver} from './reference_resolver';
+import {DictReferenceResolver} from './reference/dict_reference_resolver';
+import {LambdaReferenceResolver} from './reference/lambda_reference_resolver';
+import {Reference, ReferenceUtils, ValueReference} from './reference/reference';
+import {ReferenceResolver} from './reference/reference_resolver';
 import {DictType, GridType, Identifier, LambdaType, ListType, PartialRowType,
         PrimitiveType, RowType, Type, TypeUtils} from './types';
 import {UnaryOp, UnaryOpUtils} from './unary_op';

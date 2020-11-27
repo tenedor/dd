@@ -5,12 +5,12 @@ import {BuiltInFormula, Constructor, Formula, Procedure, Signature}
         from '@models/domain_specific/procedure'; // only a type dependency
 import {Dictionary, ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
-import {DictReferenceResolver} from './dict_reference_resolver';
 import {ObjectResolutionError} from './language_errors';
 import {Namespace} from './name_resolver';
+import {DictReferenceResolver} from './reference/dict_reference_resolver';
 import {ConstructorReference, FormulaReference, Reference, ReferenceUtils,
-        ValueReference} from './reference';
-import {ReferenceResolver} from './reference_resolver';
+        ValueReference} from './reference/reference';
+import {ReferenceResolver} from './reference/reference_resolver';
 import {GridType, Identifier, ListOfAnyType, PartialRowType, Type, TypeEnvironment,
         TypeUtils} from './types';
 import {DictValue, Value} from './values';

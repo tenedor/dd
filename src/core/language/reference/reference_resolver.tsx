@@ -1,8 +1,8 @@
 import {Grid} from '@models/domain_specific/grid';
 import {Constructor, Formula} from '@models/domain_specific/procedure';
+import {Identifier, Type} from '../types';
+import {Value} from '../values';
 import {ConstructorReference, FormulaReference, ValueReference} from './reference';
-import {Identifier, Type} from './types';
-import {Value} from './values';
 
 export interface ReferenceResolver {
   getGridById<I extends Identifier>(gridId: I): Grid<I> | undefined;

@@ -10,8 +10,8 @@ import {FormulaEnvironment} from './formula_environment';
 import {ObjectResolutionError, TypeError} from './language_errors';
 import {Namespace} from './name_resolver';
 import {Parser} from './parser';
-import {ConstructorReference} from './reference';
-import {ReferenceResolver} from './reference_resolver';
+import {ConstructorReference} from './reference/reference';
+import {ReferenceResolver} from './reference/reference_resolver';
 import {BoundingType, DictType, GridIdentifier, GridType, Identifier, LambdaType,
         ListType, PartialRowType, PrimitiveType, RowIdentifier, RowType, SchemaIdentifier,
         SupportsLiteralsType, Type, TypeUtils} from './types';

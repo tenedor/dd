@@ -2,8 +2,8 @@ import * as _ from 'lodash';
 
 import {DependencyNode} from '@models/core/update_manager'; // Only a type dependency
 import {Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
-import {Identifier, RowType, Type, TypeUtils} from './types';
-import {Value} from './values';
+import {Identifier, RowType, Type, TypeUtils} from '../types';
+import {Value} from '../values';
 
 export type ValueDependency = DependencyNode & {readonly value: Value};
 
