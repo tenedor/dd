@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 import {Grid} from '@models/domain_specific/grid';
 import {getExampleFormulaForTesting} from '@standard_library/standard_library';
 import {TestUtils} from '@test_utils/test_utils';
-import {FormulaEnvironment} from '../formula_environment';
+import {LanguageEnvironmentImpl} from '../formula_environment';
 import {NameResolver} from '../name_resolver';
 import {RelativeValueReference} from '../reference';
 import {TypeUtils} from '../types';
@@ -11,7 +11,7 @@ import {ValueResolver} from '../value_resolver';
 import {ValueUtils} from '../values';
 import {buildLanguageTestHelpers} from './test_helpers';
 
-const environment = new FormulaEnvironment();
+const environment = new LanguageEnvironmentImpl();
 environment.addBuiltInFormula(getExampleFormulaForTesting());
 
 const fakeGridId = 'fake-grid-id';

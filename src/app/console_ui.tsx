@@ -112,7 +112,7 @@ class Helper {
 
   public static printSignatures = (environment: FormulaEnvironment, verbosity: number) => {
     const signatures = environment.getSignatures();
-    const typeToString = (t: Type) => environment.getNameForType(t, {eraseBoundingTypes: true});
+    const typeToString = (t: Type) => environment.getGlobalNamespace().typeToString(t, {eraseBoundingTypes: true});
     const valueToString = (v: Value) => ValueUtils.toString(v, environment.nameResolver, {quoteStrings: true});
     const formatStrings = signatures.map(s => Helper.printSignatureWithColors(s, typeToString, valueToString, verbosity));
     const str = formatStrings.map(s => s.str).join("\n");

@@ -1,22 +1,28 @@
 import * as _ from 'lodash';
 
 import {Grid} from '@models/domain_specific/grid'; // Only a type dependency
-import {Constructor, Formula, Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
+import {BuiltInFormula, Constructor, Formula, Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
 import {RODictionary} from '@utils/types';
 import {FormulaEnvironment} from './formula_environment';
 import {ObjectResolutionError, TypeError, ValueResolutionError} from './language_errors';
-import {ProcedureReference, Reference, ReferenceUtils, ValueReference} from './reference';
+import {ConstructorReference, FormulaReference, ProcedureReference, Reference, ReferenceUtils, ValueReference} from './reference';
 import {BoundingType, DictType, Identifier, RowType, Type, TypeUtils} from './types';
 
-interface Namespace<R extends Reference> {
-  getReferenceForName(name: string): R | undefined;
-  getNameForReference(refId: Identifier): string | undefined;
+export interface Namespace {
+  getReferenceName(ref: Reference): string | undefined;
+  getGridNameById(gridId: Identifier): string | undefined;
+  typeToString(t: Type, opts?: {eraseBoundingTypes?: boolean}): string;
+
+  getGridIdByName(name: string): Identifier | undefined;
+  getValueReferenceByName(name: string): ValueReference | undefined;
+  getConstructorReferenceByName(name: string): ConstructorReference | undefined;
+  getFormulaReferenceByName(name: string): FormulaReference | undefined;
 }
 
 export type ValueNamespace = Namespace<ValueReference>;
 
 
-export class ProcedureNamespace implements Namespace<ProcedureReference> {
+export class ProcedureNamespaceImpl {
   private readonly nameToReferenceMap: {[name: string]: ProcedureReference};
   private readonly idToNameMap: {[id: string]: string};
   private readonly grids: {[id: string]: Grid};
@@ -35,9 +41,9 @@ export class ProcedureNamespace implements Namespace<ProcedureReference> {
   }
 
   // TODO - in the case of grids, this is using the grid id not the reference id
-  public getNameForReference = (refId: Identifier): string | undefined => {
-    const grid = this.grids[refId];
-    return grid ? grid.name : this.idToNameMap[refId];
+  public getNameForReference = (ref: Reference): string | undefined => {
+    const grid = this.grids[ref.id];
+    return grid ? grid.name : this.idToNameMap[ref.id];
   }
 
   public getReferenceForGridId = <I extends Identifier> (gridId: I): ProcedureReference<RowType<I>, I> | undefined => {
@@ -68,7 +74,7 @@ export const buildNamespace = <R extends Reference> (nameToReferenceMap: {[name:
 
   return {
     getReferenceForName: (name: string) => nameToReferenceMap[name],
-    getNameForReference: (refId: Identifier) => idToNameMap[refId],
+    getNameForReference: (ref: Reference) => idToNameMap[ref.id],
   }
 }
 
@@ -83,9 +89,9 @@ export interface NamespaceResolver {
   resolveNamespace(id: Identifier): ValueNamespace | undefined;
 }
 
-export class NameResolver {
+export class NameResolverDeprecated {
   private readonly namespaceResolver: NamespaceResolver;
-  private readonly procedureNamespace: ProcedureNamespace;
+  private readonly procedureNamespace: ProcedureNamespaceImpl;
   private readonly valueNamespace: ValueNamespace;
   // TODO clarify the role of NameResolver vs FormulaEnvironment
   public readonly environment: FormulaEnvironment;
@@ -94,7 +100,7 @@ export class NameResolver {
 
   constructor(
     namespaceResolver: NamespaceResolver,
-    procedureNamespace: ProcedureNamespace,
+    procedureNamespace: ProcedureNamespaceImpl,
     valueNamespace: ValueNamespace,
     environment: FormulaEnvironment,
     iteratorType: Type = BoundingType.BOTTOM,
@@ -139,8 +145,7 @@ export class NameResolver {
   }
 
   // FIXME delete this
-  public resolveProcedureById = <I extends Identifier> (gridId: I): Procedure<RowType<I>, I> => {
-    const ref = this.procedureNamespace.getReferenceForGridId(gridId);
+  public resolveProcedure = <I extends Identifier> (ref: ProcedureReference<I>): Procedure<RowType<I>, I> => {
     if (!ref) {
       throw new NameResolutionError(`No procedure exists for grid with id '${gridId}'`);
     }
@@ -159,15 +164,16 @@ export class NameResolver {
     return this.iteratorType;
   }
 
-  public nameForProcedureAssignment = (procedureId: Identifier, assignmentId: Identifier): string => {
-    // FIXME this is probably wrong
-    const {namespace} = this.resolveProcedureById(procedureId);
+  public nameForProcedureAssignment = (
+    procedureRef: ProcedureReference, assignmentRef: ValueReference,
+  ): string => {
+    const {namespace} = this.resolveProcedure(procedureRef);
     const name = namespace.getNameForReference(assignmentId);
     return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
   }
 
-  public nameForValueId = (id: Identifier): string => {
-    const name = this.valueNamespace.getNameForReference(id);
+  public nameForValueId = (ref: ValueReference): string => {
+    const name = this.valueNamespace.getNameForReference(ref);
     return name === undefined ? NameResolver.MISSING_NAME_PLACEHOLDER : name;
   }
 
@@ -191,7 +197,7 @@ export class NameResolver {
       } else {
         const {type} = ref;
         TypeUtils.validateIsAssignableTo(asmtTypesById[id], type, this.environment,
-          `Expected value \`${name}\` to be assignable to type \`${this.environment.getNameForType(type)}\``);
+          `Expected value \`${name}\` to be assignable to type \`${this.environment.getGlobalNamespace().typeToString(type)}\``);
       }
     });
   }

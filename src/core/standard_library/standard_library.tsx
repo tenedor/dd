@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 
 import {ResolutionTimeTypeHelper, ResolutionTimeTypeHelperVariant, UnresolvedAST}
         from '@language/ast';
-import {FormulaEnvironment} from '@language/formula_environment';
+import {FormulaEnvironment, LanguageEnvironmentImpl, MutableFormulaEnvironment} from '@language/formula_environment';
 import {ParseError, TypeError} from '@language/language_errors';
 import {Parser} from '@language/parser';
 import {BoundingType, Identifier, LambdaOfAnyType, LambdaType, ListOfAnyType, ListType,
@@ -439,8 +439,8 @@ const getBuiltInFormulas = (): RODictionary<Formula> => {
   });
 }
 
-export const loadStandardLibrary = (updateManager: UpdateManager): FormulaEnvironment => {
-  const environment = new FormulaEnvironment();
+export const loadStandardLibrary = (updateManager: UpdateManager): MutableFormulaEnvironment => {
+  const environment = new LanguageEnvironmentImpl();
   Object.values(getBuiltInFormulas()).map(environment.addBuiltInFormula);
   loadBuiltInGrids(updateManager, environment);
   return environment;

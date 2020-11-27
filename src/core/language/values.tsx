@@ -3,13 +3,14 @@ import * as _ from 'lodash';
 import {DrawingGroup} from '@drawing/drawing'; // only a type dependency
 import {Row} from '@models/domain_specific/row'; // only a type dependency
 import {RODictionary} from '@utils/types';
-import {assertUnreachable} from '@utils/utils';
+import {assert, assertUnreachable} from '@utils/utils';
 import {BooleanRes, CallRes, ListRes, NumberRes, PrimitiveRes, ResolvedAST, StringRes}
         from './ast';
-import {FormulaEnvironment} from './formula_environment';
-import {TypeError} from './language_errors';
-import {NameResolver} from './name_resolver';
+import {FormulaEnvironment, ReferenceResolver} from './formula_environment';
+import {ObjectResolutionError, TypeError} from './language_errors';
+import {Namespace} from './name_resolver';
 import {Parser} from './parser';
+import {ConstructorReference} from './reference';
 import {BoundingType, DictType, GridIdentifier, GridType, Identifier, LambdaType,
         ListType, PartialRowType, PrimitiveType, RowIdentifier, RowType, SchemaIdentifier,
         SupportsLiteralsType, Type, TypeUtils} from './types';
@@ -204,12 +205,14 @@ export class ValueUtils {
   private static get defaultBoolean(): BooleanRes { return PrimitiveRes.booleanOf(false); }
   private static get defaultString(): StringRes { return PrimitiveRes.stringOf(""); }
 
-  private static defaultListOfType = <T extends SupportsLiteralsType> (itemType: T, resolver: NameResolver): ListRes<T> => {
+  private static defaultListOfType = <T extends SupportsLiteralsType> (itemType: T, resolver: ReferenceResolver): ListRes<T> => {
     const itemDefaultValue = ValueUtils.getDefaultValue(itemType, resolver);
     return new ListRes([itemDefaultValue], itemType);
   }
 
-  public static getDefaultValue = <T extends SupportsLiteralsType> (type: T & SupportsLiteralsType, resolver: NameResolver): ResolvedAST<T> => {
+  public static getDefaultValue = <T extends SupportsLiteralsType> (
+    type: T & SupportsLiteralsType, resolver: ReferenceResolver,
+  ): ResolvedAST<T> => {
     // Apologies to R. Milner for the type casts, here and elsewhere...
     //
     // Typescript does not support enum generics properly and needs help.
@@ -224,8 +227,9 @@ export class ValueUtils {
     } else if (TypeUtils.isList(type)) {
       return cast(ValueUtils.defaultListOfType(type.itemType, resolver));
     } else if (TypeUtils.isRow(type)) {
-      const constructor = resolver.resolveConstructorById(type.schemaId.gridId);
-      return cast(CallRes.buildDefaultConstructorCall(constructor));
+      const constructor = resolver.resolveConstructor(new ConstructorReference(type.schemaId.gridId));
+      assert(constructor !== undefined, `Failed to resolve type ${TypeUtils.toString(type)}.`, ObjectResolutionError);
+      return cast(CallRes.buildDefaultConstructorCall(constructor!));
     } else {
       return assertUnreachable(type);
     }
@@ -240,12 +244,14 @@ export class ValueUtils {
     return v;
   }
 
-  public static toString = (v: Value, resolver: NameResolver, options: {quoteStrings?: boolean} = {}): string => {
+  public static toString = (v: Value, resolver: Namespace, options: {quoteStrings?: boolean} = {}): string => {
     if (ValueUtils.isLambda(v)) {
       return 'fn'; // TODO
     } else if (ValueUtils.isDict(v)) {
-      const gridName = resolver.nameForConstructorId(v.type.schemaId.gridId);
-      const escapedName = Parser.identToText(gridName);
+      const {type} = v;
+      const gridName = resolver.getGridNameById(type.schemaId.gridId);
+      assert(gridName !== undefined, `Failed to resolve type ${TypeUtils.toString(type)}.`, ObjectResolutionError);
+      const escapedName = Parser.identToText(gridName!);
       if (ValueUtils.isGrid(v)) {
         return `${escapedName}`;
       } else if (ValueUtils.isRow(v)) {

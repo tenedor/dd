@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {FormulaEnvironment} from '@language/formula_environment';
+import {MutableFormulaEnvironment} from '@language/formula_environment';
 import {addDemoGrids} from '@standard_library/built_in_grids';
 import {loadStandardLibrary} from '@standard_library/standard_library';
 import {ROArray} from '@utils/types';
@@ -17,7 +17,7 @@ export type DrawingSurfaceInfos = FunctionalArrayM<FunctionalArrayM<Grid, GridUp
 export interface DocumentUpdateDescriptor extends UpdateDescriptor<DocumentUpdateType> {}
 
 export class Document extends Mutable<DocumentUpdateDescriptor> {
-  public readonly environment: FormulaEnvironment;
+  public readonly environment: MutableFormulaEnvironment;
   public readonly grids: Grids;
   public readonly drawingSurfaceInfos: DrawingSurfaceInfos;
 
@@ -63,7 +63,7 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
     let i = 1;
     while (true) {
       const name = `${baseName} ${i}`;
-      if (!this.environment.existsGridWithName(name)) {
+      if (!this.environment.getGlobalNamespace().getGridIdByName(name)) {
         return name;
       }
       i++;

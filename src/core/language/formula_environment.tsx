@@ -1,112 +1,184 @@
 import * as _ from 'lodash';
 
 import {Grid} from '@models/domain_specific/grid'; // only a type dependency
-import {BuiltInFormula, Procedure, Signature} from '@models/domain_specific/procedure'; // only a type dependency
+import {BuiltInFormula, Constructor, Formula, Procedure, Signature}
+        from '@models/domain_specific/procedure'; // only a type dependency
 import {Dictionary, ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
 import {ObjectResolutionError} from './language_errors';
-import {buildNamespace, NameResolver, ProcedureNamespace, ValueNamespace}
-        from './name_resolver';
-import {ReferenceUtils} from './reference';
-import {GridType, Identifier, ListOfAnyType, Type, TypeUtils} from './types';
+import {Namespace} from './name_resolver';
+import {ConstructorReference, FormulaReference, Reference, ReferenceUtils,
+        ValueReference} from './reference';
+import {GridType, Identifier, ListOfAnyType, PartialRowType, Type, TypeUtils}
+        from './types';
+import {PartialRowValue, Value} from './values';
 
-export class FormulaEnvironment {
-  private readonly builtInFormulasByGridId: Dictionary<Procedure>;
-  private readonly grids: Dictionary<Grid>;
-  private readonly valueNamespace: ValueNamespace;
-  private readonly procedureNamespace: ProcedureNamespace;
-  private readonly _nameResolver: NameResolver;
+export interface ReferenceResolver {
+  getGridById<I extends Identifier>(gridId: I): Grid<I> | undefined;
+  resolveValue<T extends Type>(ref: ValueReference<T>): Value<T> | undefined;
+  resolveConstructor<I extends Identifier>(ref: ConstructorReference<I>): Constructor<I> | undefined;
+  resolveFormula<R extends Type, I extends Identifier>(ref: FormulaReference<R, I>): Formula<R, I> | undefined;
+}
+
+
+export interface FormulaEnvironment {
+  getGlobalNamespace(): Namespace;
+  getInstanceNamespace(type: PartialRowType): Namespace | undefined;
+
+  getGlobalResolver(): ReferenceResolver;
+  getInstanceResolver(instance: PartialRowValue): ReferenceResolver | undefined;
+
+  isAssignableTo(t1: GridType, t2: GridType): boolean;
+  getUnionType(t1: GridType, t2: GridType): GridType | ListOfAnyType;
+
+  getAllExtensibleGrids(): ROArray<Grid>;
+  getAllowedColumnTypes(): Type[];
+  getSignatures(): Signature[];
+}
+
+
+export interface MutableFormulaEnvironment extends FormulaEnvironment {
+  addBuiltInFormula(formula: BuiltInFormula): void;
+  addGrid(grid: Grid): void;
+  removeGrid(gridId: string): void;
+}
+
+
+class LanguageEnvironmentRegistry implements Namespace, ReferenceResolver {
+  protected readonly builtInFormulasByGridId: Dictionary<BuiltInFormula>;
+  protected readonly grids: Dictionary<Grid>;
 
   constructor() {
     this.builtInFormulasByGridId = {};
     this.grids = {};
-    this.valueNamespace = buildNamespace({});
-    this.procedureNamespace = new ProcedureNamespace();
-    this._nameResolver = this.buildNameResolver();
-  }
-
-  private buildNameResolver = (): NameResolver => {
-    const namespaceResolver = {resolveNamespace: this.resolveNamespace};
-    // TODO clarify the role of NameResolver vs FormulaEnvironment
-    return new NameResolver(namespaceResolver, this.procedureNamespace, this.valueNamespace, this);
-  }
-
-  private resolveNamespace = (objectId: Identifier): ValueNamespace | undefined => {
-    const object = (this.grids[objectId] || this.builtInFormulasByGridId[objectId]) as Grid | Procedure | undefined;
-    const namespace = object && object.namespace;
-    return namespace;
-  }
-
-  private get allGrids(): Dictionary<Grid> {
-    return this.grids;
   }
 
   public addBuiltInFormula = (formula: BuiltInFormula) => {
     this.builtInFormulasByGridId[formula.id] = formula;
-    const formulaRef = ReferenceUtils.buildReferenceForProcedure(formula);
-    this.procedureNamespace.addBuiltInFormula(formula.name, formulaRef);
   }
 
   public addGrid = (grid: Grid): void => {
     this.grids[grid.id] = grid;
-    this.procedureNamespace.addGrid(grid);
   }
 
   public removeGrid = (gridId: string): void => {
     delete this.grids[gridId];
-    this.procedureNamespace.removeGrid(gridId);
   }
 
-  public get nameResolver(): NameResolver {
-    return this._nameResolver;
+  public getReferenceName = (ref: Reference): string | undefined => {
+    if (ReferenceUtils.isProcedureReference(ref)) {
+      const procedure = this.getProcedureById(ref.id);
+      return procedure && procedure.name;
+    } else {
+      return undefined;
+    }
   }
 
-  public getAllowedColumnTypes = (): Type[] => {
-    const constructableRowTypes = Object.values(this.allGrids).map(g => TypeUtils.RowOf(g.id));
-    return TypeUtils.atomicTypes.concat(constructableRowTypes);
+  public getGridNameById = (gridId: Identifier): string | undefined => {
+    const grid = this.getGridById(gridId);
+    return grid && grid.name;
   }
 
-  public getNameForType = (t: Type, opts: {eraseBoundingTypes?: boolean} = {}): string => {
+  public typeToString = (t: Type, opts: {eraseBoundingTypes?: boolean} = {}): string => {
     if (TypeUtils.isLambda(t)) {
-      const inType = this.getNameForType(t.inputType, opts);
-      const outType = this.getNameForType(t.outputType, opts);
+      const inType = this.typeToString(t.inputType, opts);
+      const outType = this.typeToString(t.outputType, opts);
       return `${inType} -> ${outType}`;
     } else if (TypeUtils.isDict(t)) {
-      const name = this.procedureNamespace.getNameForReference(t.schemaId.gridId);
+      const name = this.getReferenceName(new ConstructorReference(t.schemaId.gridId));
       if (name !== undefined) {
         return name;
       }
     } else if (TypeUtils.isList(t)) {
-      return TypeUtils.listToString(t, tt => this.getNameForType(tt, opts));
+      return TypeUtils.listToString(t, tt => this.typeToString(tt, opts));
     }
     return TypeUtils.toString(t, opts);
   }
 
-  public existsGridWithName = (gridName: string): boolean => {
-    const grid = Object.values(this.allGrids).find(g => g.name === gridName);
-    return !!grid;
+  public getGridIdByName = (name: string): Identifier | undefined => {
+    const {grids} = this;
+    for (const id in grids) {
+      if (grids[id].name === name) {
+        return id;
+      }
+    }
+    return undefined;
   }
 
-  public getGridByName = (gridName: string): Grid => {
-    const grid = Object.values(this.allGrids).find(g => g.name === gridName);
-    assert(grid !== undefined, `Unrecognized grid ${gridName}.`, ObjectResolutionError);
-    return grid!;
+  public getValueReferenceByName = (name: string): ValueReference | undefined => {
+    // no global values for now
+    return undefined;
   }
 
-  public getGridForType = (gridType: GridType): Grid => {
-    const grid = this.allGrids[gridType.schemaId.gridId];
+  public getConstructorReferenceByName = (name: string): ConstructorReference | undefined => {
+    const gridId = this.getGridIdByName(name);
+    return gridId === undefined ? undefined : new ConstructorReference(gridId);
+  }
+
+  public getFormulaReferenceByName = (name: string): FormulaReference | undefined => {
+    const {builtInFormulasByGridId} = this;
+    for (const id in builtInFormulasByGridId) {
+      if (builtInFormulasByGridId[id].name === name) {
+        return builtInFormulasByGridId[id].getReference();
+      }
+    }
+    return undefined;
+  }
+
+  public getGridById = <I extends Identifier>(gridId: I): Grid<I> | undefined => {
+    return this.grids[gridId] as Grid<I> | undefined;
+  }
+
+  protected getConstructorById = <I extends Identifier>(gridId: I): Constructor<I> | undefined => {
+    const grid = this.getGridById(gridId);
+    return (grid && grid.gridConstructor) || undefined;
+  }
+
+  protected getFormulaById = <I extends Identifier>(gridId: I): Formula<Type, I> | undefined => {
+    return this.builtInFormulasByGridId[gridId] as BuiltInFormula<Type, I> | undefined;
+  }
+
+  protected getProcedureById = <I extends Identifier>(id: I): Procedure<Type, I> | undefined => {
+    return this.getConstructorById(id) || this.getFormulaById(id) || undefined;
+  }
+
+  public resolveValue = <T extends Type>(ref: ValueReference<T>): Value<T> | undefined => {
+    // no global values for now
+    return undefined;
+  }
+
+  public resolveConstructor = <I extends Identifier>(ref: ConstructorReference<I>): Constructor<I> | undefined => {
+    return this.getConstructorById(ref.id);
+  }
+
+  public resolveFormula = <R extends Type, I extends Identifier>(ref: FormulaReference<R, I>): Formula<R, I> | undefined => {
+    return this.builtInFormulasByGridId[ref.id] as BuiltInFormula<R, I> | undefined;
+  }
+}
+
+
+export class LanguageEnvironmentImpl extends LanguageEnvironmentRegistry implements MutableFormulaEnvironment {
+
+  public getGlobalNamespace = (): Namespace => {
+    return this;
+  }
+
+  public getInstanceNamespace = (type: PartialRowType): Namespace | undefined => {
+    // TODO
+  }
+
+  public getGlobalResolver = (): ReferenceResolver => {
+    return this;
+  }
+
+  public getInstanceResolver = (instance: PartialRowValue): ReferenceResolver | undefined => {
+    // TODO
+  }
+
+  private getGridForType = <I extends Identifier>(gridType: GridType<I>): Grid<I> => {
+    const grid = this.grids[gridType.schemaId.gridId] as Grid<I> | undefined;
     assert(grid !== undefined, `Unrecognized grid type ${TypeUtils.toString(gridType)}.`, ObjectResolutionError);
     return grid!;
-  }
-
-  public getGridById(gridId: Identifier) {
-    const grid = this.allGrids[gridId];
-    assert(grid !== undefined, `Unrecognized grid id ${gridId}.`, ObjectResolutionError);
-    return grid!;
-  }
-
-  public getAllExtensibleGrids = (): ROArray<Grid> => {
-    return Object.values(this.allGrids);
   }
 
   public isAssignableTo = (t1: GridType, t2: GridType): boolean => {
@@ -120,6 +192,15 @@ export class FormulaEnvironment {
     const g2 = this.getGridForType(t2);
     const commonAncestor = g1.getCommonAncestor(g2);
     return commonAncestor ? TypeUtils.GridOf(commonAncestor.id) : TypeUtils.ListOfAny;
+  }
+
+  public getAllExtensibleGrids = (): ROArray<Grid> => {
+    return Object.values(this.grids);
+  }
+
+  public getAllowedColumnTypes = (): Type[] => {
+    const constructableRowTypes = Object.values(this.grids).map(g => TypeUtils.RowOf(g.id));
+    return TypeUtils.atomicTypes.concat(constructableRowTypes);
   }
 
   public getSignatures = (): Signature[] => {

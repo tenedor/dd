@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 
 import {Vector} from '@core/geometry';
 import {Drawing, DrawingUtils} from '@drawing/drawing';
-import {FormulaEnvironment} from '@language/formula_environment';
+import {FormulaEnvironment, MutableFormulaEnvironment} from '@language/formula_environment';
 import {NameResolver, ValueNamespace} from '@language/name_resolver';
 import {RelativeValueReference} from '@language/reference';
 import {Identifier, RowType, Type, TypeUtils} from '@language/types';
@@ -32,7 +32,7 @@ export interface CellIndex {
 }
 
 export interface GridData {
-  environment: FormulaEnvironment;
+  environment: MutableFormulaEnvironment;
   name: string,
   parentGrid?: Grid,
   newColumns?: Column[],
@@ -114,11 +114,12 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private makeSystemColumns = (): GridColumn[] => {
-    if (this.disableCoordinateSystemColumn) {
+    const {disableCoordinateSystemColumn, environment, updateManager} = this;
+    if (disableCoordinateSystemColumn) {
       return [];
     }
-    const getGridIdByName = (gridName: string) => this.environment.getGridByName(gridName).id;
-    const coordinateSystemColumn = this.makeGridColumn(getCoordinateSystemColumn(this.updateManager, getGridIdByName));
+    const c = getCoordinateSystemColumn(updateManager, environment.getGlobalNamespace());
+    const coordinateSystemColumn = this.makeGridColumn(c);
     return [coordinateSystemColumn];
   }
 
@@ -168,7 +169,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   public setName = (name: string) => {
-    if (!this.environment.existsGridWithName(name)) {
+    if (!this.environment.getGlobalNamespace().getGridIdByName(name)) {
       this._name = name;
       const descriptor = {type: GridUpdateType.NAME_UPDATED};
       this.onSelfMutated([descriptor]);
@@ -239,7 +240,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private getDefaultNameForColumnOfType = (type: Type): string => {
-    const baseName = this.environment.getNameForType(type);
+    const baseName = this.environment.getGlobalNamespace().typeToString(type);
     let i = 1;
     while (true) {
       const name = i === 1 ? baseName : `${baseName} ${i}`;
@@ -270,7 +271,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
 
   public getAllowedColumnTypes = (): Array<{name: string, type: Type}> => {
     const types = this.environment.getAllowedColumnTypes().map(type => ({
-      name: this.environment.getNameForType(type),
+      name: this.environment.getGlobalNamespace().typeToString(type),
       type,
     }));
     return types;

@@ -2,6 +2,7 @@ import * as _ from 'lodash';
 
 import {CoordinateSystem} from '@core/geometry';
 import {FormulaEnvironment} from '@language/formula_environment';
+import {Namespace} from '@language/name_resolver';
 import {Identifier, Type, TypeUtils} from '@language/types';
 import {NumberValue, RowValue, Value} from '@language/values';
 import {ModelType} from '@models/core/model';
@@ -18,10 +19,13 @@ let coordinateSystemColumn: Column | undefined;
 
 export const getCoordinateSystemColumn = (
   updateManager: UpdateManager,
-  getGridIdByName: (gridName: string) => Identifier,
+  namespace: Namespace,
 ): Column<Type>  => {
   if (!coordinateSystemColumn) {
-    const coordinateSystemGridId = getGridIdByName(COORDINATE_SYSTEM_GRID_NAME);
+    const coordinateSystemGridId = namespace.getGridIdByName(COORDINATE_SYSTEM_GRID_NAME);
+    if (coordinateSystemGridId === undefined) {
+      throw new Error("Coordinate system grid does not exist.");
+    }
     coordinateSystemColumn = new Column(updateManager, {
       id: COORDINATE_SYSTEM_COLUMN_ID,
       name: coordinateSystemColumnName,
@@ -48,7 +52,10 @@ export const getCoordinateSystemFromValue = (csValue: RowValue, environment: For
 }
 
 const project = (rowValue: RowValue, columnName: string, environment: FormulaEnvironment): Value => {
-  const grid = environment.getGridById(rowValue.type.schemaId.gridId);
+  const grid = environment.getGlobalResolver().getGridById(rowValue.type.schemaId.gridId);
+  if (!grid) {
+    throw new Error(`No grid exists matching row value type ${environment.getGlobalNamespace().typeToString(rowValue.type)}`);
+  }
   const ns = grid.namespace;
   const columnId = ns.getReferenceForName(columnName)!.id;
   return rowValue.dict[columnId];

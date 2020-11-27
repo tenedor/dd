@@ -1,106 +1,81 @@
 import * as _ from 'lodash';
 
 import {DependencyNode} from '@models/core/update_manager'; // Only a type dependency
-import {Grid} from '@models/domain_specific/grid'; // Only a type dependency
 import {Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
-import {IdentifierPrefix} from '@utils/identifier_prefixes';
-import {NameResolver} from './name_resolver';
-import {Parser} from './parser';
-import {GridType, Identifier, Type, TypeUtils} from './types';
+import {Identifier, RowType, Type, TypeUtils} from './types';
 import {ValueResolver} from './value_resolver';
 import {Value} from './values';
 
 export type ValueDependency = DependencyNode & {readonly value: Value};
 
 enum ReferenceType {
-  CONSTRUCTOR = "CONSTRUCTOR",
-  FORMULA = "FORMULA",
-  ABSOLUTE_VALUE = "ABSOLUTE_VALUE",
-  RELATIVE_VALUE = "RELATIVE_VALUE",
+  VALUE_REFERENCE,
+  CONSTRUCTOR_REFERENCE,
+  FORMULA_REFERENCE,
 }
 
-type AbsoluteReferenceType = ReferenceType.CONSTRUCTOR | ReferenceType.ABSOLUTE_VALUE;
-type RelativeReferenceType = ReferenceType.RELATIVE_VALUE;
-type ValueReferenceType = ReferenceType.ABSOLUTE_VALUE | ReferenceType.RELATIVE_VALUE;
+type ProcedureReferenceType = ReferenceType.CONSTRUCTOR_REFERENCE | ReferenceType.FORMULA_REFERENCE;
 
-interface BaseReference<R extends ReferenceType> {
+interface BaseReference<T extends ReferenceType> {
   readonly id: Identifier;
-  readonly referenceType: R;
-
-  getName(resolver: NameResolver): string;
+  readonly referenceType: T;
 }
 
-export interface AbsoluteReference<R extends AbsoluteReferenceType = AbsoluteReferenceType> extends BaseReference<R> {
-  readonly model: DependencyNode,
-}
-
-export type RelativeReference = BaseReference<RelativeReferenceType>;
-
-export type Reference = AbsoluteReference | RelativeReference;
-
-abstract class BaseValueReference<T extends Type = Type, R extends ValueReferenceType = ValueReferenceType>
-    implements BaseReference<R> {
+export class ValueReference<T extends Type = Type> implements BaseReference<ReferenceType.VALUE_REFERENCE> {
   public readonly id: Identifier;
-  public readonly referenceType: R;
-  public readonly getName: (resolver: NameResolver) => string;
   public readonly type: T;
+  public readonly referenceType = ReferenceType.VALUE_REFERENCE;
 
-  constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string, referenceType: R) {
+  constructor(id: Identifier, type: T) {
     this.id = id;
     this.type = type;
-    this.getName = getName;
-    this.referenceType = referenceType;
   }
 
   public eval = (valueResolver: ValueResolver): Value<T> => {
-    // Apologies to R. Milner...
-    return valueResolver.evalValueReference(this as ValueReference<T>);
-  }
-}
-
-export class RelativeValueReference<T extends Type = Type>
-    extends BaseValueReference<T, ReferenceType.RELATIVE_VALUE>
-    implements RelativeReference {
-
-  constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string) {
-    super(id, type, getName, ReferenceType.RELATIVE_VALUE);
+    return valueResolver.evalValueReference(this);
   }
 
-  public static buildForIteratorVariable = <T extends Type> (type: T, name: string): RelativeValueReference<T> => {
+  /*
+  public static buildForIteratorVariable = <T extends Type> (type: T, name: string): ValueReference<T> => {
     const id = `${IdentifierPrefix.ITERATOR}-${Parser.identToText(name)}`;
-    return new RelativeValueReference(id, type, () => name);
+    return new ValueReference(id, type, () => name);
   }
+  */
 }
 
-export class AbsoluteValueReference<T extends Type = Type>
-    extends BaseValueReference<T, ReferenceType.ABSOLUTE_VALUE>
-    implements AbsoluteReference<ReferenceType.ABSOLUTE_VALUE> {
-
-  public readonly model: ValueDependency;
-
-  constructor(id: Identifier, type: T, getName: (resolver: NameResolver) => string, model: ValueDependency) {
-    super(id, type, getName, ReferenceType.ABSOLUTE_VALUE);
-    this.model = model;
-  }
+export interface ProcedureReference<R extends Type = Type, I extends Identifier = Identifier,
+    T extends ProcedureReferenceType = ProcedureReferenceType>
+    extends BaseReference<T> {
+  readonly id: I;
+  readonly returnType: R;
+  readonly referenceType: T;
 }
 
-export type ValueReference<T extends Type = Type> = RelativeValueReference<T> | AbsoluteValueReference<T>;
-
-export class GridReference<I extends Identifier = Identifier> extends AbsoluteValueReference<GridType<I>> {
+export class ConstructorReference<I extends Identifier = Identifier>
+    implements ProcedureReference<RowType<I>, I, ReferenceType.CONSTRUCTOR_REFERENCE> {
   public readonly id: I;
+  public readonly returnType: RowType<I>;
+  public readonly referenceType = ReferenceType.CONSTRUCTOR_REFERENCE;
 
-  constructor(grid: Grid) {
-    const id = grid.id as I;
-    const type = TypeUtils.GridOf(id);
-    const getName = (r: NameResolver) => r.nameForValueId(id);
-    super(id, type, getName, grid);
+  public constructor(gridId: I) {
+    this.id = gridId;
+    this.returnType = TypeUtils.RowOf(gridId);
   }
 }
 
-export interface ProcedureReference<R extends Type = Type, I extends Identifier = Identifier>
-    extends AbsoluteReference<ReferenceType.CONSTRUCTOR> {
-  readonly model: Procedure<R, I>,
+export class FormulaReference<R extends Type = Type, I extends Identifier = Identifier>
+    implements ProcedureReference<R, I, ReferenceType.FORMULA_REFERENCE> {
+  public readonly id: I;
+  public readonly returnType: R;
+  public readonly referenceType = ReferenceType.FORMULA_REFERENCE;
+
+  public constructor(id: I, returnType: R) {
+    this.id = id;
+    this.returnType = returnType;
+  }
 }
+
+export type Reference = ValueReference | ProcedureReference;
 
 export class ReferenceUtils {
 
@@ -109,15 +84,10 @@ export class ReferenceUtils {
   // ============
 
   public static buildReferenceForProcedure = <R extends Type, I extends Identifier> (
-    procedure: Procedure<R, I>,
-  ): ProcedureReference<R, I> => {
-    const {id} = procedure;
-    return {
-      id,
-      referenceType: ReferenceType.CONSTRUCTOR,
-      model: procedure,
-      getName: (resolver: NameResolver) => procedure.name,
-    }
+    procedure: Procedure,
+  ): ProcedureReference => {
+    const {isConstructorLiteral, id, returnType} = procedure;
+    return isConstructorLiteral ? new ConstructorReference(id) : new FormulaReference(id, returnType);
   }
 
 
@@ -125,15 +95,12 @@ export class ReferenceUtils {
   // Type Guards
   // ===========
 
-  public static isRelativeReference = (r: Reference): r is RelativeReference => {
-    return r.referenceType === ReferenceType.RELATIVE_VALUE;
-  }
-
-  public static isAbsoluteReference = (r: Reference): r is AbsoluteReference => {
-    return [ReferenceType.CONSTRUCTOR, ReferenceType.ABSOLUTE_VALUE].includes(r.referenceType);
-  }
-
-  public static isValueReference = (r: Reference): r is ValueReference => {
-    return [ReferenceType.ABSOLUTE_VALUE, ReferenceType.RELATIVE_VALUE].includes(r.referenceType);
-  }
+  public static isValueReference = (ref: Reference): ref is ValueReference =>
+      ref.referenceType === ReferenceType.VALUE_REFERENCE
+  public static isConstructorReference = (ref: Reference): ref is ConstructorReference =>
+      ref.referenceType === ReferenceType.CONSTRUCTOR_REFERENCE
+  public static isFormulaReference = (ref: Reference): ref is FormulaReference =>
+      ref.referenceType === ReferenceType.FORMULA_REFERENCE
+  public static isProcedureReference = (ref: Reference): ref is ProcedureReference =>
+      ReferenceUtils.isConstructorReference(ref) || ReferenceUtils.isFormulaReference(ref)
 }

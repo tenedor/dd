@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 
 import {GeometryUtils} from '@core/geometry';
 import {Drawing, DrawingUtils} from '@drawing/drawing';
-import {FormulaEnvironment} from '@language/formula_environment';
+import {FormulaEnvironment, MutableFormulaEnvironment} from '@language/formula_environment';
 import {NameResolver} from '@language/name_resolver';
 import {Parser} from '@language/parser';
 import {PrimitiveType, Type, TypeUtils} from '@language/types';
@@ -118,6 +118,11 @@ function getColumnId(columnData: MixedGridColumnData): string {
   return isChildData(columnData) ? columnData.parentGridColumn.columnId : columnData.column.id;
 }
 
+function getGridByName(name: string, environment: FormulaEnvironment): Grid {
+  const id = environment.getGlobalNamespace().getGridIdByName(name)!;
+  return environment.getGlobalResolver().getGridById(id)!;
+}
+
 function setDefaultValues(grid: Grid, columns: MixedGridColumnData[]) {
   const {cells} = grid.rows.get(0)!;
   columns.filter(c => c.expressionString === undefined && c.defaultValue !== undefined)
@@ -129,7 +134,7 @@ function addBuiltInGrid({
 }: {
   name: string,
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
   gridColumnsData: MixedGridColumnData[],
   parentGrid?: Grid,
   getPrimitiveDrawing?: (cells: RODictionary<Value>) => Drawing,
@@ -197,7 +202,7 @@ function addRows(
 
 function addRotationGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Rotation";
   const columns = generateColumns(updateManager, [
@@ -214,7 +219,7 @@ function addRotationGrid(
 
 function addDirectionGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Direction";
   const rotationType = getTypeForInstanceOf(environment, "Rotation");
@@ -230,7 +235,7 @@ function addDirectionGrid(
 
 function addVectorGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Vector";
   const directionType = getTypeForInstanceOf(environment, "Direction");
@@ -252,7 +257,7 @@ function addVectorGrid(
 
 function addCoordinateSystemGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = COORDINATE_SYSTEM_GRID_NAME;
   const centerColumnId = COORDINATE_SYSTEM_CENTER_COLUMN_ID;
@@ -274,13 +279,13 @@ function addCoordinateSystemGrid(
 
 function addRotAliasGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Rot";
   const columns = generateColumns(updateManager, [
     {name: 'Rot', type: TypeUtils.Number},
   ]);
-  const parentGrid = environment.getGridByName("Rotation");
+  const parentGrid = getGridByName("Rotation", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.Rot},
@@ -291,7 +296,7 @@ function addRotAliasGrid(
 
 function addCoAliasGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Co";
   const columns = generateColumns(updateManager, [
@@ -299,7 +304,7 @@ function addCoAliasGrid(
     {name: 'Y', type: TypeUtils.Number},
     {name: 'Rot', type: TypeUtils.Number},
   ]);
-  const parentGrid = environment.getGridByName("Coordinate System");
+  const parentGrid = getGridByName("Coordinate System", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.X},
@@ -313,14 +318,14 @@ function addCoAliasGrid(
 
 function addPoVecAliasGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "PoVec";
   const columns = generateColumns(updateManager, [
     {name: 'R', type: TypeUtils.Number},
     {name: 'Theta', type: TypeUtils.Number},
   ]);
-  const parentGrid = environment.getGridByName("Vector");
+  const parentGrid = getGridByName("Vector", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.R},
@@ -333,14 +338,14 @@ function addPoVecAliasGrid(
 
 function addPoCoAliasGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "PoCo";
   const columns = generateColumns(updateManager, [
     {name: 'R', type: TypeUtils.Number},
     {name: 'Theta', type: TypeUtils.Number},
   ]);
-  const parentGrid = environment.getGridByName("Co");
+  const parentGrid = getGridByName("Co", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.R},
@@ -353,7 +358,7 @@ function addPoCoAliasGrid(
 
 function addTrigonometryGrids(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   addRotationGrid(updateManager, environment);
   addDirectionGrid(updateManager, environment);
@@ -376,7 +381,7 @@ function getStandardShapePrimitiveValues(cells: RODictionary<Value>, columnIdsBy
 
 function addShapeGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Shape";
   const columns = generateColumns(updateManager, [
@@ -396,13 +401,13 @@ function addShapeGrid(
 
 function addCircleGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Circle";
   const columns = generateColumns(updateManager, [
     {name: 'Radius', type: TypeUtils.Number},
   ]);
-  const parentGrid = environment.getGridByName("Shape");
+  const parentGrid = getGridByName("Shape", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.Radius, defaultValue: ValueUtils.numberOf(20)},
@@ -418,14 +423,14 @@ function addCircleGrid(
 
 function addEllipseGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Ellipse";
   const columns = generateColumns(updateManager, [
     {name: 'Radius X', type: TypeUtils.Number},
     {name: 'Radius Y', type: TypeUtils.Number},
   ]);
-  const parentGrid = environment.getGridByName("Shape");
+  const parentGrid = getGridByName("Shape", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns['Radius X'], defaultValue: ValueUtils.numberOf(30)},
@@ -443,13 +448,13 @@ function addEllipseGrid(
 
 function addPathShapeGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Path Shape";
   const columns = generateColumns(updateManager, [
     {name: 'Path', type: TypeUtils.String},
   ]);
-  const parentGrid = environment.getGridByName("Shape");
+  const parentGrid = getGridByName("Shape", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.Path, defaultValue: ValueUtils.stringOf("m0 0 l40 0 l0 40 l-40 0 z")},
@@ -465,16 +470,16 @@ function addPathShapeGrid(
 
 function addRelativePolygonGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Relative Polygon";
-  const vectorGrid = environment.getGridByName("Vector");
+  const vectorGrid = getGridByName("Vector", environment);
   const vectorRowType = TypeUtils.RowOf(vectorGrid.id);
   const columns = generateColumns(updateManager, [
     {name: 'Relative Points', type: TypeUtils.ListOf(vectorRowType)},
     {name: 'Path Steps', type: TypeUtils.ListOf(TypeUtils.String)},
   ]);
-  const parentGrid = environment.getGridByName("Path Shape");
+  const parentGrid = getGridByName("Path Shape", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
   const defaultPoints = [[-20, -20], [40, 0], [0, 40], [-40, 0]].map(([x, y]) => makeLiteral(`Vector(X=${x}, Y=${y})`, vectorRowType, environment) as RowValue);
   const gridColumnsData: MixedGridColumnData[] = [
@@ -487,15 +492,15 @@ function addRelativePolygonGrid(
 
 function addPolygonGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Polygon";
-  const vectorGrid = environment.getGridByName("Vector");
+  const vectorGrid = getGridByName("Vector", environment);
   const vectorRowType = TypeUtils.RowOf(vectorGrid.id);
   const columns = generateColumns(updateManager, [
     {name: 'Points', type: TypeUtils.ListOf(vectorRowType)},
   ]);
-  const parentGrid = environment.getGridByName("Relative Polygon");
+  const parentGrid = getGridByName("Relative Polygon", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
   const defaultPoints = [[-20, -20], [20, -20], [20, 20], [-20, 20]].map(([x, y]) => makeLiteral(`Vector(X=${x}, Y=${y})`, vectorRowType, environment) as RowValue);
   const gridColumnsData: MixedGridColumnData[] = [
@@ -507,14 +512,14 @@ function addPolygonGrid(
 
 function addRegularPolygonGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Regular Polygon";
   const columns = generateColumns(updateManager, [
     {name: 'N', type: PrimitiveType.NUMBER},
     {name: 'Radius', type: PrimitiveType.NUMBER},
   ]);
-  const parentGrid = environment.getGridByName("Polygon");
+  const parentGrid = getGridByName("Polygon", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.N, defaultValue: ValueUtils.numberOf(5)},
@@ -526,17 +531,17 @@ function addRegularPolygonGrid(
 
 function addTriangleGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Triangle";
-  const vectorGrid = environment.getGridByName("Vector");
+  const vectorGrid = getGridByName("Vector", environment);
   const vectorRowType = TypeUtils.RowOf(vectorGrid.id);
   const columns = generateColumns(updateManager, [
     {name: 'P1', type: vectorRowType},
     {name: 'P2', type: vectorRowType},
     {name: 'P3', type: vectorRowType},
   ]);
-  const parentGrid = environment.getGridByName("Polygon");
+  const parentGrid = getGridByName("Polygon", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
   const defaultPoints = [[-20, 0], [20, 0], [0, -34.6]].map(([x, y]) => makeLiteral(`Vector(X=${x}, Y=${y})`, vectorRowType, environment) as RowValue);
   const gridColumnsData: MixedGridColumnData[] = [
@@ -550,14 +555,14 @@ function addTriangleGrid(
 
 function addRectangleGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Rectangle";
   const columns = generateColumns(updateManager, [
     {name: 'Width', type: PrimitiveType.NUMBER},
     {name: 'Height', type: PrimitiveType.NUMBER},
   ]);
-  const parentGrid = environment.getGridByName("Relative Polygon");
+  const parentGrid = getGridByName("Relative Polygon", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.Width, defaultValue: ValueUtils.numberOf(20)},
@@ -569,10 +574,10 @@ function addRectangleGrid(
 
 function addSquareGrid(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const name = "Square";
-  const parentGrid = environment.getGridByName("Rectangle");
+  const parentGrid = getGridByName("Rectangle", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
     {parentGridColumn: parentColumns.Width, defaultValue: ValueUtils.numberOf(40)},
@@ -583,7 +588,7 @@ function addSquareGrid(
 
 function addShapeGrids(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   addShapeGrid(updateManager, environment);
   addCircleGrid(updateManager, environment);
@@ -600,7 +605,7 @@ function addShapeGrids(
 function addDemoArithmeticGrid(
   document: Document,
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const {nameResolver} = environment;
 
@@ -625,10 +630,10 @@ function addDemoArithmeticGrid(
 function addDemoStarGrid(
   document: Document,
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const {nameResolver} = environment;
-  const parentGrid = environment.getGridByName('Path Shape');
+  const parentGrid = getGridByName("Path Shape", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
 
   const grid = document.addGridFromGridData({name: "Star", parentGrid, environment});
@@ -676,10 +681,10 @@ function addDemoStarGrid(
 function addDemoShapeGrids(
   document: Document,
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   const {nameResolver} = environment;
-  const shapeGridId = environment.getGridByName('Shape').id;
+  const shapeGridId = getGridByName("Shape", environment).id;
 
   const columns = generateColumns(updateManager, [
     {name: 'X', type: TypeUtils.Number},
@@ -719,7 +724,7 @@ function addDemoShapeGrids(
 
 export function loadBuiltInGrids(
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   addTrigonometryGrids(updateManager, environment);
   addShapeGrids(updateManager, environment);
@@ -728,7 +733,7 @@ export function loadBuiltInGrids(
 export function addDemoGrids(
   document: Document,
   updateManager: UpdateManager,
-  environment: FormulaEnvironment,
+  environment: MutableFormulaEnvironment,
 ) {
   // addDemoArithmeticGrid(document, updateManager, environment);
   addDemoStarGrid(document, updateManager, environment);

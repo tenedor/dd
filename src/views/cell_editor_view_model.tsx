@@ -94,8 +94,8 @@ export abstract class CellEditorViewModel {
           throw e;
         }
         if (!TypeUtils.isAssignableTo(ast.type, column.type, environment)) {
-          const astType = environment.getNameForType(ast.type);
-          const columnType = environment.getNameForType(column.type);
+          const astType = environment.getGlobalNamespace().typeToString(ast.type);
+          const columnType = environment.getGlobalNamespace().typeToString(column.type);
           CellEditorViewModel.logSetFormulaError(`incompatible types: cannot assign ` +
               `${astType} to ${columnType}`, unparsedExpression);
           return false;

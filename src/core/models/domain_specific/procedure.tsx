@@ -4,7 +4,7 @@ import {Drawing} from '@drawing/drawing';
 import {ResolutionTimeTypeHelper} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {buildNamespace, ValueNamespace} from '@language/name_resolver';
-import {RelativeValueReference} from '@language/reference';
+import {FormulaReference, ValueReference} from '@language/reference';
 import {Identifier, PartialRowType, RowType, Type, TypeUtils} from '@language/types';
 import {ValueResolver} from '@language/value_resolver';
 import {PartialRowValue, RowValue, Value, ValueUtils} from '@language/values';
@@ -19,9 +19,16 @@ import {GridColumns} from './grid';
 import {GridColumnUpdateDescriptor} from './grid_column';
 import {Row, RowUpdateDescriptor} from './row';
 
+export interface Parameter<T extends Type = Type> {
+  readonly id: Identifier,
+  readonly name: string,
+  readonly type: T,
+  readonly defaultValue: Value<T>,
+}
+
 export interface Signature {
   name: string,
-  parameters: ROArray<{name: string, type: Type, defaultValue: Value}>,
+  parameters: ROArray<Parameter>,
   returnType: Type,
 }
 
@@ -147,27 +154,24 @@ export class GridConstructor<I extends Identifier = Identifier>
 
   public getSignature = (): Signature => {
     const {name} = this;
-    const parameterIds = this.columns.a.filter(c => !c.hasExpression()).map(c => c.columnId);
-    const parameters = parameterIds.map(id => {
-      const column = this.columns.getByKey(id)!;
-      const defaultValue = this.defaultValues.cells.get(id)!.value;
-      return {name: column.name, type: column.type, defaultValue};
-    });
+    const parameters = this.getParameters();
     const returnType = TypeUtils.RowOf(this.gridId);
     return {name, parameters, returnType};
+  }
+
+  private getParameters = (): ROArray<Parameter> => {
+    const parameterIds = this.columns.a.filter(c => !c.hasExpression()).map(c => c.columnId);
+    return parameterIds.map(id => {
+      const {name, type} = this.columns.getByKey(id)!;
+      const defaultValue = this.defaultValues.cells.get(id)!.value;
+      return {id, name, type, defaultValue};
+    });
   }
 }
 
 
 export type BuiltInEval<R extends Type = Type, I extends Identifier = Identifier> =
   (parameters: PartialRowValue<I>, runtimeResolvedReturnType?: Type) => Value<R>;
-
-export interface Parameter<T extends Type = Type> {
-  readonly id: Identifier,
-  readonly name: string,
-  readonly type: T,
-  readonly defaultValue: Value<T>,
-}
 
 export interface BuiltInFormulaSpec<R extends Type = Type, I extends Identifier = Identifier> {
   readonly id: I,
@@ -204,7 +208,7 @@ export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identi
   private static buildNamespace = (parameters: {[id: string]: Parameter}): ValueNamespace => {
     const nameToParameterMap = _.mapKeys(parameters, 'name');
     const nameToReferenceMap = _.mapValues(nameToParameterMap, p => {
-      return new RelativeValueReference(p.id, p.type, () => p.name);
+      return new ValueReference(p.id, p.type, () => p.name);
     });
     return buildNamespace(nameToReferenceMap);
   }
@@ -217,5 +221,10 @@ export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identi
 
   public getSignature = (): Signature => {
     return this.signature;
+  }
+
+  public getReference = (): FormulaReference => {
+    const {id, returnType} = this;
+    return new FormulaReference(id, returnType);
   }
 }

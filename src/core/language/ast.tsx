@@ -7,7 +7,7 @@ import {FormulaEnvironment} from './formula_environment';
 import {OutOfBoundsError, TypeError} from './language_errors';
 import {buildNamespace, NameResolver, ValueNamespace} from './name_resolver';
 import {Parser} from './parser';
-import {Reference, ReferenceUtils, RelativeValueReference, ValueReference}
+import {Reference, ReferenceUtils, ValueReference}
         from './reference';
 import {DictType, GridType, Identifier, LambdaType, ListType, PartialRowType,
         PrimitiveType, RowType, Type, TypeUtils} from './types';
@@ -201,7 +201,7 @@ export class LambdaUnres
   public resolve = (resolver: NameResolver) => {
     const identName = this.ident.getName();
     const iteratorType: Type = resolver.getIteratorType();
-    const iteratorRef = RelativeValueReference.buildForIteratorVariable(iteratorType, identName);
+    const iteratorRef = ValueReference.buildForIteratorVariable(iteratorType, identName);
     const iteratorNamespace = buildNamespace({[identName]: iteratorRef});
     const res = resolver.extendWithNamespace(iteratorNamespace);
     const identR = new IdentifierRes(iteratorRef);
@@ -473,7 +473,7 @@ export class ProjectRes<R extends Type = Type> extends ProjectAST<ResolvedAST<Di
   }
 
   public toText = (resolver: NameResolver): string => {
-    const refName = this.ref.getName(resolver);
+    const refName = resolver.nameForValueId(this.ref);
     return `${this.dict.toText(resolver)}.${Parser.identToText(refName)}`;
   }
 }

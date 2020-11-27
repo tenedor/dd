@@ -234,10 +234,13 @@ export class TypeUtils {
     }
   }
 
-  public static validateIsAssignableTo = <T extends Type> (t1: Type, t2: T, environment: FormulaEnvironment, errorMessage?: string): t1 is T => {
+  public static validateIsAssignableTo = <T extends Type> (
+    t1: Type, t2: T, environment: FormulaEnvironment, errorMessage?: string,
+  ): t1 is T => {
     if (!TypeUtils.isAssignableTo(t1, t2, environment)) {
       throw new TypeError(errorMessage ||
-        `Expected type ${environment.getNameForType(t1)} to be assignable to type ${environment.getNameForType(t2)}`);
+        `Expected type ${environment.getGlobalNamespace().typeToString(t1)} to be assignable ` +
+        `to type ${environment.getGlobalNamespace().typeToString(t2)}`);
     }
     return true;
   }
