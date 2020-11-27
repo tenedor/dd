@@ -6,7 +6,6 @@ import {FormulaEnvironment, MutableFormulaEnvironment} from '@language/formula_e
 import {NameResolver} from '@language/name_resolver';
 import {Parser} from '@language/parser';
 import {PrimitiveType, Type, TypeUtils} from '@language/types';
-import {ValueResolver} from '@language/value_resolver';
 import {NumberValue, RowValue, StringValue, Value, ValueOrAST, ValueUtils}
         from '@language/values';
 import {UpdateManager} from '@models/core/update_manager';
@@ -161,7 +160,7 @@ function makeLiteral(literalExpression: string, type: Type, environment: Formula
     throw new Error("Bad built-in grid formula");
   }
   const astR = parseResult.ast.resolve(environment.nameResolver);
-  return astR.eval(new ValueResolver({}, environment));
+  return astR.eval(environment.getGlobalResolver());
 }
 
 function setFirstRowValues(grid: Grid, values: {[columnId: string]: ValueOrAST}) {

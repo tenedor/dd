@@ -2,6 +2,7 @@ import * as _ from 'lodash';
 
 import {CoordinateSystem, GeometryUtils, Vector} from '@core/geometry';
 import {CallRes, ResolvedAST, ResolvedASTUtils} from '@language/ast';
+import {DictReferenceResolver} from '@language/dict_reference_resolver';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {TypeError} from '@language/language_errors';
 import {NameResolver} from '@language/name_resolver';
@@ -9,7 +10,6 @@ import {Parser} from '@language/parser';
 import {AbsoluteValueReference, Reference, ReferenceUtils, ValueDependency,
         ValueReference} from '@language/reference';
 import {Identifier, RowType, Type, TypeUtils} from '@language/types';
-import {ValueResolver} from '@language/value_resolver';
 import {Value, ValueOrAST, ValueUtils} from '@language/values';
 import {Address} from '@paths/address';
 import {COORDINATE_SYSTEM_COLUMN_ID} from '@standard_library/geometry_utils';
@@ -156,7 +156,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
       if (isAST(value) && ResolvedASTUtils.isConstant(value)) {
         // can concretize early
-        value = value.eval(this.getValueResolver());
+        value = value.eval(this.getDependenciesResolver());
       }
     }
     this.removeManualValueListeners();
@@ -316,9 +316,9 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return [{type: CellUpdateType.VALUE_UPDATED}];
   }
 
-  private getValueResolver = (): ValueResolver => {
+  private getDependenciesResolver = (): DictReferenceResolver => {
     const dependencyValues = _.mapValues(this.valueDependencies, r => r.value);
-    return new ValueResolver(dependencyValues, this.environment);
+    return new DictReferenceResolver(dependencyValues, this.environment);
   }
 
   private isCalculated = (): boolean => {
@@ -343,9 +343,9 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   private computeValue = (): Value<T> => {
     const {formulaExpression} = this;
     if (this.isCalculated()) {
-      return formulaExpression.eval(this.getValueResolver());
+      return formulaExpression.eval(this.getDependenciesResolver());
     }
     const localValue = this.getManualValueOrDefault();
-    return isAST(localValue) ? localValue.eval(this.getValueResolver()) : localValue;
+    return isAST(localValue) ? localValue.eval(this.getDependenciesResolver()) : localValue;
   }
 }

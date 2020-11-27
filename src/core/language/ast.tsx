@@ -3,6 +3,7 @@ import * as _ from 'lodash';
 import {Constructor, Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
 import {Dictionary, ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
+import {DictReferenceResolver} from './dict_reference_resolver';
 import {FormulaEnvironment, ReferenceResolver} from './formula_environment';
 import {LambdaReferenceResolver} from './lambda_reference_resolver';
 import {OutOfBoundsError, TypeError, ValueResolutionError} from './language_errors';
@@ -13,7 +14,6 @@ import {Reference, ReferenceUtils, ValueReference}
 import {DictType, GridType, Identifier, LambdaType, ListType, PartialRowType,
         PrimitiveType, RowType, Type, TypeUtils} from './types';
 import {UnaryOp, UnaryOpUtils} from './unary_op';
-import {ValueResolver} from './value_resolver';
 import {LambdaValue, ListValue, PartialRowValue, Value, ValueUtils} from './values';
 
 interface BaseResolutionTimeTypeHelper {
@@ -467,8 +467,8 @@ export class ProjectRes<R extends Type = Type> extends ProjectAST<ResolvedAST<Di
     if (!ValueUtils.isDict(dictV)) {
       throw new TypeError("Can only project values from grids and rows");
     }
-    const instanceResolver = new ValueResolver(resolver, dictV);
-    const refV = instanceResolver.resolveValue(this.ref);
+    const dictResolver = new DictReferenceResolver(resolver, dictV);
+    const refV = dictResolver.resolveValue(this.ref);
     if (refV === undefined) {
       throw new ValueResolutionError(`No value found for reference ${this.ref.id}`);
     }

@@ -5,13 +5,13 @@ import {BuiltInFormula, Constructor, Formula, Procedure, Signature}
         from '@models/domain_specific/procedure'; // only a type dependency
 import {Dictionary, ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
+import {DictReferenceResolver} from './dict_reference_resolver';
 import {ObjectResolutionError} from './language_errors';
 import {Namespace} from './name_resolver';
 import {ConstructorReference, FormulaReference, Reference, ReferenceUtils,
         ValueReference} from './reference';
 import {GridType, Identifier, ListOfAnyType, PartialRowType, Type, TypeUtils}
         from './types';
-import {ValueResolver} from './value_resolver';
 import {DictValue, Value} from './values';
 
 export interface ReferenceResolver {
@@ -177,7 +177,7 @@ export class LanguageEnvironmentImpl extends LanguageEnvironmentRegistry impleme
   }
 
   public getInstanceResolver = (instance: DictValue): ReferenceResolver => {
-    return new ValueResolver(this, instance);
+    return new DictReferenceResolver(this, instance);
   }
 
   private getGridForType = <I extends Identifier>(gridType: GridType<I>): Grid<I> => {

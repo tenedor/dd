@@ -3,11 +3,11 @@ import * as _ from 'lodash';
 import {Grid} from '@models/domain_specific/grid';
 import {getExampleFormulaForTesting} from '@standard_library/standard_library';
 import {TestUtils} from '@test_utils/test_utils';
+import {DictReferenceResolver} from '../dict_reference_resolver';
 import {LanguageEnvironmentImpl} from '../formula_environment';
 import {NameResolver} from '../name_resolver';
 import {RelativeValueReference} from '../reference';
 import {TypeUtils} from '../types';
-import {ValueResolver} from '../value_resolver';
 import {ValueUtils} from '../values';
 import {buildLanguageTestHelpers} from './test_helpers';
 
@@ -36,7 +36,7 @@ const fakeGrid = {id: fakeGridId, namespace: fakeGridNamespace};
 environment.addGrid(fakeGrid as any as Grid);
 
 const gridColumnNameResolver = environment.nameResolver.resolverFor(TypeUtils.GridOf(fakeGridId));
-const gridColumnValueResolver = new ValueResolver(_.mapValues(fakeColumns, 'value'), environment);
+const gridColumnValueResolver = new DictReferenceResolver(_.mapValues(fakeColumns, 'value'), environment);
 
 
 const {

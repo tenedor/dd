@@ -7,7 +7,7 @@ import {ConstructorReference, FormulaReference, ValueReference} from './referenc
 import {Identifier, Type} from './types';
 import {DictValue, Value} from './values';
 
-export class ValueResolver implements ReferenceResolver {
+export class DictReferenceResolver implements ReferenceResolver {
   private readonly globalResolver: ReferenceResolver;
   private readonly instance: DictValue;
 
