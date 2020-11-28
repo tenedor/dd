@@ -2,11 +2,12 @@ import * as _ from 'lodash';
 
 import {ResolutionTimeTypeHelper, ResolutionTimeTypeHelperVariant, UnresolvedAST}
         from '@language/ast';
-import {FormulaEnvironment, LanguageEnvironmentImpl, MutableFormulaEnvironment} from '@language/formula_environment';
+import {LanguageEnvironmentImpl, MutableFormulaEnvironment}
+        from '@language/formula_environment';
 import {ParseError, TypeError} from '@language/language_errors';
 import {Parser} from '@language/parser';
 import {BoundingType, Identifier, LambdaOfAnyType, LambdaType, ListOfAnyType, ListType,
-        PrimitiveType, Type, TypeUtils} from '@language/types';
+        PrimitiveType, Type, TypeEnvironment, TypeUtils} from '@language/types';
 import {LambdaValue, ListValue, NumberValue, PartialRowValue, PrimitiveValue, RowValue,
         StringValue, Value, ValueUtils} from '@language/values';
 import {UpdateManager} from '@models/core/update_manager';
@@ -195,7 +196,7 @@ const getFormulaDefs = (): {[name: string]: FormulaGenerator} => ({
       variant: ResolutionTimeTypeHelperVariant.BASIC,
       resolveCallReturnType: (
         {Then: thenType, Else: elseType}: RODictionary<Type>,
-        environment: FormulaEnvironment,
+        environment: TypeEnvironment,
       ) => {
         return thenType && elseType ?
           TypeUtils.union(thenType, elseType, environment) :
@@ -252,7 +253,7 @@ const getFormulaDefs = (): {[name: string]: FormulaGenerator} => ({
       },
       resolveLambdaType: ({Values: valuesType}: RODictionary<Type>) =>
           TypeUtils.LambdaOf((valuesType as ListType).itemType, BoundingType.BOTTOM),
-      resolveCallReturnType: ({Fn: fnType}: RODictionary<Type>, environment: FormulaEnvironment) =>
+      resolveCallReturnType: ({Fn: fnType}: RODictionary<Type>, environment: TypeEnvironment) =>
           TypeUtils.ListOf((fnType as LambdaType).outputType),
     },
   },
@@ -268,7 +269,7 @@ const getFormulaDefs = (): {[name: string]: FormulaGenerator} => ({
     },
     resolutionTimeTypeHelper: {
       variant: ResolutionTimeTypeHelperVariant.BASIC,
-      resolveCallReturnType: ({Lists: listsType}: RODictionary<Type>, environment: FormulaEnvironment) => {
+      resolveCallReturnType: ({Lists: listsType}: RODictionary<Type>, environment: TypeEnvironment) => {
         return listsType && TypeUtils.isList(listsType) && TypeUtils.isListOfList(listsType) ?
           listsType.itemType :
           TypeUtils.EmptyList;
