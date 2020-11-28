@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 
 import {CoordinateSystem} from '@core/geometry';
 import {FormulaEnvironment} from '@language/formula_environment';
-import {Namespace} from '@language/reference/namespace';
+import {Namespace, NamespaceUtils} from '@language/reference/namespace';
 import {Type, TypeUtils} from '@language/types';
 import {NumberValue, RowValue, Value} from '@language/values';
 import {ModelType} from '@models/core/model';
@@ -52,11 +52,7 @@ export const getCoordinateSystemFromValue = (csValue: RowValue, environment: For
 }
 
 const project = (rowValue: RowValue, columnName: string, environment: FormulaEnvironment): Value => {
-  const grid = environment.getGlobalResolver().getGridById(rowValue.type.schemaId.gridId);
-  if (!grid) {
-    throw new Error(`No grid exists matching row value type ${environment.getGlobalNamespace().typeToString(rowValue.type)}`);
-  }
-  const ns = grid.namespace;
-  const columnId = ns.getReferenceForName(columnName)!.id;
-  return rowValue.dict[columnId];
+  const namespace = environment.getInstanceNamespace(rowValue.type);
+  const columnRef = NamespaceUtils.getValueReferenceByNameOrThrow(columnName, namespace);
+  return rowValue.dict[columnRef.id];
 }

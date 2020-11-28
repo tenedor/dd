@@ -1,10 +1,9 @@
 import {ExpressionRes} from '@language/ast';
-import {FormulaEnvironment} from '@language/formula_environment';
 import {TypeError} from '@language/language_errors';
-import {NameResolver} from '@language/name_resolver';
+import {Namespace} from '@language/reference/namespace';
 import {Reference} from '@language/reference/reference';
 import {ReferenceResolver} from '@language/reference/reference_resolver';
-import {Type, TypeUtils} from '@language/types';
+import {Type, TypeEnvironment, TypeUtils} from '@language/types';
 import {Value} from '@language/values';
 import {ROArray} from '@utils/types';
 import {ModelType} from '../core/model';
@@ -14,7 +13,8 @@ import {FormulaExpressionUpdateType} from '../core/update_types';
 
 interface FormulaExpressionData<T extends Type, P extends Type> {
   type: T;
-  nameResolver: NameResolver;
+  namespace: Namespace;
+  environment: TypeEnvironment;
   parent?: FormulaExpression<P>;
 }
 
@@ -23,27 +23,25 @@ export interface FormulaExpressionUpdateDescriptor extends UpdateDescriptor<Form
 export class FormulaExpression<T extends Type = Type, P extends Type = Type> extends Mutable<FormulaExpressionUpdateDescriptor> {
   public readonly dependencyGraphPartitionIndex = DependencyGraphPartitionIndex.SCHEMA;
   private readonly type: T;
-  private readonly nameResolver: NameResolver;
+  private readonly namespace: Namespace;
+  private readonly environment: TypeEnvironment;
   private _expression?: ExpressionRes<T>;
   private readonly parent?: FormulaExpression<P>;
 
   constructor(
     updateManager: UpdateManager,
-    {type, nameResolver, parent}: FormulaExpressionData<T, P>,
+    {type, namespace, environment, parent}: FormulaExpressionData<T, P>,
     modelType: ModelType = ModelType.FORMULA_EXPRESSION,
   ) {
     super(updateManager, modelType);
     this.type = type;
-    this.nameResolver = nameResolver;
+    this.namespace = namespace;
+    this.environment = environment;
     this.parent = parent;
 
     if (this.parent) {
       this.parent.listenForUpdate(this, this.onParentUpdated);
     }
-  }
-
-  private get environment(): FormulaEnvironment {
-    return this.nameResolver.environment;
   }
 
   private get expression(): ExpressionRes<T> | undefined {
@@ -87,7 +85,7 @@ export class FormulaExpression<T extends Type = Type, P extends Type = Type> ext
   public toText = (): string => {
     const expression = this.expression;
     if (expression) {
-      return expression.toText(this.nameResolver);
+      return expression.toText(this.namespace);
     } else {
       return "";
     }

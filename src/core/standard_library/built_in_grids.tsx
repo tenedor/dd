@@ -3,8 +3,8 @@ import * as _ from 'lodash';
 import {GeometryUtils} from '@core/geometry';
 import {Drawing, DrawingUtils} from '@drawing/drawing';
 import {FormulaEnvironment, MutableFormulaEnvironment} from '@language/formula_environment';
-import {NameResolver} from '@language/name_resolver';
 import {Parser} from '@language/parser';
+import {NamespaceUtils} from '@language/reference/namespace';
 import {PrimitiveType, Type, TypeUtils} from '@language/types';
 import {NumberValue, RowValue, StringValue, Value, ValueOrAST, ValueUtils}
         from '@language/values';
@@ -79,14 +79,14 @@ function generateGridColumns(
   grid: Grid,
   gridColumnsData: GridColumnData[],
 ): GridColumn[] {
-  const nameResolver = environment.nameResolver.resolverFor(TypeUtils.GridOf(grid.id));
+  const namespace = environment.getInstanceNamespace(TypeUtils.GridOf(grid.id));
   return gridColumnsData.map(gridColumnData => {
     const {column, width} = gridColumnData;
     const {type} = column;
     return new GridColumn(updateManager, {
       column,
       environment,
-      nameResolver,
+      namespace,
       type,
       width: width || 100,
     });
@@ -97,7 +97,8 @@ function getGridColumnsByName(grid: Grid): {[name: string]: GridColumn} {
   return _.mapKeys(grid.columns.d, c => c.name);
 }
 
-function setColumnExpressions(grid: Grid, gridColumnsData: MixedGridColumnData[], resolver: NameResolver) {
+function setColumnExpressions(grid: Grid, gridColumnsData: MixedGridColumnData[], environment: FormulaEnvironment) {
+  const gridNamespace = environment.getInstanceNamespace(TypeUtils.GridOf(grid.id));
   const columns = grid.columns;
   gridColumnsData.map((data) => {
     const {expressionString} = data;
@@ -107,7 +108,7 @@ function setColumnExpressions(grid: Grid, gridColumnsData: MixedGridColumnData[]
       if (!parseResult.succeeded) {
         throw new Error("Bad built-in grid formula");
       }
-      const ast = parseResult.ast.resolve(resolver);
+      const ast = parseResult.ast.resolve(gridNamespace, environment);
       columns.getByKey(columnId)!.setExpression(ast);
     }
   });
@@ -139,11 +140,10 @@ function addBuiltInGrid({
   getPrimitiveDrawing?: (cells: RODictionary<Value>) => Drawing,
   disableCoordinateSystemColumn?: boolean,
 }) {
-  const {nameResolver} = environment;
   const newColumns = gridColumnsData.filter((c): c is GridColumnData => !isChildData(c)).map(d => d.column);
   const grid = new Grid(updateManager, {name, environment,
     parentGrid, newColumns, getPrimitiveDrawing, disableCoordinateSystemColumn});
-  setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
+  setColumnExpressions(grid, gridColumnsData, environment);
   setDefaultValues(grid, gridColumnsData);
 }
 
@@ -151,7 +151,8 @@ function getTypeForInstanceOf(
   environment: FormulaEnvironment,
   gridName: string,
 ): Type {
-  return environment.nameResolver.resolveConstructorByName(gridName).returnType;
+  const ctor = NamespaceUtils.getConstructorReferenceByNameOrThrow(gridName, environment.getGlobalNamespace());
+  return ctor.returnType;
 }
 
 function makeLiteral(literalExpression: string, type: Type, environment: FormulaEnvironment): Value {
@@ -159,7 +160,7 @@ function makeLiteral(literalExpression: string, type: Type, environment: Formula
   if (!parseResult.succeeded) {
     throw new Error("Bad built-in grid formula");
   }
-  const astR = parseResult.ast.resolve(environment.nameResolver);
+  const astR = parseResult.ast.resolve(environment.getGlobalNamespace(), environment);
   return astR.eval(environment.getGlobalResolver());
 }
 
@@ -606,8 +607,6 @@ function addDemoArithmeticGrid(
   updateManager: UpdateManager,
   environment: MutableFormulaEnvironment,
 ) {
-  const {nameResolver} = environment;
-
   const grid = document.addGridFromGridData({name: "Radius Calculator", environment});
 
   const columns = generateColumns(updateManager, [
@@ -620,7 +619,7 @@ function addDemoArithmeticGrid(
   ];
   const gridColumns = generateGridColumns(updateManager, environment, grid, gridColumnsData);
   grid.addColumns(gridColumns);
-  setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
+  setColumnExpressions(grid, gridColumnsData, environment);
 
   const manualValues = {[gridColumns[0].columnId]: ValueUtils.numberOf(5)};
   setFirstRowValues(grid, manualValues);
@@ -631,7 +630,6 @@ function addDemoStarGrid(
   updateManager: UpdateManager,
   environment: MutableFormulaEnvironment,
 ) {
-  const {nameResolver} = environment;
   const parentGrid = getGridByName("Path Shape", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
 
@@ -666,8 +664,8 @@ function addDemoStarGrid(
   ];
   const gridColumns = generateGridColumns(updateManager, environment, grid, gridColumnsData);
   grid.addColumns(gridColumns);
-  setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
-  setColumnExpressions(grid, childGridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
+  setColumnExpressions(grid, gridColumnsData, environment);
+  setColumnExpressions(grid, childGridColumnsData, environment);
 
   const manualValues = {
     [gridColumns[0].columnId]: ValueUtils.numberOf(5),
@@ -682,7 +680,6 @@ function addDemoShapeGrids(
   updateManager: UpdateManager,
   environment: MutableFormulaEnvironment,
 ) {
-  const {nameResolver} = environment;
   const shapeGridId = getGridByName("Shape", environment).id;
 
   const columns = generateColumns(updateManager, [
@@ -707,7 +704,7 @@ function addDemoShapeGrids(
   const grid1 = document.addGridFromGridData({name: "Shapes", environment});
   const grid1Columns = generateGridColumns(updateManager, environment, grid1, grid1ColumnsData);
   grid1.addColumns(grid1Columns);
-  setColumnExpressions(grid1, grid1ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid1.id)));
+  setColumnExpressions(grid1, grid1ColumnsData, environment);
   addRows(updateManager, grid1, environment, false);
 
   const grid2ColumnsData: ChildGridColumnData[] = grid1Columns.map(parentGridColumn => {
@@ -717,7 +714,7 @@ function addDemoShapeGrids(
     return {parentGridColumn};
   });
   const grid2 = document.addGridFromGridData({name: "More Shapes", parentGrid: grid1, environment});
-  setColumnExpressions(grid2, grid2ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid2.id)));
+  setColumnExpressions(grid2, grid2ColumnsData, environment);
   addRows(updateManager, grid2, environment, true);
 }
 

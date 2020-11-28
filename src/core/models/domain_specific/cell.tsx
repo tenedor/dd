@@ -1,14 +1,14 @@
 import * as _ from 'lodash';
 
 import {CoordinateSystem, GeometryUtils, Vector} from '@core/geometry';
-import {CallRes, ResolvedAST, ResolvedASTUtils} from '@language/ast';
-import {DictReferenceResolver} from '@language/dict_reference_resolver';
-import {FormulaEnvironment} from '@language/formula_environment';
+import {CallRes, ResolvedAST, ResolvedASTUtils, TypeEnvironmentWithProcedures}
+        from '@language/ast';
 import {TypeError} from '@language/language_errors';
-import {NameResolver} from '@language/name_resolver';
 import {Parser} from '@language/parser';
-import {AbsoluteValueReference, Reference, ReferenceUtils, ValueDependency,
-        ValueReference} from '@language/reference';
+import {DictReferenceResolver} from '@language/reference/dict_reference_resolver';
+import {Namespace} from '@language/reference/namespace';
+import {Reference, ReferenceUtils, ValueDependency, ValueReference}
+        from '@language/reference/reference';
 import {Identifier, RowType, Type, TypeUtils} from '@language/types';
 import {Value, ValueOrAST, ValueUtils} from '@language/values';
 import {Address} from '@paths/address';
@@ -74,13 +74,13 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
     this.addPermanentListener(this.column, this.onColumnUpdated);
 
-    const {type, nameResolver} = this.column;
+    const {type, namespace} = this.column;
     if (this.defaultValue) {
       this.addPermanentListener(this.defaultValue, this.onDefaultValueUpdated);
     } else if (TypeUtils.supportsLiterals(type)) {
-      const builtInDefault = ValueUtils.getDefaultValue(type, nameResolver);
+      const builtInDefault = ValueUtils.getDefaultValue(type, namespace);
       if (isCallAST(builtInDefault)) {
-      this.addPermanentListener(builtInDefault.procedure, this.onRootDefaultValueUpdated);
+      this.addPermanentListener(builtInDefault.procedureRef, this.onRootDefaultValueUpdated);
       }
     }
 
@@ -126,9 +126,9 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   public getDisplayValue = (): string => {
-    const {nameResolver} = this.column;
+    const {namespace} = this.column;
     const rawValue = this.isCalculated() ? this.value : this.getManualValueOrDefault();
-    return isAST(rawValue) ? rawValue.toText(nameResolver) : ValueUtils.toString(rawValue, nameResolver);
+    return isAST(rawValue) ? rawValue.toText(namespace) : ValueUtils.toString(rawValue, namespace);
   }
 
   public valueIsDefault = (): boolean => {
@@ -139,7 +139,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return this.column.formulaExpression;
   }
 
-  private get environment(): FormulaEnvironment {
+  private get environment(): TypeEnvironmentWithProcedures {
     return this.column.environment;
   }
 
@@ -152,7 +152,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
       assert(!isAST(value) || value.isLiteral, "Manual values must be literals.");
       assert(TypeUtils.isAssignableTo(value.type, type, this.environment),
           `Cannot set manual value of type ${value.type} on cell of type ` +
-          `${this.environment.getGlobalNamespace().typeToString(type)}.`, TypeError);
+          `${this.environment.typeToString(type)}.`, TypeError);
 
       if (isAST(value) && ResolvedASTUtils.isConstant(value)) {
         // can concretize early
@@ -186,33 +186,38 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   private setCoordinates = (coordinates: CoordinateSystem) => {
-    const ast = Cell.makeCoordinatesAST(coordinates, this.column.nameResolver);
+    const {namespace, environment} = this.column;
+    const ast = Cell.makeCoordinatesAST(coordinates, namespace, environment);
     const asmtUpdates = {[COORDINATE_SYSTEM_COLUMN_ID]: ast};
     const currentValue = this.getManualValueOrDefault() as CallRes<T>;
     const newValue = currentValue.withAssignments(asmtUpdates);
     this.setManualValue(newValue);
   }
 
-  private static makeCoordinatesAST = (coordinates: CoordinateSystem, resolver: NameResolver): ResolvedAST<RowType> => {
+  private static makeCoordinatesAST = (
+    coordinates: CoordinateSystem,
+    namespace: Namespace,
+    environment: TypeEnvironmentWithProcedures,
+  ): ResolvedAST<RowType> => {
     const {x, y} = coordinates.center;
     const xx = Parser.sanitizeJSNumberForParsing(x);
     const yy = Parser.sanitizeJSNumberForParsing(y);
     const parsed = Parser.parseLiteral(`'Coordinate System'(Center=Vector(X=${xx},Y=${yy}))`, TypeUtils.RowOf("any"));
     if (parsed.succeeded) {
-      return parsed.ast.resolve(resolver) as ResolvedAST<RowType>;
+      return parsed.ast.resolve(namespace, environment) as ResolvedAST<RowType>;
     }
     throw new Error("Failed to construct coordinates AST.");
   }
 
   private addManualValueListeners = () => {
     if (isCallAST(this.manualValue)) {
-      this.addDynamicListener(this.manualValue.procedure, this.onValueProcedureUpdated);
+      this.addDynamicListener(this.manualValue.procedureRef, this.onValueProcedureUpdated);
     }
   }
 
   private removeManualValueListeners = () => {
     if (isCallAST(this.manualValue)) {
-      this.removeDynamicListener(this.manualValue.procedure);
+      this.removeDynamicListener(this.manualValue.procedureRef);
     }
   }
 
@@ -318,7 +323,9 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
   private getDependenciesResolver = (): DictReferenceResolver => {
     const dependencyValues = _.mapValues(this.valueDependencies, r => r.value);
-    return new DictReferenceResolver(dependencyValues, this.environment);
+    const dependenciesRow = ValueUtils.partialRowOf(dependencyValues, this.gridId);
+    const globalResolver = this.column.getGlobalReferenceResolver();
+    return new DictReferenceResolver(globalResolver, dependenciesRow);
   }
 
   private isCalculated = (): boolean => {
@@ -330,12 +337,12 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   private getDefaultValue = (): ValueOrAST<T> => {
-    const {type, nameResolver} = this.column;
+    const {type, namespace} = this.column;
     if (this.defaultValue) {
       return this.defaultValue.rawValue;
     } else if (TypeUtils.supportsLiterals(type)) {
       // Unclear why TS can't figure this one out in some environments...
-      return ValueUtils.getDefaultValue(type, nameResolver) as ValueOrAST<T>;
+      return ValueUtils.getDefaultValue(type, namespace) as ValueOrAST<T>;
     }
     throw new Error(`Default value is not supported for type ${type}`);
   }

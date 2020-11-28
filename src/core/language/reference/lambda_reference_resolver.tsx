@@ -2,10 +2,10 @@ import * as _ from 'lodash';
 
 import {Grid} from '@models/domain_specific/grid';
 import {Constructor, Formula} from '@models/domain_specific/procedure';
+import {Identifier, Type} from '../types';
+import {Value} from '../values';
 import {ConstructorReference, FormulaReference, ValueReference} from './reference';
 import {ReferenceResolver} from './reference_resolver';
-import {Identifier, Type} from './types';
-import {Value} from './values';
 
 export class LambdaReferenceResolver implements ReferenceResolver {
   private readonly baseResolver: ReferenceResolver;

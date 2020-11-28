@@ -3,10 +3,10 @@ import * as _ from 'lodash';
 import {Grid} from '@models/domain_specific/grid';
 import {getExampleFormulaForTesting} from '@standard_library/standard_library';
 import {TestUtils} from '@test_utils/test_utils';
-import {DictReferenceResolver} from '../dict_reference_resolver';
 import {LanguageEnvironmentImpl} from '../formula_environment';
-import {NameResolver} from '../name_resolver';
-import {RelativeValueReference} from '../reference';
+import {DictReferenceResolver} from '../reference/dict_reference_resolver';
+import {ValueNamespace} from '../reference/namespace';
+import {ValueReference} from '../reference/reference';
 import {TypeUtils} from '../types';
 import {ValueUtils} from '../values';
 import {buildLanguageTestHelpers} from './test_helpers';
@@ -21,22 +21,23 @@ const fakeColumns = {
   'fake-column-2': {type: TypeUtils.ListOf(TypeUtils.Boolean), name: 'True and False', value: TestUtils.asValue([true, false], environment)},
 };
 
-const fakeGridNamespace = {
-  getReferenceForName: (name: string) => {
+const fakeGridNamespace: ValueNamespace = {
+  getValueReferenceByName: (name: string): ValueReference => {
     const id = _.findKey(fakeColumns, c => c.name === name)!;
     const type = fakeColumns[id].type;
-    return new RelativeValueReference(id, type, (r: NameResolver) => name);
+    return new ValueReference(id, type);
   },
-  getNameForReference: (columnId: string) => fakeColumns[columnId].name,
+  getReferenceName: (ref: ValueReference): string => fakeColumns[ref.id].name,
 };
 
-const fakeGrid = {id: fakeGridId, namespace: fakeGridNamespace};
+const fakeGrid = {id: fakeGridId, valueNamespace: fakeGridNamespace};
 
 // TODO make an actual grid to avoid casting
 environment.addGrid(fakeGrid as any as Grid);
 
-const gridColumnNameResolver = environment.nameResolver.resolverFor(TypeUtils.GridOf(fakeGridId));
-const gridColumnValueResolver = new DictReferenceResolver(_.mapValues(fakeColumns, 'value'), environment);
+const gridColumnNameResolver = environment.getInstanceNamespace(TypeUtils.GridOf(fakeGridId));
+const instance = ValueUtils.partialRowOf(_.mapValues(fakeColumns, 'value'), fakeGridId);
+const gridColumnValueResolver = new DictReferenceResolver(environment, instance);
 
 
 const {
@@ -291,7 +292,7 @@ describe('Language', () => {
       {formula: "Power(Exponent = 4)", result: 16},
       {formula: "Power(Base = 5, Exponent = 4)", result: 625},
       {formula: "Power(Exponent = Power(Base = 0))", result: 1},
-    ], environment.nameResolver);
+    ]);
   });
 
 
@@ -299,7 +300,7 @@ describe('Language', () => {
     expectResults('lambdas', [
       {formula: "N -> N * 2", lambdaArg: 8, result: 16},
       {formula: "B -> !B", lambdaArg: false, result: true},
-    ], environment.nameResolver);
+    ]);
   });
 
 

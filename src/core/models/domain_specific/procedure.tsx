@@ -3,8 +3,8 @@ import * as _ from 'lodash';
 import {Drawing} from '@drawing/drawing';
 import {ResolutionTimeTypeHelper} from '@language/ast';
 import {FormulaEnvironment} from '@language/formula_environment';
-import {buildNamespace, ValueNamespace} from '@language/name_resolver';
-import {FormulaReference, ValueReference} from '@language/reference';
+import {ValueNamespace} from '@language/reference/namespace';
+import {FormulaReference, ValueReference} from '@language/reference/reference';
 import {Identifier, PartialRowType, RowType, Type, TypeUtils} from '@language/types';
 import {PartialRowValue, RowValue, Value} from '@language/values';
 import {ROArray, RODictionary} from '@utils/types';
@@ -207,9 +207,13 @@ export class BuiltInFormula<R extends Type = Type, I extends Identifier = Identi
   private static buildNamespace = (parameters: {[id: string]: Parameter}): ValueNamespace => {
     const nameToParameterMap = _.mapKeys(parameters, 'name');
     const nameToReferenceMap = _.mapValues(nameToParameterMap, p => {
-      return new ValueReference(p.id, p.type, () => p.name);
+      return new ValueReference(p.id, p.type);
     });
-    return buildNamespace(nameToReferenceMap);
+    const refIdToNameMap = _.invert(_.mapValues(nameToReferenceMap, ref => ref.id));
+    return {
+      getValueReferenceByName: (name: string) => nameToReferenceMap[name],
+      getReferenceName: (ref: ValueReference) => refIdToNameMap[ref.id],
+    }
   }
 
   private static buildSignature = (formula: BuiltInFormulaSpec): Signature => {

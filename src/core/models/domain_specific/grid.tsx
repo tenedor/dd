@@ -3,9 +3,9 @@ import * as _ from 'lodash';
 import {Vector} from '@core/geometry';
 import {Drawing, DrawingUtils} from '@drawing/drawing';
 import {FormulaEnvironment, MutableFormulaEnvironment} from '@language/formula_environment';
-import {NameResolver, ValueNamespace} from '@language/name_resolver';
-import {RelativeValueReference} from '@language/reference';
-import {Identifier, RowType, Type, TypeUtils} from '@language/types';
+import {Namespace, ValueNamespace} from '@language/reference/namespace';
+import {ValueReference} from '@language/reference/reference';
+import {Identifier, Type, TypeUtils} from '@language/types';
 import {GridValue, Value} from '@language/values';
 import {Address, AddressUtils} from '@paths/address';
 import {getCoordinateSystemColumn} from '@standard_library/geometry_utils';
@@ -53,7 +53,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
 
   public readonly columns: GridColumns;
   public readonly rows: Rows;
-  public readonly namespace: ValueNamespace;
+  public readonly valueNamespace: ValueNamespace;
   public readonly gridConstructor: Constructor<I>;
 
   constructor(
@@ -72,7 +72,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     }
 
     // configure grid enough to add to formula environment
-    this.namespace = Grid.buildNamespace(this.getColumnByName, this.getColumnById);
+    this.valueNamespace = Grid.buildValueNamespace(this.getColumnByName, this.getColumnById);
     this.columns = new FunctionalKeyedArray(updateManager, this.constructInitialColumns(newColumns), 'columnId');
 
     // add to formula environment
@@ -86,14 +86,15 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     this.gridConstructor.listenForUpdate(this, this.onGridConstructorUpdated);
   }
 
-  private get nameResolver(): NameResolver {
-    return this.environment.nameResolver.resolverWith(this.namespace);
+  private get namespace(): Namespace {
+    const type = TypeUtils.RowOf(this.id);
+    return this.environment.getInstanceNamespace(type);
   }
 
   private constructInitialColumns = (newColumnData: Column[] = []): GridColumn[] => {
-    const {parent, nameResolver} = this;
+    const {parent, namespace} = this;
     const parentColumns = parent ?
-      parent.columns.a.map(c => GridColumn.fromParent(c, {nameResolver, type: c.type})) :
+      parent.columns.a.map(c => GridColumn.fromParent(c, {namespace, type: c.type})) :
       [];
     const newColumns = newColumnData.map(this.makeGridColumn);
     const systemColumns = this.makeSystemColumns();
@@ -135,28 +136,28 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     });
   }
 
-  private static buildNamespace = (
+  private static buildValueNamespace = (
     getColumnByName: (name: string) => GridColumn | undefined,
     getColumnById: (columnId: string) => GridColumn | undefined,
   ): ValueNamespace => {
     return {
-      getReferenceForName: (name: string): RelativeValueReference | undefined => {
+      getValueReferenceByName: (name: string): ValueReference | undefined => {
         const column = getColumnByName(name);
         if (!column) {
           return undefined;
         }
         const {columnId: id, type} = column;
-        return new RelativeValueReference(id, type, (r: NameResolver) => column.name);
+        return new ValueReference(id, type);
       },
-      getNameForReference: (columnId: string): string | undefined => {
-        const column = getColumnById(columnId);
+      getReferenceName: (ref: ValueReference): string | undefined => {
+        const column = getColumnById(ref.id);
         return column && column.name;
       },
     }
   }
 
   private buildConstructor = (): Constructor<I> => {
-    const {columns, defaultValues, environment, getPrimitiveDrawing, id: gridId, namespace} = this;
+    const {columns, defaultValues, environment, getPrimitiveDrawing, id: gridId, valueNamespace: namespace} = this;
     // TODO create a Primitive mutable model and make this.name a Primitive
     const getName = () => this.name;
     return new GridConstructor(this.updateManager, {
@@ -229,11 +230,11 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private makeGridColumn = (column: Column): GridColumn => {
-    const {environment, nameResolver, updateManager} = this;
+    const {environment, namespace, updateManager} = this;
     return new GridColumn(updateManager, {
       column,
       environment,
-      nameResolver,
+      namespace,
       type: column.type,
       width: DEFAULT_COLUMN_WIDTH,
     });

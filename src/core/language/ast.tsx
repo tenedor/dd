@@ -1,15 +1,18 @@
 import * as _ from 'lodash';
 
-import {Constructor, Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
+import {Constructor} from '@models/domain_specific/procedure'; // Only a type dependency
 import {Dictionary, ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
-import {OutOfBoundsError, TypeError, ValueResolutionError} from './language_errors';
-import {buildNamespace, NameResolver, ValueNamespace} from './name_resolver';
+import {NameResolutionError, OutOfBoundsError, ProcedureResolutionError, TypeError}
+        from './language_errors';
 import {Parser} from './parser';
 import {DictReferenceResolver} from './reference/dict_reference_resolver';
+import {LambdaNamespace} from './reference/lambda_namespace';
 import {LambdaReferenceResolver} from './reference/lambda_reference_resolver';
-import {Reference, ReferenceUtils, ValueReference} from './reference/reference';
-import {ReferenceResolver} from './reference/reference_resolver';
+import {Namespace, NamespaceUtils} from './reference/namespace';
+import {ConstructorReference, FormulaReference, ProcedureReference, Reference,
+        ValueReference} from './reference/reference';
+import {ReferenceResolver, ReferenceResolverUtils} from './reference/reference_resolver';
 import {DictType, GridType, Identifier, LambdaType, ListType, PartialRowType,
         PrimitiveType, RowType, Type, TypeEnvironment, TypeUtils} from './types';
 import {UnaryOp, UnaryOpUtils} from './unary_op';
@@ -38,6 +41,28 @@ export interface LambdaResolutionTimeTypeHelper extends BaseResolutionTimeTypeHe
 export type ResolutionTimeTypeHelper = BasicResolutionTimeTypeHelper | LambdaResolutionTimeTypeHelper;
 
 
+export interface TypeEnvironmentWithProcedures extends TypeEnvironment {
+  getAssignmentsType<I extends Identifier>(ref: ProcedureReference<any, I>): PartialRowType<I> | undefined;
+  getResolutionTimeTypeHelper(ref: ProcedureReference): ResolutionTimeTypeHelper | undefined;
+}
+
+
+class TypeEnvironmentWithProceduresUtils {
+
+  public static getAssignmentsTypeOrThrow = <I extends Identifier>(
+    ref: ProcedureReference<any, I>,
+    env: TypeEnvironmentWithProcedures,
+  ): PartialRowType<I> => {
+    const asmtsType = env.getAssignmentsType(ref);
+    if (!asmtsType) {
+      throw new NameResolutionError(`No procedure exists in this scope for reference '${ref.id}'.`);
+    }
+    return asmtsType;
+  }
+
+}
+
+
 enum ASTNodeType {
   EXPRESSION = "EXPRESSION",
   LAMBDA = "LAMBDA",
@@ -57,11 +82,11 @@ interface AST<N extends ASTNodeType = ASTNodeType> {
   readonly nodeType: N;
 
   // Force implementors to implement this method by not naming it `toString`
-  toText: (resolver: NameResolver) => string;
+  toText: (namespace: Namespace) => string;
 }
 
 export interface UnresolvedAST<N extends ASTNodeType = ASTNodeType> extends AST<N> {
-  resolve: (resolver: NameResolver) => ResolvedAST<Type, N>;
+  resolve: (namespace: Namespace, env: TypeEnvironmentWithProcedures) => ResolvedAST<Type, N>;
 }
 
 export interface ResolvedAST<R extends Type = Type, N extends ASTNodeType = ASTNodeType> extends AST<N> {
@@ -135,15 +160,15 @@ abstract class ExpressionAST<A extends AST> implements AST<ASTNodeType.EXPRESSIO
     this.e = e;
   }
 
-  public toText = (resolver: NameResolver): string => {
-    return this.e.toText(resolver);
+  public toText = (namespace: Namespace): string => {
+    return this.e.toText(namespace);
   }
 }
 
 export class ExpressionUnres extends ExpressionAST<UnresolvedAST>
     implements UnresolvedAST<ASTNodeType.EXPRESSION> {
-  public resolve = (resolver: NameResolver) => {
-    const eR = this.e.resolve(resolver);
+  public resolve = (namespace: Namespace, env: TypeEnvironmentWithProcedures) => {
+    const eR = this.e.resolve(namespace, env);
     return new ExpressionRes(eR, eR.type);
   }
 }
@@ -185,12 +210,12 @@ abstract class LambdaAST<A extends AST, AI extends A = A, AE extends A = A>
     this.e = e;
   }
 
-  protected getNameResolver(resolver: NameResolver): NameResolver {
-    return resolver;
+  protected getNamespace(namespace: Namespace): Namespace {
+    return namespace;
   }
 
-  public toText = (resolver: NameResolver): string => {
-    const res = this.getNameResolver(resolver);
+  public toText = (namespace: Namespace): string => {
+    const res = this.getNamespace(namespace);
     return `${this.ident.toText(res)} -> ${this.e.toText(res)}`;
   }
 }
@@ -198,16 +223,16 @@ abstract class LambdaAST<A extends AST, AI extends A = A, AE extends A = A>
 export class LambdaUnres
     extends LambdaAST<UnresolvedAST, IdentifierUnres, UnresolvedAST>
     implements UnresolvedAST<ASTNodeType.LAMBDA> {
-  public resolve = (resolver: NameResolver) => {
+  public resolve = (namespace: Namespace, env: TypeEnvironmentWithProcedures) => {
     const identName = this.ident.getName();
-    const iteratorType: Type = resolver.getIteratorType();
-    const iteratorRef = ValueReference.buildForIteratorVariable(iteratorType, identName);
-    const iteratorNamespace = buildNamespace({[identName]: iteratorRef});
-    const res = resolver.extendWithNamespace(iteratorNamespace);
-    const identR = new IdentifierRes(iteratorRef);
-    const eR = this.e.resolve(res);
+    const iteratorType: Type = namespace.getIteratorType_DEPRECATED();
+    const identRef = ValueReference.buildForIteratorVariable(iteratorType, identName);
+    const buildLambdaNamespace = (ns: Namespace) => new LambdaNamespace(ns, identName, identRef);
+    const namespaceR = buildLambdaNamespace(namespace);
+    const identR = new IdentifierRes(identRef);
+    const eR = this.e.resolve(namespaceR, env);
     const type = TypeUtils.LambdaOf(identR.type, eR.type);
-    return new LambdaRes(identR, eR, type, iteratorNamespace);
+    return new LambdaRes(identR, eR, type, buildLambdaNamespace);
   }
 }
 
@@ -217,13 +242,18 @@ export class LambdaRes<RI extends Type = Type, RO extends Type = Type>
   public readonly type: LambdaType<RI, RO>;
   public readonly externalDependencies: ROArray<Reference>;
   public readonly isLiteral = false;
-  private readonly iteratorNamespace: ValueNamespace;
+  private readonly buildLambdaNamespace: (namespace: Namespace) => Namespace;
 
-  constructor(ident: IdentifierRes<RI>, e: ResolvedAST<RO>, type: LambdaType<RI, RO>, identNamespace: ValueNamespace) {
+  constructor(
+    ident: IdentifierRes<RI>,
+    e: ResolvedAST<RO>,
+    type: LambdaType<RI, RO>,
+    buildLambdaNamespace: (namespace: Namespace) => Namespace,
+  ) {
     super(ident, e);
     this.type = type;
     this.externalDependencies = e.externalDependencies;
-    this.iteratorNamespace = identNamespace;
+    this.buildLambdaNamespace = buildLambdaNamespace;
   }
 
   public eval = (resolver: ReferenceResolver): LambdaValue<RI, RO> => {
@@ -234,8 +264,8 @@ export class LambdaRes<RI extends Type = Type, RO extends Type = Type>
     return ValueUtils.lambdaOf(lambda, this.type);
   }
 
-  protected getNameResolver(resolver: NameResolver): NameResolver {
-    return resolver.extendWithNamespace(this.iteratorNamespace);
+  protected getNamespace(namespace: Namespace): Namespace {
+    return this.buildLambdaNamespace(namespace);
   }
 }
 
@@ -258,15 +288,15 @@ abstract class BinaryOpAST<A extends AST, A1 extends A = A, A2 extends A = A>
     this.e2 = e2;
   }
 
-  public toText = (resolver: NameResolver): string => {
-    return `${this.e1.toText(resolver)} ${this.op} ${this.e2.toText(resolver)}`;
+  public toText = (namespace: Namespace): string => {
+    return `${this.e1.toText(namespace)} ${this.op} ${this.e2.toText(namespace)}`;
   }
 }
 
 export class BinaryOpUnres extends BinaryOpAST<UnresolvedAST> implements UnresolvedAST<ASTNodeType.BINARY_OP> {
-  public resolve = (resolver: NameResolver) => {
-    const eR1 = this.e1.resolve(resolver);
-    const eR2 = this.e2.resolve(resolver);
+  public resolve = (namespace: Namespace, env: TypeEnvironmentWithProcedures) => {
+    const eR1 = this.e1.resolve(namespace, env);
+    const eR2 = this.e2.resolve(namespace, env);
     const type = BinaryOpUtils.validateOperandTypes(this.op, eR1.type, eR2.type);
     return new BinaryOpRes(this.op, eR1, eR2, type);
   }
@@ -307,14 +337,14 @@ abstract class UnaryOpAST<A extends AST> implements AST<ASTNodeType.UNARY_OP> {
     this.e = e;
   }
 
-  public toText = (resolver: NameResolver): string => {
-    return `${this.op}${this.e.toText(resolver)}`;
+  public toText = (namespace: Namespace): string => {
+    return `${this.op}${this.e.toText(namespace)}`;
   }
 }
 
 export class UnaryOpUnres extends UnaryOpAST<UnresolvedAST> implements UnresolvedAST<ASTNodeType.UNARY_OP> {
-  public resolve = (resolver: NameResolver) => {
-    const eR = this.e.resolve(resolver);
+  public resolve = (namespace: Namespace, env: TypeEnvironmentWithProcedures) => {
+    const eR = this.e.resolve(namespace, env);
     const type = UnaryOpUtils.validateOperandType(this.op, eR.type);
     return new UnaryOpRes(this.op, eR, type);
   }
@@ -356,15 +386,15 @@ abstract class IndexAST<A extends AST, AL extends A = A, AI extends A = A>
     this.idx = idx;
   }
 
-  public toText = (resolver: NameResolver): string => {
-    return `${this.list.toText(resolver)}[${this.idx.toText(resolver)}]`;
+  public toText = (namespace: Namespace): string => {
+    return `${this.list.toText(namespace)}[${this.idx.toText(namespace)}]`;
   }
 }
 
 export class IndexUnres extends IndexAST<UnresolvedAST> implements UnresolvedAST<ASTNodeType.INDEX> {
-  public resolve = (resolver: NameResolver) => {
-    const listR = this.list.resolve(resolver);
-    const idxR = this.idx.resolve(resolver);
+  public resolve = (namespace: Namespace, env: TypeEnvironmentWithProcedures) => {
+    const listR = this.list.resolve(namespace, env);
+    const idxR = this.idx.resolve(namespace, env);
     if (!ResolvedASTUtils.resolvesToList(listR)) {
       throw new TypeError("Can only index into lists and grids");
     } else if (!ResolvedASTUtils.resolvesToNumber(idxR)) {
@@ -422,7 +452,7 @@ abstract class ProjectAST<A extends AST>
     this.dict = dict;
   }
 
-  public abstract toText(resolver: NameResolver): string;
+  public abstract toText(namespace: Namespace): string;
 }
 
 export class ProjectUnres extends ProjectAST<UnresolvedAST> implements UnresolvedAST<ASTNodeType.PROJECT> {
@@ -433,17 +463,21 @@ export class ProjectUnres extends ProjectAST<UnresolvedAST> implements Unresolve
     this.name = name;
   }
 
-  public resolve = (resolver: NameResolver) => {
-    const dictR = this.dict.resolve(resolver);
+  public resolve = (namespace: Namespace, env: TypeEnvironmentWithProcedures) => {
+    const dictR = this.dict.resolve(namespace, env);
     if (!ResolvedASTUtils.resolvesToDict(dictR)) {
       throw new TypeError("Can only project values from grids and rows");
     }
-    const refR = resolver.resolverFor(dictR.type).resolveValueReferenceByName(this.name);
+    const innerNamespace = namespace.getInstanceNamespace(dictR.type);
+    const refR = innerNamespace.getValueReferenceByName(this.name);
+    if (!refR) {
+      throw new NameResolutionError(`No projection exists with name '${this.name}'`);
+    }
     return new ProjectRes(dictR, refR);
   }
 
-  public toText = (resolver: NameResolver): string => {
-    return `${this.dict.toText(resolver)}.${this.name}`;
+  public toText = (namespace: Namespace): string => {
+    return `${this.dict.toText(namespace)}.${this.name}`;
   }
 }
 
@@ -467,16 +501,13 @@ export class ProjectRes<R extends Type = Type> extends ProjectAST<ResolvedAST<Di
       throw new TypeError("Can only project values from grids and rows");
     }
     const dictResolver = new DictReferenceResolver(resolver, dictV);
-    const refV = dictResolver.resolveValue(this.ref);
-    if (refV === undefined) {
-      throw new ValueResolutionError(`No value found for reference ${this.ref.id}`);
-    }
+    const refV = ReferenceResolverUtils.resolveValueOrThrow(this.ref, dictResolver);
     return refV;
   }
 
-  public toText = (resolver: NameResolver): string => {
-    const refName = resolver.nameForValueId(this.ref);
-    return `${this.dict.toText(resolver)}.${Parser.identToText(refName)}`;
+  public toText = (namespace: Namespace): string => {
+    const refName = NamespaceUtils.getReferenceNameOrThrow(this.ref, namespace);
+    return `${this.dict.toText(namespace)}.${Parser.identToText(refName)}`;
   }
 }
 
@@ -496,7 +527,7 @@ abstract class CallAST<A extends AST<ASTNodeType.ASSIGNMENTS>> implements AST<AS
     this.isConstructor = isConstructor;
   }
 
-  public abstract toText(resolver: NameResolver): string;
+  public abstract toText(namespace: Namespace): string;
 }
 
 export class CallUnres extends CallAST<AssignmentsUnres> implements UnresolvedAST<ASTNodeType.CALL> {
@@ -507,20 +538,25 @@ export class CallUnres extends CallAST<AssignmentsUnres> implements UnresolvedAS
     this.name = name;
   }
 
-  public resolve = (resolver: NameResolver) => {
-    const procedure = this.isConstructor ?
-      resolver.resolveConstructorByName(this.name) :
-      resolver.resolveFormulaByName(this.name);
-    const {returnType, resolutionTimeTypeHelper} = procedure;
+  public resolve = (namespace: Namespace, env: TypeEnvironmentWithProcedures) => {
+    const procedureR = this.isConstructor ?
+      namespace.getConstructorReferenceByName(this.name) :
+      namespace.getFormulaReferenceByName(this.name);
+    if (!procedureR) {
+      const refType = this.isConstructor ? "grid" : "formula";
+      throw new NameResolutionError(`No ${refType} exists with name '${this.name}'`);
+    }
+    const {returnType} = procedureR;
+    const resolutionTimeTypeHelper = env.getResolutionTimeTypeHelper(procedureR);
     if (resolutionTimeTypeHelper) {
       const {asmtsR, asmtTypesByName} = this.isLambdaHelper(resolutionTimeTypeHelper) ?
-        this.asmts.resolveForProcedureWithResolutionTimeTypes(resolver, procedure, resolutionTimeTypeHelper) :
-        this.asmts.resolveForProcedure(resolver, procedure);
-      const _returnType = resolutionTimeTypeHelper.resolveCallReturnType(asmtTypesByName, resolver.environment);
-      return new CallRes(procedure, asmtsR, this.isConstructor, _returnType);
+        this.asmts.resolveForProcedureWithResolutionTimeTypes(procedureR, resolutionTimeTypeHelper, namespace, env) :
+        this.asmts.resolveForProcedure(procedureR, namespace, env);
+      const returnTypeR = resolutionTimeTypeHelper.resolveCallReturnType(asmtTypesByName, env);
+      return new CallRes(procedureR, asmtsR, this.isConstructor, returnTypeR);
     } else {
-      const {asmtsR} = this.asmts.resolveForProcedure(resolver, procedure);
-      return new CallRes(procedure, asmtsR, this.isConstructor, returnType);
+      const {asmtsR} = this.asmts.resolveForProcedure(procedureR, namespace, env);
+      return new CallRes(procedureR, asmtsR, this.isConstructor, returnType);
     }
   }
 
@@ -528,8 +564,8 @@ export class CallUnres extends CallAST<AssignmentsUnres> implements UnresolvedAS
     return helper.variant === ResolutionTimeTypeHelperVariant.LAMBDA;
   }
 
-  public toText = (resolver: NameResolver): string => {
-    const asmts = this.asmts.toText(resolver);
+  public toText = (namespace: Namespace): string => {
+    const asmts = this.asmts.toText(namespace);
     return this.isConstructor ? `${this.name}{${asmts}}` : `${this.name}(${asmts})`;
   }
 }
@@ -538,33 +574,36 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
     implements ResolvedAST<R, ASTNodeType.CALL> {
   public readonly type: R;
   public readonly externalDependencies: ROArray<Reference>;
-  private readonly _procedure: Procedure<R, I>;
+  public readonly procedureRef: ProcedureReference<R, I>;
 
-  constructor(procedure: Procedure<R, I>, asmts: AssignmentsRes<I>,
+  constructor(procedureRef: ProcedureReference<R, I>, asmts: AssignmentsRes<I>,
       isConstructor: boolean, type: R) {
     super(asmts, isConstructor);
     this.type = type;
-    const procedureRef = ReferenceUtils.buildReferenceForProcedure(procedure);
     this.externalDependencies = asmts.externalDependencies.concat([procedureRef]);
-    this._procedure = procedure;
-  }
-
-  public get procedure(): Procedure<R, I> {
-    return this._procedure;
+    this.procedureRef = procedureRef;
   }
 
   public get isLiteral() {
-    return this.procedure.isConstructorLiteral && this.asmts.isLiteral;
+    return this.isConstructor && this.asmts.isLiteral;
   }
 
   public eval = (resolver: ReferenceResolver): Value<R> => {
     const asmtsV = this.asmts.eval(resolver);
-    return this.procedure.eval(asmtsV, this.type);
+    const procedure = this.isConstructor ?
+      resolver.resolveConstructor(this.procedureRef as ConstructorReference) :
+      resolver.resolveFormula(this.procedureRef as FormulaReference);
+    if (!procedure) {
+      const refType = this.isConstructor ? "constructor" : "formula";
+      throw new ProcedureResolutionError (`No ${refType} exists for reference '${this.procedureRef.id}'`);
+    }
+    return procedure.eval(asmtsV, this.type) as Value<R>;
   }
 
-  public toText = (resolver: NameResolver): string => {
-    const name = Parser.identToText(this.procedure.name);
-    const asmts = this.asmts.toText(resolver);
+  public toText = (namespace: Namespace): string => {
+    const rawName = NamespaceUtils.getReferenceNameOrThrow(this.procedureRef, namespace);
+    const name = Parser.identToText(rawName);
+    const asmts = this.asmts.toText(namespace);
     return this.isConstructor ? `${name}{${asmts}}` : `${name}(${asmts})`;
   }
 
@@ -573,18 +612,18 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
   }
 
   public withAssignments = (asmts: RODictionary<ResolvedAST>): CallRes<R, I>  => {
-    const {procedure, type, isConstructor} = this;
+    const {procedureRef: procedure, type, isConstructor} = this;
     const mergedAsmts = this.asmts.withAssignments(asmts);
     return new CallRes(procedure, mergedAsmts, isConstructor, type);
   }
 
-  // TODO update this given resolution-time types
   public static buildDefaultConstructorCall = <I extends Identifier> (
     constructor: Constructor<I>,
   ): CallRes<RowType<I>, I> => {
+    const constructorRef = new ConstructorReference(constructor.id as I); // FIXME need grid id
     const {assignmentsType, returnType} = constructor;
     const asmts = new AssignmentsRes({}, [], assignmentsType);
-    return new CallRes(constructor, asmts, true, returnType);
+    return new CallRes(constructorRef, asmts, true, returnType);
   }
 }
 
@@ -593,49 +632,54 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
 // Assignments AST
 // ===============
 
-abstract class AssignmentsAST<A extends AST> implements AST<ASTNodeType.ASSIGNMENTS> {
+abstract class AssignmentsAST<A extends AST, I> implements AST<ASTNodeType.ASSIGNMENTS> {
   public readonly nodeType = ASTNodeType.ASSIGNMENTS;
 
   protected readonly asmts: RODictionary<A>;
-  protected readonly asmtOrder: ROArray<string>;
+  protected readonly asmtOrder: ROArray<I>;
 
-  constructor(asmts: RODictionary<A>, asmtOrder: ROArray<string>) {
+  constructor(asmts: RODictionary<A>, asmtOrder: ROArray<I>) {
     this.asmts = asmts;
     this.asmtOrder = asmtOrder;
   }
 
-  public toText = (resolver: NameResolver): string => {
+  public toText = (namespace: Namespace): string => {
     return this.asmtOrder.map(id =>
-      `${this.asmtIdToText(id, resolver)} = ${this.asmts[id].toText(resolver)}`).join(", ");
+      `${this.asmtIdentifierToText(id, namespace)} = ${this.getAsmt(id).toText(namespace)}`).join(", ");
   }
 
-  protected asmtIdToText(asmtId: string, resolver: NameResolver): string {
-    return asmtId;
-  }
+  protected abstract asmtIdentifierToText(asmtIdent: I, namespace: Namespace): string;
+
+  protected abstract getAsmt(asmtIdent: I): A;
 }
 
-export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements UnresolvedAST<ASTNodeType.ASSIGNMENTS> {
-  public resolve = (resolver: NameResolver) => {
+export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST, string> implements UnresolvedAST<ASTNodeType.ASSIGNMENTS> {
+  public resolve = (namespace: Namespace, env: TypeEnvironmentWithProcedures) => {
     throw new Error("Calling resolve is not supported. Call resolveForProcedure instead.");
   }
 
   public resolveForProcedure = (
-    resolver: NameResolver,
-    procedure: Procedure,
+    procedureRef: ProcedureReference,
+    outerNamespace: Namespace,
+    env: TypeEnvironmentWithProcedures,
   ): {asmtsR: AssignmentsRes, asmtTypesByName: RODictionary<Type>} => {
-    const {assignmentsType} = procedure;
-    const nameResolver = resolver.resolverFor(assignmentsType);
-    const referencesByName = _.mapValues(this.asmts, (_e, name) => nameResolver.resolveValueReferenceByName(name));
-    const asmtsRByName = _.mapValues(this.asmts, (e, name) => AssignmentsUnres.resolveAsmt(e, resolver, referencesByName[name].type));
-    const asmtsR = this.resolveFromResolvedAsmtsByName(asmtsRByName, referencesByName, nameResolver, procedure);
+    const assignmentsType = TypeEnvironmentWithProceduresUtils.getAssignmentsTypeOrThrow(procedureRef, env);
+    const innerNamespace = outerNamespace.getInstanceNamespace(assignmentsType);
+    const referencesByName = _.mapValues(this.asmts,
+        (_e, name) => NamespaceUtils.getValueReferenceByNameOrThrow(name, innerNamespace));
+    const asmtsRByName = _.mapValues(this.asmts,
+        (e, name) => AssignmentsUnres.resolveAsmt(e, referencesByName[name].type, outerNamespace, env));
+    AssignmentsUnres.validateAssignmentTypes(asmtsRByName, referencesByName, env);
+    const asmtsR = this.resolveFromResolvedAsmtsByName(asmtsRByName, referencesByName, assignmentsType);
     const asmtTypesByName = _.mapValues(asmtsRByName, e => e.type);
     return {asmtsR, asmtTypesByName};
   }
 
   public resolveForProcedureWithResolutionTimeTypes = (
-    resolver: NameResolver,
-    procedure: Procedure,
+    procedureRef: ProcedureReference,
     resolutionTimeTypeHelper: LambdaResolutionTimeTypeHelper,
+    outerNamespace: Namespace,
+    env: TypeEnvironmentWithProcedures,
   ): {asmtsR: AssignmentsRes, asmtTypesByName: RODictionary<Type>} => {
     // On resolution-time types:
     // A lambda's type is T -> U but T (and usually U) cannot be resolved in isolation
@@ -646,65 +690,95 @@ export class AssignmentsUnres extends AssignmentsAST<UnresolvedAST> implements U
     // Therefore, neither T nor U is a lambda type
     // Therefore, can resolve lambda input type T by resolving the column(s) specifying T
     // Therefore, can resolve all non-lambda columns first and from them get lambda input type
-    const {assignmentsType} = procedure;
-    const nameResolver = resolver.resolverFor(assignmentsType);
+    const assignmentsType = TypeEnvironmentWithProceduresUtils.getAssignmentsTypeOrThrow(procedureRef, env);
+    const innerNamespace = outerNamespace.getInstanceNamespace(assignmentsType);
     const asmts = _.defaults({}, this.asmts, resolutionTimeTypeHelper.resolutionTimeAsmtDefaultValues);
-    const referencesByName = _.mapValues(asmts, (_e, name) => nameResolver.resolveValueReferenceByName(name));
+    const referencesByName = _.mapValues(asmts,
+        (_e, name) => NamespaceUtils.getValueReferenceByNameOrThrow(name, innerNamespace));
     const asmtsRByName = AssignmentsUnres.resolveForResolutionTimeTypes(
-        asmts, resolver, referencesByName, resolutionTimeTypeHelper);
-    const asmtsR = this.resolveFromResolvedAsmtsByName(asmtsRByName, referencesByName, nameResolver, procedure);
+        asmts, referencesByName, resolutionTimeTypeHelper, outerNamespace, env);
+    AssignmentsUnres.validateAssignmentTypes(asmtsRByName, referencesByName, env);
+    const asmtsR = this.resolveFromResolvedAsmtsByName(asmtsRByName, referencesByName, assignmentsType);
     const asmtTypesByName = _.mapValues(asmtsRByName, e => e.type);
     return {asmtsR, asmtTypesByName};
+  }
+
+  private static validateAssignmentTypes(
+    asmtsRByName: RODictionary<ResolvedAST>,
+    referencesByName: RODictionary<ValueReference>,
+    env: TypeEnvironmentWithProcedures,
+  ) {
+    _.forIn(asmtsRByName, (asmtR, name) => {
+      const {type} = asmtR;
+      const expectedType = referencesByName[name].type;
+      TypeUtils.validateIsAssignableTo(type, expectedType, env,
+        `Expected value \`${name}\` to be assignable to type \`${env.typeToString(expectedType)}\``);
+    });
   }
 
   private resolveFromResolvedAsmtsByName = (
     asmtsRByName: RODictionary<ResolvedAST>,
     referencesByName: RODictionary<ValueReference>,
-    nameResolver: NameResolver,
-    procedure: Procedure,
+    assignmentsType: PartialRowType,
   ): AssignmentsRes => {
-    const {assignmentsType} = procedure;
     const asmtsR = _.mapKeys(asmtsRByName, (_e, name) => referencesByName[name].id);
-    const asmtTypes = _.mapValues(asmtsR, asmt => asmt.type);
-    nameResolver.validateProcedureAssignments(procedure, asmtTypes);
-    const asmtOrderR = this.asmtOrder.map(name => nameResolver.resolveValueReferenceByName(name).id);
+    const asmtOrderR = this.asmtOrder.map(name => referencesByName[name]);
     return new AssignmentsRes(asmtsR, asmtOrderR, assignmentsType);
   }
 
   private static resolveForResolutionTimeTypes(
     asmts: RODictionary<UnresolvedAST>,
-    resolver: NameResolver,
     referencesByName: RODictionary<ValueReference>,
     {lambdaAsmtName, resolveLambdaType}: LambdaResolutionTimeTypeHelper,
+    outerNamespace: Namespace,
+    env: TypeEnvironmentWithProcedures,
   ): RODictionary<ResolvedAST> {
     const nonLambdaAsmtsR: Dictionary<ResolvedAST> = {};
     _.forEach(asmts, (e, name) => {
       if (name !== lambdaAsmtName) {
-        nonLambdaAsmtsR[name] = AssignmentsUnres.resolveAsmt(e, resolver, referencesByName[name].type);
+        nonLambdaAsmtsR[name] = AssignmentsUnres.resolveAsmt(e, referencesByName[name].type, outerNamespace, env);
       }
     });
     const nonLambdaTypes = _.mapValues(nonLambdaAsmtsR, (e: ResolvedAST, name) => e.type);
     const lambdaType = resolveLambdaType(nonLambdaTypes);
     const lambdaAsmt = asmts[lambdaAsmtName];
     const lambdaAsmtR = lambdaAsmt === undefined ? {} : {
-      [lambdaAsmtName]: AssignmentsUnres.resolveAsmt(lambdaAsmt, resolver, lambdaType),
+      [lambdaAsmtName]: AssignmentsUnres.resolveAsmt(lambdaAsmt, lambdaType, outerNamespace, env),
     };
     return _.extend(nonLambdaAsmtsR, lambdaAsmtR);
   }
 
-  private static resolveAsmt = (e: UnresolvedAST, resolver: NameResolver, type: Type): ResolvedAST => {
-    const res = TypeUtils.isLambda(type) ? resolver.extendWithIteratorType(type.inputType) : resolver;
-    return e.resolve(res);
+  private static resolveAsmt = (
+    e: UnresolvedAST,
+    type: Type,
+    outerNamespace: Namespace,
+    env: TypeEnvironmentWithProcedures,
+  ): ResolvedAST => {
+    // FIXME remove this hack, should resolve types in a typechecking pass that passes
+    // expected type down from the top
+    const namespaceR = TypeUtils.isLambda(type) ?
+      outerNamespace.extendWithIteratorType_DEPRECATED(type.inputType) :
+      outerNamespace;
+
+    return e.resolve(namespaceR, env);
+  }
+
+  protected asmtIdentifierToText(asmtIdent: string, namespace: Namespace): string {
+    return Parser.identToText(asmtIdent);
+  }
+
+  protected getAsmt(asmtIdent: string): UnresolvedAST {
+    return this.asmts[asmtIdent];
   }
 }
 
 export class AssignmentsRes<I extends Identifier = Identifier>
-    extends AssignmentsAST<ResolvedAST>
+    extends AssignmentsAST<ResolvedAST, ValueReference>
     implements ResolvedAST<PartialRowType<I>, ASTNodeType.ASSIGNMENTS> {
   public readonly type: PartialRowType<I>;
   public readonly externalDependencies: ROArray<Reference>;
 
-  constructor(asmts: RODictionary<ResolvedAST>, asmtOrder: ROArray<string>, type: PartialRowType<I>) {
+  constructor(asmts: RODictionary<ResolvedAST>, asmtOrder: ROArray<ValueReference>, type: PartialRowType<I>) {
     super(asmts, asmtOrder);
     this.type = type;
     this.externalDependencies = ResolvedASTUtils.mergeDeps(...Object.values(asmts));
@@ -723,9 +797,14 @@ export class AssignmentsRes<I extends Identifier = Identifier>
     return this.type.schemaId.gridId;
   }
 
-  protected asmtIdToText(asmtId: string, resolver: NameResolver): string {
-    const name = resolver.nameForProcedureAssignment(this.procedureId, asmtId);
+  protected asmtIdentifierToText(asmtIdent: ValueReference, namespace: Namespace): string {
+    const namespaceR = namespace.getInstanceNamespace(this.type);
+    const name = NamespaceUtils.getReferenceNameOrThrow(asmtIdent, namespaceR);
     return Parser.identToText(name);
+  }
+
+  protected getAsmt(asmtIdent: ValueReference): ResolvedAST {
+    return this.asmts[asmtIdent.id];
   }
 
   public getAsmtTypes = (): RODictionary<Type> => {
@@ -739,7 +818,9 @@ export class AssignmentsRes<I extends Identifier = Identifier>
   public withAssignments = (asmts: RODictionary<ResolvedAST>): AssignmentsRes<I>  => {
     const {asmts: originalAsmts, asmtOrder, type} = this;
     const asmtsMerged = _.extend({}, originalAsmts, asmts);
-    const newAsmts = Object.keys(asmts).filter(id => !(id in originalAsmts));
+    const newAsmts = Object.keys(asmts)
+      .filter(id => !(id in originalAsmts))
+      .map(id => new ValueReference(id, asmts[id].type))
     const asmtOrderMerged = asmtOrder.concat(newAsmts);
     return new AssignmentsRes(asmtsMerged, asmtOrderMerged, type);
   }
@@ -753,7 +834,7 @@ export class AssignmentsRes<I extends Identifier = Identifier>
 abstract class IdentifierAST implements AST<ASTNodeType.IDENTIFIER> {
   public readonly nodeType = ASTNodeType.IDENTIFIER;
 
-  public abstract toText(resolver: NameResolver): string;
+  public abstract toText(namespace: Namespace): string;
 }
 
 export class IdentifierUnres extends IdentifierAST implements UnresolvedAST<ASTNodeType.IDENTIFIER> {
@@ -764,8 +845,8 @@ export class IdentifierUnres extends IdentifierAST implements UnresolvedAST<ASTN
     this.name = name;
   }
 
-  public resolve = (resolver: NameResolver) => {
-    const refR = resolver.resolveValueReferenceByName(this.name);
+  public resolve = (namespace: Namespace, env: TypeEnvironmentWithProcedures) => {
+    const refR = NamespaceUtils.getValueReferenceByNameOrThrow(this.name, namespace);
     return new IdentifierRes(refR);
   }
 
@@ -773,7 +854,7 @@ export class IdentifierUnres extends IdentifierAST implements UnresolvedAST<ASTN
     return this.name;
   }
 
-  public toText = (resolver: NameResolver): string => {
+  public toText = (namespace: Namespace): string => {
     return Parser.identToText(this.name);
   }
 }
@@ -793,10 +874,7 @@ export class IdentifierRes<R extends Type = Type> extends IdentifierAST
   }
 
   public eval = (resolver: ReferenceResolver): Value<R> => {
-    const refV = resolver.resolveValue(this.ref);
-    if (refV === undefined) {
-      throw new ValueResolutionError(`No value found for reference ${this.ref.id}`);
-    }
+    const refV = ReferenceResolverUtils.resolveValueOrThrow(this.ref, resolver);
     return refV;
   }
 
@@ -804,8 +882,8 @@ export class IdentifierRes<R extends Type = Type> extends IdentifierAST
     return this.ref;
   }
 
-  public toText = (resolver: NameResolver): string => {
-    const name = this.ref.getName(resolver);
+  public toText = (namespace: Namespace): string => {
+    const name = NamespaceUtils.getReferenceNameOrThrow(this.ref, namespace);
     return Parser.identToText(name);
   }
 }
@@ -827,14 +905,14 @@ abstract class ParenthesesAST<A extends AST> implements AST<ASTNodeType.PARENTHE
     this.e = e;
   }
 
-  public toText = (resolver: NameResolver): string => {
-    return `(${this.e.toText(resolver)})`;
+  public toText = (namespace: Namespace): string => {
+    return `(${this.e.toText(namespace)})`;
   }
 }
 
 export class ParenthesesUnres extends ParenthesesAST<UnresolvedAST> implements UnresolvedAST<ASTNodeType.PARENTHESES> {
-  public resolve = (resolver: NameResolver) => {
-    const eR = this.e.resolve(resolver);
+  public resolve = (namespace: Namespace, env: TypeEnvironmentWithProcedures) => {
+    const eR = this.e.resolve(namespace, env);
     return new ParenthesesRes(eR, eR.type);
   }
 }
@@ -869,16 +947,16 @@ abstract class ListAST<A extends AST> implements AST<ASTNodeType.LIST> {
     this.es = es;
   }
 
-  public toText = (resolver: NameResolver): string => {
-    return `[${this.es.map(e => e.toText(resolver)).join(", ")}]`;
+  public toText = (namespace: Namespace): string => {
+    return `[${this.es.map(e => e.toText(namespace)).join(", ")}]`;
   }
 }
 
 export class ListUnres extends ListAST<UnresolvedAST>
     implements UnresolvedAST<ASTNodeType.LIST> {
-  public resolve = (resolver: NameResolver) => {
-    const esR = this.es.map(e => e.resolve(resolver));
-    const itemType = TypeUtils.unionAll(esR.map(eR => eR.type), resolver.environment);
+  public resolve = (namespace: Namespace, env: TypeEnvironmentWithProcedures) => {
+    const esR = this.es.map(e => e.resolve(namespace, env));
+    const itemType = TypeUtils.unionAll(esR.map(eR => eR.type), env);
     return new ListRes(esR, itemType);
   }
 }
@@ -922,7 +1000,7 @@ abstract class Primitive<T extends PrimitiveType> implements AST<ASTNodeType.PRI
     this.type = type;
   }
 
-  public toText = (resolver: NameResolver): string => {
+  public toText = (namespace: Namespace): string => {
     if (TypeUtils.isString(this.type)) {
       return Parser.stringToText(this.value as string);
     }
@@ -932,7 +1010,7 @@ abstract class Primitive<T extends PrimitiveType> implements AST<ASTNodeType.PRI
 
 export class PrimitiveUnres<T extends PrimitiveType> extends Primitive<T>
     implements UnresolvedAST<ASTNodeType.PRIMITIVE> {
-  public resolve = (resolver: NameResolver) => {
+  public resolve = (namespace: Namespace, env: TypeEnvironmentWithProcedures) => {
     return new PrimitiveRes(this.value, this.type);
   }
 }

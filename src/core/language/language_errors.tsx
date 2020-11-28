@@ -42,8 +42,20 @@ export class ObjectResolutionError extends RuntimeError {
   }
 }
 
+export class NameResolutionError extends ObjectResolutionError {
+  constructor(message: string = "", errorClass: typeof NameResolutionError = NameResolutionError) {
+    super(message, errorClass);
+  }
+}
+
 export class ValueResolutionError extends ObjectResolutionError {
   constructor(message: string = "", errorClass: typeof ValueResolutionError = ValueResolutionError) {
+    super(message, errorClass);
+  }
+}
+
+export class ProcedureResolutionError extends ObjectResolutionError {
+  constructor(message: string = "", errorClass: typeof ProcedureResolutionError = ProcedureResolutionError) {
     super(message, errorClass);
   }
 }

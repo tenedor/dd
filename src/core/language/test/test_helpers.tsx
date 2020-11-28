@@ -1,11 +1,12 @@
 import * as _ from 'lodash';
 
 import {ConvertibleToValue, JestErrorMatcher, TestUtils} from '@test_utils/test_utils';
-import {DictReferenceResolver} from '../dict_reference_resolver';
+import {TypeEnvironmentWithProcedures} from '../ast';
 import {FormulaEnvironment} from '../formula_environment';
-import {NameResolver} from '../name_resolver';
 import {Parser} from '../parser';
-import {Value, ValueUtils} from '../values';
+import {Namespace} from '../reference/namespace';
+import {ReferenceResolver} from '../reference/reference_resolver';
+import {ValueUtils} from '../values';
 
 enum FailureStage {
   FAILS_PARSE = "FAILS_PARSE",
@@ -24,26 +25,29 @@ interface FormulaTestInput {
 
 interface FormulaTestConfig {
   failureStage?: FailureStage,
-  nameResolver?: NameResolver,
-  resolver?: DictReferenceResolver,
+  namespace?: Namespace,
+  resolver?: ReferenceResolver,
+  env?: TypeEnvironmentWithProcedures,
 }
 
 interface FormulaTestConfigDefaults {
   failureStage: FailureStage,
-  nameResolver: NameResolver,
-  resolver: DictReferenceResolver,
+  namespace: Namespace,
+  resolver: ReferenceResolver,
+  env: TypeEnvironmentWithProcedures,
 }
 
 const makeTestConfigDefaults = (environment: FormulaEnvironment): FormulaTestConfigDefaults => {
   return {
     failureStage: FailureStage.SUCCEEDS,
-    nameResolver: environment.nameResolver,
-    resolver: new DictReferenceResolver({}, environment),
+    namespace: environment.getGlobalNamespace(),
+    resolver: environment.getGlobalResolver(),
+    env: environment,
   };
 }
 
 const testFormulas = (name: string, formulas: FormulaTestInput[], environment: FormulaEnvironment, config: FormulaTestConfig = {}) => {
-  const {failureStage, nameResolver, resolver} = _.defaults({}, config, makeTestConfigDefaults(environment));
+  const {failureStage, namespace, env, resolver} = _.defaults({}, config, makeTestConfigDefaults(environment));
 
   it(name, () => {
     formulas.forEach(({formula, result: expectedResult, lambdaArg, error: expectedError, asText: expectedText}) => {
@@ -60,8 +64,8 @@ const testFormulas = (name: string, formulas: FormulaTestInput[], environment: F
       if (parseResult.succeeded) {
         // resolve
         const {ast} = parseResult;
-        const extendedNameResolver = lambdaArgV ? nameResolver.extendWithIteratorType(lambdaArgV.type) : nameResolver;
-        const resolve = () => ast.resolve(extendedNameResolver);
+        const extendedNameResolver = lambdaArgV ? namespace.extendWithIteratorType_DEPRECATED(lambdaArgV.type) : namespace;
+        const resolve = () => ast.resolve(extendedNameResolver, env);
         if (failureStage === FailureStage.FAILS_RESOLUTION) {
           expect(resolve).toThrow(expectedError);
           return;
@@ -70,7 +74,7 @@ const testFormulas = (name: string, formulas: FormulaTestInput[], environment: F
 
         // to text
         if (expectedText !== undefined) {
-          const actualText = astR.toText(nameResolver);
+          const actualText = astR.toText(namespace);
           expect(actualText).toBe(expectedText);
         }
 
@@ -102,52 +106,52 @@ const expectResolutionErrors = (
   name: string,
   formulas: string[],
   environment: FormulaEnvironment,
-  nameResolver?: NameResolver,
+  namespace?: Namespace,
 ) => {
   const tests = formulas.map(formula => ({formula}));
-  testFormulas(`static error - ${name}`, tests, environment, {failureStage: FailureStage.FAILS_RESOLUTION, nameResolver});
+  testFormulas(`static error - ${name}`, tests, environment, {failureStage: FailureStage.FAILS_RESOLUTION, namespace});
 }
 
 const expectEvaluationErrors = (
   name: string,
   formulas: string[],
   environment: FormulaEnvironment,
-  nameResolver?: NameResolver,
-  resolver?: DictReferenceResolver,
+  namespace?: Namespace,
+  resolver?: ReferenceResolver,
 ) => {
   const tests = formulas.map(formula => ({formula}));
-  testFormulas(`runtime error - ${name}`, tests, environment, {failureStage: FailureStage.FAILS_EVALUATION, nameResolver, resolver});
+  testFormulas(`runtime error - ${name}`, tests, environment, {failureStage: FailureStage.FAILS_EVALUATION, namespace, resolver});
 }
 
 const expectResults = (
   name: string,
   formulas: Array<{formula: string, result: ConvertibleToValue, lambdaArg?: ConvertibleToValue}>,
   environment: FormulaEnvironment,
-  nameResolver?: NameResolver,
-  resolver?: DictReferenceResolver,
+  namespace?: Namespace,
+  resolver?: ReferenceResolver,
 ) => {
-  testFormulas(name, formulas, environment, {failureStage: FailureStage.SUCCEEDS, nameResolver, resolver});
+  testFormulas(name, formulas, environment, {failureStage: FailureStage.SUCCEEDS, namespace, resolver});
 }
 
 const expectToTextIrregular = (
   name: string,
   formulas: Array<{formula: string, asText: string}>,
   environment: FormulaEnvironment,
-  nameResolver?: NameResolver,
-  resolver?: DictReferenceResolver,
+  namespace?: Namespace,
+  resolver?: ReferenceResolver,
 ) => {
-  testFormulas(name, formulas, environment, {failureStage: FailureStage.SUCCEEDS, nameResolver, resolver});
+  testFormulas(name, formulas, environment, {failureStage: FailureStage.SUCCEEDS, namespace, resolver});
 }
 
 const expectToText = (
   name: string,
   formulas: string[],
   environment: FormulaEnvironment,
-  nameResolver?: NameResolver,
-  resolver?: DictReferenceResolver,
+  namespace?: Namespace,
+  resolver?: ReferenceResolver,
 ) => {
   const tests = formulas.map(formula => ({formula, asText: formula}));
-  testFormulas(name, tests, environment, {failureStage: FailureStage.SUCCEEDS, nameResolver, resolver});
+  testFormulas(name, tests, environment, {failureStage: FailureStage.SUCCEEDS, namespace, resolver});
 }
 
 
@@ -156,20 +160,20 @@ export const buildLanguageTestHelpers = (environment: FormulaEnvironment) => {
     expectParseErrors: (name: string, formulas: string[]) => {
       expectParseErrors(name, formulas, environment);
     },
-    expectResolutionErrors: (name: string, formulas: string[], nameResolver?: NameResolver) => {
-      expectResolutionErrors(name, formulas, environment, nameResolver);
+    expectResolutionErrors: (name: string, formulas: string[], namespace?: Namespace) => {
+      expectResolutionErrors(name, formulas, environment, namespace);
     },
-    expectEvaluationErrors: (name: string, formulas: string[], nameResolver?: NameResolver, resolver?: DictReferenceResolver) => {
-      expectEvaluationErrors(name, formulas, environment, nameResolver, resolver);
+    expectEvaluationErrors: (name: string, formulas: string[], namespace?: Namespace, resolver?: ReferenceResolver) => {
+      expectEvaluationErrors(name, formulas, environment, namespace, resolver);
     },
-    expectResults: (name: string, formulas: Array<{formula: string, result: ConvertibleToValue, lambdaArg?: ConvertibleToValue}>, nameResolver?: NameResolver, resolver?: DictReferenceResolver) => {
-      expectResults(name, formulas, environment, nameResolver, resolver);
+    expectResults: (name: string, formulas: Array<{formula: string, result: ConvertibleToValue, lambdaArg?: ConvertibleToValue}>, namespace?: Namespace, resolver?: ReferenceResolver) => {
+      expectResults(name, formulas, environment, namespace, resolver);
     },
-    expectToTextIrregular: (name: string, formulas: Array<{formula: string, asText: string}>, nameResolver?: NameResolver, resolver?: DictReferenceResolver) => {
-      expectToTextIrregular(name, formulas, environment, nameResolver, resolver);
+    expectToTextIrregular: (name: string, formulas: Array<{formula: string, asText: string}>, namespace?: Namespace, resolver?: ReferenceResolver) => {
+      expectToTextIrregular(name, formulas, environment, namespace, resolver);
     },
-    expectToText: (name: string, formulas: string[], nameResolver?: NameResolver, resolver?: DictReferenceResolver) => {
-      expectToText(name, formulas, environment, nameResolver, resolver);
+    expectToText: (name: string, formulas: string[], namespace?: Namespace, resolver?: ReferenceResolver) => {
+      expectToText(name, formulas, environment, namespace, resolver);
     },
   };
 }

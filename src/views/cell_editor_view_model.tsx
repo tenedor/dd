@@ -82,10 +82,10 @@ export abstract class CellEditorViewModel {
       const unparsedExpression = value[0] === '=' ? value.substr(1) : value;
       const parseResult = Parser.parseExpression(unparsedExpression);
       if (parseResult.succeeded) {
-        const {environment, nameResolver} = column;
+        const {environment, namespace} = column;
         let ast: ExpressionRes;
         try {
-          ast = parseResult.ast.resolve(nameResolver);
+          ast = parseResult.ast.resolve(namespace, environment);
         } catch (e) {
           if (e instanceof LanguageError) {
             CellEditorViewModel.logSetFormulaError(`${e.name}: ${e.message}`, unparsedExpression);
@@ -94,8 +94,8 @@ export abstract class CellEditorViewModel {
           throw e;
         }
         if (!TypeUtils.isAssignableTo(ast.type, column.type, environment)) {
-          const astType = environment.getGlobalNamespace().typeToString(ast.type);
-          const columnType = environment.getGlobalNamespace().typeToString(column.type);
+          const astType = environment.typeToString(ast.type);
+          const columnType = environment.typeToString(column.type);
           CellEditorViewModel.logSetFormulaError(`incompatible types: cannot assign ` +
               `${astType} to ${columnType}`, unparsedExpression);
           return false;
@@ -172,7 +172,7 @@ export class RowCellEditorViewModel extends CellEditorViewModel {
     if (this.isEditingFormula() || this.mustEditFormula()) {
       return this.setFormulaExpression(value);
     } else {
-      const {environment, type, nameResolver} = this.column;
+      const {environment, type, namespace} = this.column;
       if (value === undefined || (!TypeUtils.isString(type) && value === "")) {
         this.cell.setManualValue(undefined);
         return true;
@@ -180,7 +180,7 @@ export class RowCellEditorViewModel extends CellEditorViewModel {
         const parseResult = Parser.parseLiteral(value, type);
 
         if (parseResult.succeeded) {
-          const ast = parseResult.ast.resolve(nameResolver);
+          const ast = parseResult.ast.resolve(namespace, environment);
           if (!ast.isLiteral) {
             // TODO: inform the user of the restriction to literals
             return false;

@@ -2,6 +2,8 @@ import * as _ from 'lodash';
 
 import {DependencyNode} from '@models/core/update_manager'; // Only a type dependency
 import {Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
+import {IdentifierPrefix} from '@utils/identifier_prefixes';
+import {Parser} from '../parser';
 import {Identifier, RowType, Type, TypeUtils} from '../types';
 import {Value} from '../values';
 
@@ -13,6 +15,12 @@ enum ReferenceType {
   FORMULA_REFERENCE,
 }
 
+const refTypeNames = {
+  [ReferenceType.VALUE_REFERENCE]: "value",
+  [ReferenceType.CONSTRUCTOR_REFERENCE]: "constructor",
+  [ReferenceType.FORMULA_REFERENCE]: "formula",
+}
+
 type ProcedureReferenceType = ReferenceType.CONSTRUCTOR_REFERENCE | ReferenceType.FORMULA_REFERENCE;
 
 interface BaseReference<T extends ReferenceType> {
@@ -22,7 +30,7 @@ interface BaseReference<T extends ReferenceType> {
 
 export class ValueReference<T extends Type = Type> implements BaseReference<ReferenceType.VALUE_REFERENCE> {
   public readonly id: Identifier;
-  public readonly type: T;
+  public readonly type: T; // TODO should references have types?
   public readonly referenceType = ReferenceType.VALUE_REFERENCE;
 
   constructor(id: Identifier, type: T) {
@@ -30,24 +38,22 @@ export class ValueReference<T extends Type = Type> implements BaseReference<Refe
     this.type = type;
   }
 
-  /*
   public static buildForIteratorVariable = <T extends Type> (type: T, name: string): ValueReference<T> => {
     const id = `${IdentifierPrefix.ITERATOR}-${Parser.identToText(name)}`;
-    return new ValueReference(id, type, () => name);
+    return new ValueReference(id, type);
   }
-  */
 }
 
-export interface ProcedureReference<R extends Type = Type, I extends Identifier = Identifier,
+interface BaseProcedureReference<R extends Type = Type, I extends Identifier = Identifier,
     T extends ProcedureReferenceType = ProcedureReferenceType>
     extends BaseReference<T> {
   readonly id: I;
-  readonly returnType: R;
+  readonly returnType: R; // TODO should references have types?
   readonly referenceType: T;
 }
 
 export class ConstructorReference<I extends Identifier = Identifier>
-    implements ProcedureReference<RowType<I>, I, ReferenceType.CONSTRUCTOR_REFERENCE> {
+    implements BaseProcedureReference<RowType<I>, I, ReferenceType.CONSTRUCTOR_REFERENCE> {
   public readonly id: I;
   public readonly returnType: RowType<I>;
   public readonly referenceType = ReferenceType.CONSTRUCTOR_REFERENCE;
@@ -59,7 +65,7 @@ export class ConstructorReference<I extends Identifier = Identifier>
 }
 
 export class FormulaReference<R extends Type = Type, I extends Identifier = Identifier>
-    implements ProcedureReference<R, I, ReferenceType.FORMULA_REFERENCE> {
+    implements BaseProcedureReference<R, I, ReferenceType.FORMULA_REFERENCE> {
   public readonly id: I;
   public readonly returnType: R;
   public readonly referenceType = ReferenceType.FORMULA_REFERENCE;
@@ -69,6 +75,9 @@ export class FormulaReference<R extends Type = Type, I extends Identifier = Iden
     this.returnType = returnType;
   }
 }
+
+export type ProcedureReference<R extends Type = Type, I extends Identifier = Identifier> =
+    ConstructorReference<I> | FormulaReference<R, I>;
 
 export type Reference = ValueReference | ProcedureReference;
 
@@ -98,4 +107,11 @@ export class ReferenceUtils {
       ref.referenceType === ReferenceType.FORMULA_REFERENCE
   public static isProcedureReference = (ref: Reference): ref is ProcedureReference =>
       ReferenceUtils.isConstructorReference(ref) || ReferenceUtils.isFormulaReference(ref)
+
+
+  // =========
+  // Utilities
+  // =========
+
+  public static referenceTypeToString = (refType: ReferenceType): string => refTypeNames[refType]
 }

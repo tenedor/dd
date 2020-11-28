@@ -5,19 +5,22 @@ import {BuiltInFormula, Constructor, Formula, Procedure, Signature}
         from '@models/domain_specific/procedure'; // only a type dependency
 import {Dictionary, ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
+import {ResolutionTimeTypeHelper, TypeEnvironmentWithProcedures} from './ast'; // only a type dependency
 import {ObjectResolutionError} from './language_errors';
+import {DictNamespace} from './reference/dict_namespace';
 import {DictReferenceResolver} from './reference/dict_reference_resolver';
+import {LambdaWrapperNamespace} from './reference/lambda_wrapper_namespace';
 import {Namespace} from './reference/namespace';
-import {ConstructorReference, FormulaReference, Reference, ReferenceUtils,
+import {ConstructorReference, FormulaReference, ProcedureReference, Reference, ReferenceUtils,
         ValueReference} from './reference/reference';
 import {ReferenceResolver} from './reference/reference_resolver';
-import {GridType, Identifier, ListOfAnyType, PartialRowType, Type, TypeEnvironment,
-        TypeUtils} from './types';
+import {BoundingType, DictType, GridType, Identifier, ListOfAnyType, PartialRowType, Type, TypeUtils}
+        from './types';
 import {DictValue, Value} from './values';
 
-export interface FormulaEnvironment extends TypeEnvironment {
+export interface FormulaEnvironment extends TypeEnvironmentWithProcedures {
   getGlobalNamespace(): Namespace;
-  getInstanceNamespace(type: PartialRowType): Namespace;
+  getInstanceNamespace(type: DictType): Namespace;
 
   getGlobalResolver(): ReferenceResolver;
   getInstanceResolver(instance: DictValue): ReferenceResolver;
@@ -38,10 +41,12 @@ export interface MutableFormulaEnvironment extends FormulaEnvironment {
 class LanguageEnvironmentRegistry implements Namespace, ReferenceResolver {
   protected readonly builtInFormulasByGridId: Dictionary<BuiltInFormula>;
   protected readonly grids: Dictionary<Grid>;
+  protected readonly iteratorType: Type;
 
-  constructor() {
+  constructor(iteratorType: Type = BoundingType.BOTTOM) {
     this.builtInFormulasByGridId = {};
     this.grids = {};
+    this.iteratorType = iteratorType;
   }
 
   public addBuiltInFormula = (formula: BuiltInFormula) => {
@@ -145,17 +150,53 @@ class LanguageEnvironmentRegistry implements Namespace, ReferenceResolver {
   public resolveFormula = <R extends Type, I extends Identifier>(ref: FormulaReference<R, I>): Formula<R, I> | undefined => {
     return this.builtInFormulasByGridId[ref.id] as BuiltInFormula<R, I> | undefined;
   }
+
+  protected resolveProcedure = <I extends Identifier>(ref: ProcedureReference<Type, I>): Procedure<Type, I> | undefined => {
+    return ReferenceUtils.isConstructorReference(ref) ?
+      this.resolveConstructor(ref) :
+      this.resolveFormula(ref);
+  }
+
+  public getAssignmentsType = <I extends Identifier>(ref: ProcedureReference<any, I>): PartialRowType<I> | undefined => {
+    const procedure = this.resolveProcedure(ref);
+    return procedure?.assignmentsType
+  }
+
+  public getResolutionTimeTypeHelper = (ref: ProcedureReference): ResolutionTimeTypeHelper | undefined => {
+    const procedure = this.resolveProcedure(ref);
+    return procedure?.resolutionTimeTypeHelper;
+  }
+
+  public getInstanceNamespace = (type: DictType): Namespace => {
+    const grid = this.getGridById(type.schemaId.gridId);
+    assert(grid !== undefined, `Unrecognized dict type ${TypeUtils.toString(type)}.`, ObjectResolutionError);
+    return new DictNamespace(this, grid!.valueNamespace);
+  }
+
+  // tslint:disable-next-line:variable-name
+  public extendWithIteratorType_DEPRECATED = (iteratorType: Type): Namespace => {
+    return new LambdaWrapperNamespace(this, iteratorType);
+  }
+
+  // tslint:disable-next-line:variable-name
+  public getIteratorType_DEPRECATED = (): Type => {
+    return BoundingType.BOTTOM;
+  }
 }
 
 
 export class LanguageEnvironmentImpl extends LanguageEnvironmentRegistry implements MutableFormulaEnvironment {
 
+  constructor() {
+    super();
+  }
+
   public getGlobalNamespace = (): Namespace => {
     return this;
   }
 
-  public getInstanceNamespace = (type: PartialRowType): Namespace => {
-    // TODO
+  public getInstanceNamespace = (type: DictType): Namespace => {
+    return this.getInstanceNamespace(type);
   }
 
   public getGlobalResolver = (): ReferenceResolver => {
