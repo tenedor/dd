@@ -249,7 +249,7 @@ function addVectorGrid(
     {column: columns.X},
     {column: columns.Y},
     {column: columns._R, expressionString: "Sqrt(Value = X * X + Y * Y)"},
-    {column: columns._Theta, expressionString: "Direction('Rotation From Up' = Rotation('Rotation CW' = Atan2(X = Y, Y = X) / (2 * Pi())))"},
+    {column: columns._Theta, expressionString: "Direction{'Rotation From Up' = Rotation{'Rotation CW' = Atan2(X = Y, Y = X) / (2 * Pi())}}"},
   ];
   const disableCoordinateSystemColumn = true;
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, disableCoordinateSystemColumn});
@@ -265,8 +265,8 @@ function addCoordinateSystemGrid(
   const rotationType = getTypeForInstanceOf(environment, "Rotation");
   const columns = generateColumns(updateManager, [
     {name: 'Center', type: vectorType, id: centerColumnId},
-    {name: 'Scale', type: TypeUtils.Number}, // TODO generalize to Scalar(Number, Units)
-    {name: 'Rotation', type: rotationType}, // TODO generalize to Orientation(Rotation, Reflection)
+    {name: 'Scale', type: TypeUtils.Number}, // TODO generalize to Scalar{Number, Units}
+    {name: 'Rotation', type: rotationType}, // TODO generalize to Orientation{Rotation, Reflection}
   ]);
   const gridColumnsData: GridColumnData[] = [
     {column: columns.Center},
@@ -310,8 +310,8 @@ function addCoAliasGrid(
     {column: columns.X},
     {column: columns.Y},
     {column: columns.Rot},
-    {parentGridColumn: parentColumns.Center, expressionString: "Vector(X=X,Y=Y)"},
-    {parentGridColumn: parentColumns.Rotation, expressionString: "Rotation('Rotation CW'=Rot)"},
+    {parentGridColumn: parentColumns.Center, expressionString: "Vector{X = X, Y = Y}"},
+    {parentGridColumn: parentColumns.Rotation, expressionString: "Rotation{'Rotation CW' = Rot}"},
   ];
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
 }
@@ -481,11 +481,11 @@ function addRelativePolygonGrid(
   ]);
   const parentGrid = getGridByName("Path Shape", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
-  const defaultPoints = [[-20, -20], [40, 0], [0, 40], [-40, 0]].map(([x, y]) => makeLiteral(`Vector(X=${x}, Y=${y})`, vectorRowType, environment) as RowValue);
+  const defaultPoints = [[-20, -20], [40, 0], [0, 40], [-40, 0]].map(([x, y]) => makeLiteral(`Vector{X = ${x}, Y = ${y}}`, vectorRowType, environment) as RowValue);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns['Relative Points'], defaultValue: ValueUtils.listOf(defaultPoints, TypeUtils.RowOf(vectorGrid.id))},
-    {column: columns['Path Steps'], expressionString: 'Map(Values=Range(N=Size(List=\'Relative Points\')), Fn=i->Join(Values=[If(If=i==1, Then="m", Else="l"), String(Value=\'Relative Points\'[i].X), " ", String(Value=\'Relative Points\'[i].Y)]))'},
-    {parentGridColumn: parentColumns.Path, expressionString: 'Join(Values=Concatenate(Lists=[\'Path Steps\', ["z"]]), Separator=" ")'},
+    {column: columns['Path Steps'], expressionString: 'Map(Values = Range(N = Size(List = \'Relative Points\')), Fn = i -> Join(Values = [If(If = i == 1, Then = "m", Else = "l"), String(Value = \'Relative Points\'[i].X), " ", String(Value = \'Relative Points\'[i].Y)]))'},
+    {parentGridColumn: parentColumns.Path, expressionString: 'Join(Values = Concatenate(Lists = [\'Path Steps\', ["z"]]), Separator = " ")'},
   ];
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
 }
@@ -502,10 +502,10 @@ function addPolygonGrid(
   ]);
   const parentGrid = getGridByName("Relative Polygon", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
-  const defaultPoints = [[-20, -20], [20, -20], [20, 20], [-20, 20]].map(([x, y]) => makeLiteral(`Vector(X=${x}, Y=${y})`, vectorRowType, environment) as RowValue);
+  const defaultPoints = [[-20, -20], [20, -20], [20, 20], [-20, 20]].map(([x, y]) => makeLiteral(`Vector{X = ${x}, Y = ${y}}`, vectorRowType, environment) as RowValue);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.Points, defaultValue: ValueUtils.listOf(defaultPoints, TypeUtils.RowOf(vectorGrid.id))},
-    {parentGridColumn: parentColumns['Relative Points'], expressionString: 'Map(Values=Range(N=Size(List=Points)), Fn=i->If(If=i==1, Then=Points[i], Else=Vector(X=Points[i].X - Points[If(If=i==1, Then=1, Else=i-1)].X, Y=Points[i].Y - Points[If(If=i==1, Then=1, Else=i-1)].Y)))'},
+    {parentGridColumn: parentColumns['Relative Points'], expressionString: 'Map(Values = Range(N = Size(List = Points)), Fn = i -> If(If = i == 1, Then = Points[i], Else = Vector{X = Points[i].X - Points[If(If = i == 1, Then = 1, Else = i - 1)].X, Y = Points[i].Y - Points[If(If = i == 1, Then = 1, Else = i - 1)].Y}))'},
   ];
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
 }
@@ -524,7 +524,7 @@ function addRegularPolygonGrid(
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.N, defaultValue: ValueUtils.numberOf(5)},
     {column: columns.Radius, defaultValue: ValueUtils.numberOf(20)},
-    {parentGridColumn: parentColumns.Points, expressionString: 'Map(Values=Range(N=N), Fn=i->PoVec(R=Radius, Theta=(i+0.5)/N))'},
+    {parentGridColumn: parentColumns.Points, expressionString: 'Map(Values = Range(N = N), Fn = i -> PoVec{R = Radius, Theta = (i + 0.5) / N})'},
   ];
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
 }
@@ -543,7 +543,7 @@ function addTriangleGrid(
   ]);
   const parentGrid = getGridByName("Polygon", environment);
   const parentColumns = getGridColumnsByName(parentGrid);
-  const defaultPoints = [[-20, 0], [20, 0], [0, -34.6]].map(([x, y]) => makeLiteral(`Vector(X=${x}, Y=${y})`, vectorRowType, environment) as RowValue);
+  const defaultPoints = [[-20, 0], [20, 0], [0, -34.6]].map(([x, y]) => makeLiteral(`Vector{X = ${x}, Y = ${y}}`, vectorRowType, environment) as RowValue);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.P1, defaultValue: defaultPoints[0]},
     {column: columns.P2, defaultValue: defaultPoints[1]},
@@ -567,7 +567,7 @@ function addRectangleGrid(
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.Width, defaultValue: ValueUtils.numberOf(20)},
     {column: columns.Height, defaultValue: ValueUtils.numberOf(40)},
-    {parentGridColumn: parentColumns['Relative Points'], expressionString: '[Vector(X=-Width/2, Y=-Height/2), Vector(X=Width), Vector(Y=Height), Vector(X=-Width)]'},
+    {parentGridColumn: parentColumns['Relative Points'], expressionString: '[Vector{X = -Width / 2, Y = -Height / 2}, Vector{X = Width}, Vector{Y = Height}, Vector{X = -Width}]'},
   ];
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
 }
@@ -699,7 +699,7 @@ function addDemoShapeGrids(
     {column: columns.Density},
     {column: columns['Side Length']},
     {column: columns.Fill},
-    {column: columns.Shape, width: 150, expressionString: "Star('Num Points' = 'Num Points', Density = Density, 'Side Length' = 'Side Length', Fill = Fill, Transform = 'Coordinate System'(Center = Vector(X = X - 100, Y = Y - 100)))"},
+    {column: columns.Shape, width: 150, expressionString: "Star{'Num Points' = 'Num Points', Density = Density, 'Side Length' = 'Side Length', Fill = Fill, Transform = 'Coordinate System'{Center = Vector{X = X - 100, Y = Y - 100}}}"},
   ];
   const grid1 = document.addGridFromGridData({name: "Shapes", environment});
   const grid1Columns = generateGridColumns(updateManager, environment, grid1, grid1ColumnsData);

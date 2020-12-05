@@ -3,12 +3,14 @@ import * as _ from 'lodash';
 import {CoordinateSystem, GeometryUtils, Vector} from '@core/geometry';
 import {CallRes, ResolvedAST, ResolvedASTUtils, TypeEnvironmentWithProcedures}
         from '@language/ast';
-import {TypeError} from '@language/language_errors';
+import {ObjectResolutionError, TypeError, ValueResolutionError} from '@language/language_errors';
 import {Parser} from '@language/parser';
 import {DictReferenceResolver} from '@language/reference/dict_reference_resolver';
 import {Namespace} from '@language/reference/namespace';
-import {Reference, ReferenceUtils, ValueDependency, ValueReference}
+import {ProcedureReference, Reference, ReferenceUtils, ValueDependency, ValueReference}
         from '@language/reference/reference';
+import {ReferenceResolver, ReferenceResolverUtils}
+        from '@language/reference/reference_resolver';
 import {Identifier, RowType, Type, TypeUtils} from '@language/types';
 import {Value, ValueOrAST, ValueUtils} from '@language/values';
 import {Address} from '@paths/address';
@@ -23,6 +25,7 @@ import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType}
         from '../core/update_types';
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
+import {Procedure} from './procedure';
 import {RowContext} from './row';
 
 function isAST<T extends Type>(value: ValueOrAST<T> | undefined): value is ResolvedAST<T> {
@@ -49,7 +52,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   private readonly getRowContext: () => RowContext;
   private readonly gridId: Identifier;
   private dependencies: RODictionary<DependencyNode>;
-  private valueDependencies: RODictionary<ValueDependency>;
+  private rowValueDependencies: RODictionary<ValueDependency>;
   private manualValue?: ValueOrAST<T>;
   private _value: Value<T>;
   private readonly permanentDependencies: DependencyNode[] = [];
@@ -74,13 +77,15 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
     this.addPermanentListener(this.column, this.onColumnUpdated);
 
-    const {type, namespace} = this.column;
+    const {type} = this.column;
+    const resolver = this.column.getGlobalReferenceResolver();
     if (this.defaultValue) {
       this.addPermanentListener(this.defaultValue, this.onDefaultValueUpdated);
     } else if (TypeUtils.supportsLiterals(type)) {
-      const builtInDefault = ValueUtils.getDefaultValue(type, namespace);
+      const builtInDefault = ValueUtils.getDefaultValue(type, resolver);
       if (isCallAST(builtInDefault)) {
-      this.addPermanentListener(builtInDefault.procedureRef, this.onRootDefaultValueUpdated);
+        const procedure = ReferenceResolverUtils.resolveProcedureOrThrow(builtInDefault.procedureRef, resolver);
+        this.addPermanentListener(procedure, this.onRootDefaultValueUpdated);
       }
     }
 
@@ -141,6 +146,10 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
   private get environment(): TypeEnvironmentWithProcedures {
     return this.column.environment;
+  }
+
+  private get globalReferenceResolver(): ReferenceResolver {
+    return this.column.getGlobalReferenceResolver();
   }
 
   public setManualValue = (value: ValueOrAST<T> | undefined) => {
@@ -211,33 +220,49 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
   private addManualValueListeners = () => {
     if (isCallAST(this.manualValue)) {
-      this.addDynamicListener(this.manualValue.procedureRef, this.onValueProcedureUpdated);
+      const procedure = this.resolveProcedureRef(this.manualValue.procedureRef);
+      this.addDynamicListener(procedure, this.onValueProcedureUpdated);
     }
   }
 
   private removeManualValueListeners = () => {
     if (isCallAST(this.manualValue)) {
-      this.removeDynamicListener(this.manualValue.procedureRef);
+      const procedure = this.resolveProcedureRef(this.manualValue.procedureRef);
+      this.removeDynamicListener(procedure);
     }
   }
 
-  private resolveDependencies = (dependencyRefs: readonly Reference[]): RODictionary<DependencyNode> => {
-    const absoluteReferences = dependencyRefs.filter(ReferenceUtils.isAbsoluteReference);
-    const relativeReferences = dependencyRefs.filter(ReferenceUtils.isRelativeReference);
-    const absoluteDependenciesList = absoluteReferences.map(r => r.model);
-    const absoluteDependencies = _.mapKeys(absoluteDependenciesList, d => d.id);
-    const relativeDependencies = _.pick(this.getRowContext(), relativeReferences.map(r => r.id));
-    return _.extend({}, absoluteDependencies, relativeDependencies);
+  private resolveProcedureRef = (procedureRef: ProcedureReference<T>): Procedure<T> => {
+      return ReferenceResolverUtils.resolveProcedureOrThrow(procedureRef, this.globalReferenceResolver);
   }
 
-  // Duplicate functionality of resolveDependencies in order to get stricter typing
-  private resolveValueDependencies = (dependencyRefs: readonly ValueReference[]): RODictionary<ValueDependency> => {
-    const absoluteReferences = dependencyRefs.filter(ReferenceUtils.isAbsoluteReference) as AbsoluteValueReference[];
-    const relativeReferences = dependencyRefs.filter(ReferenceUtils.isRelativeReference);
-    const absoluteDependenciesList = absoluteReferences.map(r => r.model);
-    const absoluteDependencies = _.mapKeys(absoluteDependenciesList, d => d.id);
-    const relativeDependencies = _.pick(this.getRowContext(), relativeReferences.map(r => r.id));
-    return _.extend({}, absoluteDependencies, relativeDependencies);
+  private resolveDependencies = (dependencyRefs: readonly Reference[]): RODictionary<DependencyNode> => {
+    const procedureReferences = dependencyRefs.filter(ReferenceUtils.isProcedureReference);
+    const valueReferences = dependencyRefs.filter(ReferenceUtils.isValueReference);
+    if (procedureReferences.length + valueReferences.length !== dependencyRefs.length) {
+      throw new ObjectResolutionError(`Cell dependency resolution error: reference counts ` +
+        `for procedures (${procedureReferences.length}) and values (${valueReferences.length}) ` +
+        `do not add up to total (${dependencyRefs.length})`);
+    }
+
+    const procedureDependencies = procedureReferences.map(r =>
+        ReferenceResolverUtils.resolveProcedureOrThrow(r, this.globalReferenceResolver));
+    const valueDependencies = this.resolveRowValueDependencies(valueReferences);
+    return _.extend({}, procedureDependencies, valueDependencies);
+  }
+
+  private resolveRowValueDependencies = (valueDependencyRefs: readonly ValueReference[]): RODictionary<ValueDependency> => {
+    const rowContext = this.getRowContext();
+
+    // for now all value dependencies should be row-value references, so error if any don't match
+    const rowValueDependencyReferences = valueDependencyRefs;
+    for (const r of rowValueDependencyReferences) {
+      if (!(r.id in rowContext)) {
+        throw new ValueResolutionError(`Could not resolve value reference ${r.id} in row context.`);
+      }
+    }
+
+    return _.pick(rowContext, rowValueDependencyReferences.map(r => r.id));
   }
 
   // TODO - Clean up dependency management! Need to guarantee that fixed dependencies
@@ -247,7 +272,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     const dependencyRefs = this.formulaExpression.dependencies;
     const valueDependencyRefs = dependencyRefs.filter(ReferenceUtils.isValueReference);
     this.dependencies = this.resolveDependencies(dependencyRefs);
-    this.valueDependencies = this.resolveValueDependencies(valueDependencyRefs);
+    this.rowValueDependencies = this.resolveRowValueDependencies(valueDependencyRefs);
     const {removedIds, addedIds} = keysDiff(oldDependencies, this.dependencies);
     if (removedIds.length || addedIds.length) {
       removedIds.forEach(id => this.removeDynamicListener(oldDependencies[id]));
@@ -322,10 +347,9 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   private getDependenciesResolver = (): DictReferenceResolver => {
-    const dependencyValues = _.mapValues(this.valueDependencies, r => r.value);
-    const dependenciesRow = ValueUtils.partialRowOf(dependencyValues, this.gridId);
-    const globalResolver = this.column.getGlobalReferenceResolver();
-    return new DictReferenceResolver(globalResolver, dependenciesRow);
+    const rowDependencyValues = _.mapValues(this.rowValueDependencies, r => r.value);
+    const rowDependencies = ValueUtils.partialRowOf(rowDependencyValues, this.gridId);
+    return new DictReferenceResolver(this.globalReferenceResolver, rowDependencies);
   }
 
   private isCalculated = (): boolean => {
@@ -337,12 +361,12 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   private getDefaultValue = (): ValueOrAST<T> => {
-    const {type, namespace} = this.column;
+    const {type} = this.column;
     if (this.defaultValue) {
       return this.defaultValue.rawValue;
     } else if (TypeUtils.supportsLiterals(type)) {
       // Unclear why TS can't figure this one out in some environments...
-      return ValueUtils.getDefaultValue(type, namespace) as ValueOrAST<T>;
+      return ValueUtils.getDefaultValue(type, this.globalReferenceResolver) as ValueOrAST<T>;
     }
     throw new Error(`Default value is not supported for type ${type}`);
   }

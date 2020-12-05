@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 
 import {DictType, Identifier, Type} from '../types';
-import {Namespace, ValueNamespace} from './namespace';
+import {Namespace, NamespaceUtils, ValueNamespace} from './namespace';
 import {ConstructorReference, FormulaReference, Reference, ReferenceUtils, ValueReference}
         from './reference';
 
@@ -38,9 +38,10 @@ export class DictNamespace implements Namespace {
   public getInstanceNamespace = (type: DictType): Namespace =>
       this.baseNamespace.getInstanceNamespace(type)
   // tslint:disable-next-line:variable-name
-  public extendWithIteratorType_DEPRECATED = (iteratorType: Type): Namespace =>
-      this.baseNamespace.extendWithIteratorType_DEPRECATED(iteratorType)
-  // tslint:disable-next-line:variable-name
   public getIteratorType_DEPRECATED = (): Type =>
       this.baseNamespace.getIteratorType_DEPRECATED()
+
+  // tslint:disable-next-line:variable-name
+  public extendWithIteratorType_DEPRECATED = (iteratorType: Type): Namespace =>
+      NamespaceUtils.extendWithIteratorType_DEPRECATED(this, iteratorType);
 }

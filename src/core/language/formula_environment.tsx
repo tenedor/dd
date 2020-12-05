@@ -10,7 +10,7 @@ import {ObjectResolutionError} from './language_errors';
 import {DictNamespace} from './reference/dict_namespace';
 import {DictReferenceResolver} from './reference/dict_reference_resolver';
 import {LambdaWrapperNamespace} from './reference/lambda_wrapper_namespace';
-import {Namespace} from './reference/namespace';
+import {Namespace, NamespaceUtils, ValueNamespace} from './reference/namespace';
 import {ConstructorReference, FormulaReference, ProcedureReference, Reference, ReferenceUtils,
         ValueReference} from './reference/reference';
 import {ReferenceResolver} from './reference/reference_resolver';
@@ -126,8 +126,17 @@ class LanguageEnvironmentRegistry implements Namespace, ReferenceResolver {
   }
 
   protected getConstructorById = <I extends Identifier>(gridId: I): Constructor<I> | undefined => {
+    // FIXME clean up grid ids vs constructor ids, there should not be two ways to reference a constructor
     const grid = this.getGridById(gridId);
-    return (grid && grid.gridConstructor) || undefined;
+    if (grid) {
+      return grid.gridConstructor;
+    }
+    for (const {gridConstructor} of Object.values(this.grids)) {
+      if (gridConstructor.id === gridId) {
+        return gridConstructor as Constructor<I>;
+      }
+    }
+    return undefined;
   }
 
   protected getFormulaById = <I extends Identifier>(gridId: I): Formula<Type, I> | undefined => {
@@ -168,14 +177,24 @@ class LanguageEnvironmentRegistry implements Namespace, ReferenceResolver {
   }
 
   public getInstanceNamespace = (type: DictType): Namespace => {
-    const grid = this.getGridById(type.schemaId.gridId);
-    assert(grid !== undefined, `Unrecognized dict type ${TypeUtils.toString(type)}.`, ObjectResolutionError);
-    return new DictNamespace(this, grid!.valueNamespace);
+    const valueNamespace = this.getValueNamespace(type);
+    return new DictNamespace(this, valueNamespace);
   }
+
+private getValueNamespace = (type: DictType): ValueNamespace => {
+    const {gridId} = type.schemaId;
+    if (this.grids[gridId]) {
+      return this.grids[gridId].valueNamespace;
+    } else if (this.builtInFormulasByGridId[gridId]) {
+      return this.builtInFormulasByGridId[gridId].namespace;
+    } else {
+      throw new ObjectResolutionError(`Unrecognized dict type ${TypeUtils.toString(type)}.`);
+    }
+}
 
   // tslint:disable-next-line:variable-name
   public extendWithIteratorType_DEPRECATED = (iteratorType: Type): Namespace => {
-    return new LambdaWrapperNamespace(this, iteratorType);
+    return NamespaceUtils.extendWithIteratorType_DEPRECATED(this, iteratorType);
   }
 
   // tslint:disable-next-line:variable-name
@@ -193,10 +212,6 @@ export class LanguageEnvironmentImpl extends LanguageEnvironmentRegistry impleme
 
   public getGlobalNamespace = (): Namespace => {
     return this;
-  }
-
-  public getInstanceNamespace = (type: DictType): Namespace => {
-    return this.getInstanceNamespace(type);
   }
 
   public getGlobalResolver = (): ReferenceResolver => {

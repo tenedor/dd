@@ -3,6 +3,7 @@ import * as _ from 'lodash';
 import {Vector} from '@core/geometry';
 import {Drawing, DrawingUtils} from '@drawing/drawing';
 import {FormulaEnvironment, MutableFormulaEnvironment} from '@language/formula_environment';
+import {DictNamespace} from '@language/reference/dict_namespace';
 import {Namespace, ValueNamespace} from '@language/reference/namespace';
 import {ValueReference} from '@language/reference/reference';
 import {Identifier, Type, TypeUtils} from '@language/types';
@@ -87,8 +88,9 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   }
 
   private get namespace(): Namespace {
-    const type = TypeUtils.RowOf(this.id);
-    return this.environment.getInstanceNamespace(type);
+    // Avoid environment.getInstanceNamespace(this.type), grid might not be registered in environment yet
+    const globalNamespace = this.environment.getGlobalNamespace();
+    return new DictNamespace(globalNamespace, this.valueNamespace);
   }
 
   private constructInitialColumns = (newColumnData: Column[] = []): GridColumn[] => {

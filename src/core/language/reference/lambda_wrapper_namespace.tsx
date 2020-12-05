@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 
-import {Identifier, Type} from '../types';
-import {Namespace} from './namespace';
+import {DictType, Identifier, Type} from '../types';
+import {Namespace, NamespaceUtils} from './namespace';
 import {ConstructorReference, FormulaReference, Reference, ValueReference} from './reference';
 
 // FIXME delete this class it is a hack
@@ -36,7 +36,8 @@ export class LambdaWrapperNamespace implements Namespace {
       this.baseNamespace.getFormulaReferenceByName(name)
   public getInstanceNamespace = (type: DictType): Namespace =>
       this.baseNamespace.getInstanceNamespace(type)
+
   // tslint:disable-next-line:variable-name
   public extendWithIteratorType_DEPRECATED = (iteratorType: Type): Namespace =>
-      this.baseNamespace.extendWithIteratorType_DEPRECATED(iteratorType)
+      NamespaceUtils.extendWithIteratorType_DEPRECATED(this, iteratorType);
 }

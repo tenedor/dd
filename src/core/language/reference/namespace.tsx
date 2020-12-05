@@ -1,5 +1,6 @@
 import {NameResolutionError} from '../language_errors';
 import {DictType, Identifier, Type} from '../types';
+import {LambdaWrapperNamespace} from './lambda_wrapper_namespace';
 import {ConstructorReference, FormulaReference, Reference, ReferenceUtils, ValueReference}
         from './reference';
 
@@ -67,6 +68,11 @@ export class NamespaceUtils {
         throw new NameResolutionError(`No name exists in this scope for ${refType} reference '${ref.id}'.`);
       }
       return name;
+  }
+
+  // tslint:disable-next-line:variable-name
+  public static extendWithIteratorType_DEPRECATED = (namespace: Namespace, iteratorType: Type): Namespace => {
+    return new LambdaWrapperNamespace(namespace, iteratorType);
   }
 
 }

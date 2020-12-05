@@ -3,15 +3,14 @@ import * as _ from 'lodash';
 import {Constructor} from '@models/domain_specific/procedure'; // Only a type dependency
 import {Dictionary, ROArray, RODictionary} from '@utils/types';
 import {BinaryOp, BinaryOpUtils} from './binary_op';
-import {NameResolutionError, OutOfBoundsError, ProcedureResolutionError, TypeError}
-        from './language_errors';
+import {NameResolutionError, OutOfBoundsError, TypeError} from './language_errors';
 import {Parser} from './parser';
 import {DictReferenceResolver} from './reference/dict_reference_resolver';
 import {LambdaNamespace} from './reference/lambda_namespace';
 import {LambdaReferenceResolver} from './reference/lambda_reference_resolver';
 import {Namespace, NamespaceUtils} from './reference/namespace';
-import {ConstructorReference, FormulaReference, ProcedureReference, Reference,
-        ValueReference} from './reference/reference';
+import {ConstructorReference, ProcedureReference, Reference, ValueReference}
+        from './reference/reference';
 import {ReferenceResolver, ReferenceResolverUtils} from './reference/reference_resolver';
 import {DictType, GridType, Identifier, LambdaType, ListType, PartialRowType,
         PrimitiveType, RowType, Type, TypeEnvironment, TypeUtils} from './types';
@@ -252,7 +251,7 @@ export class LambdaRes<RI extends Type = Type, RO extends Type = Type>
   ) {
     super(ident, e);
     this.type = type;
-    this.externalDependencies = e.externalDependencies;
+    this.externalDependencies = e.externalDependencies.filter(d => d !== ident.getRef());
     this.buildLambdaNamespace = buildLambdaNamespace;
   }
 
@@ -590,13 +589,7 @@ export class CallRes<R extends Type = Type, I extends Identifier = Identifier> e
 
   public eval = (resolver: ReferenceResolver): Value<R> => {
     const asmtsV = this.asmts.eval(resolver);
-    const procedure = this.isConstructor ?
-      resolver.resolveConstructor(this.procedureRef as ConstructorReference) :
-      resolver.resolveFormula(this.procedureRef as FormulaReference);
-    if (!procedure) {
-      const refType = this.isConstructor ? "constructor" : "formula";
-      throw new ProcedureResolutionError (`No ${refType} exists for reference '${this.procedureRef.id}'`);
-    }
+    const procedure = ReferenceResolverUtils.resolveProcedureOrThrow(this.procedureRef, resolver);
     return procedure.eval(asmtsV, this.type) as Value<R>;
   }
 

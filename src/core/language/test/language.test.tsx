@@ -30,7 +30,16 @@ const fakeGridNamespace: ValueNamespace = {
   getReferenceName: (ref: ValueReference): string => fakeColumns[ref.id].name,
 };
 
-const fakeGrid = {id: fakeGridId, valueNamespace: fakeGridNamespace};
+const fakeGrid = {
+  id: fakeGridId,
+  valueNamespace: fakeGridNamespace,
+  gridConstructor: {
+    id: fakeGridId,
+    isConstructorLiteral: true,
+    name: "Fake Grid",
+    namespace: fakeGridNamespace,
+  },
+};
 
 // TODO make an actual grid to avoid casting
 environment.addGrid(fakeGrid as any as Grid);
