@@ -13,7 +13,7 @@ export interface DictionaryUpdateDescriptor<ED extends UpdateDescriptor>
   elementDescriptors: ED[];
 }
 
-class BaseFunctionalDictionary<
+abstract class BaseFunctionalDictionary<
     T extends JSPrimitive | Mutable<TD>,
     TD extends UpdateDescriptor,
     > extends Mutable<DictionaryUpdateDescriptor<TD>> {
@@ -105,6 +105,10 @@ export class FunctionalDictionaryM<
     > extends BaseFunctionalDictionary<T, TD> {
   constructor(updateManager: UpdateManager, dictionary: RODictionary<T> = {}) {
     super(updateManager, dictionary);
+  }
+
+  protected initInner(): void {
+    super.initInner();
     Object.keys(this.dictionary).forEach(k => this.dictionary[k].listenForUpdate(this, this.onElementUpdated));
   }
 

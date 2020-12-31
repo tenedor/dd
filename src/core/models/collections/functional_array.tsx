@@ -10,7 +10,7 @@ export interface ArrayUpdateDescriptor<ED extends UpdateDescriptor> extends Upda
   elementDescriptors: ED[];
 }
 
-class BaseFunctionalArray<
+abstract class BaseFunctionalArray<
     T extends JSPrimitive | Mutable<TD>,
     TD extends UpdateDescriptor,
     > extends Mutable<ArrayUpdateDescriptor<TD>> {
@@ -114,6 +114,10 @@ export class FunctionalArrayM<
     > extends BaseFunctionalArray<T, TD> {
   constructor(updateManager: UpdateManager, array: ROArray<T> = []) {
     super(updateManager, array);
+  }
+
+  protected initInner(): void {
+    super.initInner();
     this.array.forEach(t => t.listenForUpdate(this, this.onElementUpdated));
   }
 
