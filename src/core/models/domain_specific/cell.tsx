@@ -72,9 +72,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
   protected initInner(): void {
     super.initInner();
-    this.updateDependencies();
 
-    this._value = this.computeValue();
     this.addPermanentListener(this.column, this.onColumnUpdated);
 
     const {type} = this.column;
@@ -93,6 +91,11 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     // is not enough: the formula might change without changing dependencies.
     this.addPermanentListener(this.formulaExpression, this.onFormulaExpressionUpdated);
     this.formulaExpression.listenForDependencyUpdate(this, this.onFormulaExpressionUpdatedDependencies);
+
+    this.updateDependencies();
+    this.addManualValueListeners();
+
+    this._value = this.computeValue();
   }
 
   private hasPermanentListener = (node: DependencyNode): boolean => {
