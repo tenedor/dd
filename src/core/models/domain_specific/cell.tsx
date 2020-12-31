@@ -68,20 +68,20 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     this.getRowContext = getRowContext;
     this.gridId = gridId;
     this.manualValue = manualValue;
+  }
 
-    // updateDependencies expects a preexisting dependencies object to compare to
-    this.dependencies = {};
+  protected initInner(): void {
+    super.initInner();
     this.updateDependencies();
 
     this._value = this.computeValue();
-
     this.addPermanentListener(this.column, this.onColumnUpdated);
 
     const {type} = this.column;
-    const resolver = this.column.getGlobalReferenceResolver();
     if (this.defaultValue) {
       this.addPermanentListener(this.defaultValue, this.onDefaultValueUpdated);
     } else if (TypeUtils.supportsLiterals(type)) {
+      const resolver = this.column.getGlobalReferenceResolver();
       const builtInDefault = ValueUtils.getDefaultValue(type, resolver);
       if (isCallAST(builtInDefault)) {
         const procedure = ReferenceResolverUtils.resolveProcedureOrThrow(builtInDefault.procedureRef, resolver);
@@ -91,8 +91,8 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
     // Need to listen to the formula container for dependency updates but this
     // is not enough: the formula might change without changing dependencies.
-    this.formulaExpression.listenForDependencyUpdate(this, this.onFormulaExpressionUpdatedDependencies);
     this.addPermanentListener(this.formulaExpression, this.onFormulaExpressionUpdated);
+    this.formulaExpression.listenForDependencyUpdate(this, this.onFormulaExpressionUpdatedDependencies);
   }
 
   private hasPermanentListener = (node: DependencyNode): boolean => {
@@ -268,7 +268,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   // TODO - Clean up dependency management! Need to guarantee that fixed dependencies
   // never get lost during dynamic dependency updating.
   private updateDependencies = (): DependencySetUpdateDescriptor[] => {
-    const oldDependencies = this.dependencies;
+    const oldDependencies = this.dependencies || {};
     const dependencyRefs = this.formulaExpression.dependencies;
     const valueDependencyRefs = dependencyRefs.filter(ReferenceUtils.isValueReference);
     this.dependencies = this.resolveDependencies(dependencyRefs);
