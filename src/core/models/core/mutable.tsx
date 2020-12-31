@@ -74,6 +74,7 @@ export abstract class Mutable<D extends UpdateDescriptor = UpdateDescriptor> imp
     // on a node with a higher partition index.
     assert(this.dependencyGraphPartitionIndex <= listener.dependencyGraphPartitionIndex);
 
+    // TODO - is this a problem?
     // each listener may only bind one callback
     this.updateListeners.set(listener, onUpdate);
   }
@@ -89,6 +90,7 @@ export abstract class Mutable<D extends UpdateDescriptor = UpdateDescriptor> imp
     // on a node with a higher partition index.
     assert(this.dependencyGraphPartitionIndex < listener.dependencyGraphPartitionIndex);
 
+    // TODO - is this a problem?
     // each listener may only bind one callback
     this.dependencyUpdateListeners.set(listener, onUpdate);
   }

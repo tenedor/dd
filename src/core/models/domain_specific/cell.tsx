@@ -268,10 +268,15 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     return _.pick(rowContext, rowValueDependencyReferences.map(r => r.id));
   }
 
-  // TODO - Clean up dependency management! Need to guarantee that fixed dependencies
-  // never get lost during dynamic dependency updating.
-  private updateDependencies = (): DependencySetUpdateDescriptor[] => {
-    const oldDependencies = this.dependencies || {};
+  // FIXME
+  //
+  // Clean up dependency management! Need to guarantee that no problems arise
+  // from binding a dependency twice among dynamic dependencies (e.g. formula,
+  // manual value) and fixed dependencies. Must avoid removing a dependency
+  // that is still referenced elsewhere. Also, Mutable currently only allows
+  // one callback per listener - should it?
+  private updateFormulaDependencies = (): DependencySetUpdateDescriptor[] => {
+    const oldDependencies = this.formulaDependencies || {};
     const dependencyRefs = this.formulaExpression.dependencies;
     const valueDependencyRefs = dependencyRefs.filter(ReferenceUtils.isValueReference);
     this.formulaDependencies = this.resolveDependencies(dependencyRefs);
