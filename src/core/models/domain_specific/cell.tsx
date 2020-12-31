@@ -51,8 +51,8 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   private readonly defaultValue?: Cell<T>;
   private readonly getRowContext: () => RowContext;
   private readonly gridId: Identifier;
-  private dependencies: RODictionary<DependencyNode>;
-  private rowValueDependencies: RODictionary<ValueDependency>;
+  private formulaDependencies: RODictionary<DependencyNode>;
+  private rowValueFormulaDependencies: RODictionary<ValueDependency>;
   private manualValue?: ValueOrAST<T>;
   private _value: Value<T>;
   private readonly permanentDependencies: DependencyNode[] = [];
@@ -92,7 +92,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     this.addPermanentListener(this.formulaExpression, this.onFormulaExpressionUpdated);
     this.formulaExpression.listenForDependencyUpdate(this, this.onFormulaExpressionUpdatedDependencies);
 
-    this.updateDependencies();
+    this.updateFormulaDependencies();
     this.addManualValueListeners();
 
     this._value = this.computeValue();
@@ -274,12 +274,12 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     const oldDependencies = this.dependencies || {};
     const dependencyRefs = this.formulaExpression.dependencies;
     const valueDependencyRefs = dependencyRefs.filter(ReferenceUtils.isValueReference);
-    this.dependencies = this.resolveDependencies(dependencyRefs);
-    this.rowValueDependencies = this.resolveRowValueDependencies(valueDependencyRefs);
-    const {removedIds, addedIds} = keysDiff(oldDependencies, this.dependencies);
+    this.formulaDependencies = this.resolveDependencies(dependencyRefs);
+    this.rowValueFormulaDependencies = this.resolveRowValueDependencies(valueDependencyRefs);
+    const {removedIds, addedIds} = keysDiff(oldDependencies, this.formulaDependencies);
     if (removedIds.length || addedIds.length) {
       removedIds.forEach(id => this.removeDynamicListener(oldDependencies[id]));
-      addedIds.forEach(id => this.addDynamicListener(this.dependencies[id], this.onValueDependencyUpdated));
+      addedIds.forEach(id => this.addDynamicListener(this.formulaDependencies[id], this.onValueDependencyUpdated));
       return [{type: DependencySetUpdateType.DEPENDENCY_SET_UPDATED}];
     }
     return [];
@@ -306,7 +306,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     updates: FormulaExpressionUpdateDescriptor[],
   ): DependencySetUpdateDescriptor[] => {
     const formulaUpdated = updates.some(u => u.type === FormulaExpressionUpdateType.FORMULA_EXPRESSION_UPDATED);
-    return formulaUpdated ? this.updateDependencies() : [];
+    return formulaUpdated ? this.updateFormulaDependencies() : [];
   }
 
   private onFormulaExpressionUpdated = (
@@ -350,7 +350,7 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   private getDependenciesResolver = (): DictReferenceResolver => {
-    const rowDependencyValues = _.mapValues(this.rowValueDependencies, r => r.value);
+    const rowDependencyValues = _.mapValues(this.rowValueFormulaDependencies, r => r.value);
     const rowDependencies = ValueUtils.partialRowOf(rowDependencyValues, this.gridId);
     return new DictReferenceResolver(this.globalReferenceResolver, rowDependencies);
   }
