@@ -19,11 +19,18 @@ export class App extends Mutable {
   constructor(modelType: ModelType = ModelType.APP) {
     super(new SimpleUpdateManager(), modelType);
     this.document = new Document(this.updateManager);
-    this.document.listenForUpdate(this, this.onDocumentUpdated);
-    this.document.addDemoGrids();
-
     this.consoleUI = new ConsoleUI(this.document, "dd");
     (window as any).dd = this.consoleUI;
+
+    // App is the top-level model so it self-initializes
+    this.init();
+  }
+
+  protected initInner(): void {
+    super.initInner();
+    this.document.listenForUpdate(this, this.onDocumentUpdated);
+    this.document.addDemoGrids();
+    this.consoleUI.init();
   }
 
   private onDocumentUpdated = (epoch: number, updates: DocumentUpdateDescriptor[]) => {

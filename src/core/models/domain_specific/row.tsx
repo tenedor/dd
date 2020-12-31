@@ -75,6 +75,10 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
     this.cells = new FunctionalDictionaryM(updateManager, {});
     this.constructCells(manualValues);
     this.updateDrawing();
+  }
+
+  protected initInner(): void {
+    super.initInner();
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
     this.cells.listenForUpdate(this, this.onCellsUpdated);
   }

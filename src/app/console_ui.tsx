@@ -163,9 +163,11 @@ export class ConsoleUI {
 
   constructor(document: Document, varName: string) {
     this.document = document;
-
-    this.languageReference();
     Helper.setVarName(varName);
+  }
+
+  public init = () => {
+    this.languageReference();
     Helper.printWelcome();
   }
 

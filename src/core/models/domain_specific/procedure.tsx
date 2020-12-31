@@ -91,7 +91,10 @@ export class GridConstructor<I extends Identifier = Identifier>
     this.namespace = namespace;
     this.returnType = TypeUtils.RowOf(gridId);
     this.assignmentsType = TypeUtils.PartialRowOf(gridId);
+  }
 
+  protected initInner(): void {
+    super.initInner();
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
     this.defaultValues.listenForUpdate(this, this.onDefaultValuesUpdated);
   }

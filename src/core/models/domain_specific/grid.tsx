@@ -67,23 +67,26 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     this.environment = environment;
     this.disableCoordinateSystemColumn = !!disableCoordinateSystemColumn;
     this.getPrimitiveDrawing = getPrimitiveDrawing || (parentGrid && parentGrid.getPrimitiveDrawing);
+    this.valueNamespace = Grid.buildValueNamespace(this.getColumnByName, this.getColumnById);
+
     if (parentGrid) {
       this.parent = parentGrid;
+    }
+    this.columns = new FunctionalKeyedArray(updateManager, this.constructInitialColumns(newColumns), 'columnId');
+    this.rows = new FunctionalArrayM(updateManager, [this.buildDefaultRow()]);
+    this.gridConstructor = this.buildConstructor();
+
+    environment.addGrid(this);
+  }
+
+  protected initInner(): void {
+    super.initInner();
+
+    if (this.parent) {
       this.parent.listenForUpdate(this, this.onParentGridUpdated);
     }
-
-    // configure grid enough to add to formula environment
-    this.valueNamespace = Grid.buildValueNamespace(this.getColumnByName, this.getColumnById);
-    this.columns = new FunctionalKeyedArray(updateManager, this.constructInitialColumns(newColumns), 'columnId');
-
-    // add to formula environment
-    environment.addGrid(this);
-
-    // finish configuring grid. can now resolve internal references with formula environment.
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
-    this.rows = new FunctionalArrayM(updateManager, [this.buildDefaultRow()]);
     this.rows.listenForUpdate(this, this.onRowsUpdated);
-    this.gridConstructor = this.buildConstructor();
     this.gridConstructor.listenForUpdate(this, this.onGridConstructorUpdated);
   }
 

@@ -53,7 +53,10 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
     this._formulaExpression = new FormulaExpression(updateManager,
         {type, namespace, environment, parent: parentExpression});
     this._width = width;
+  }
 
+  protected initInner(): void {
+    super.initInner();
     this.column.listenForUpdate(this, this.onColumnUpdated);
     this._formulaExpression.listenForUpdate(this, this.onFormulaExpressionUpdated);
     if (this.parentGridColumn) {

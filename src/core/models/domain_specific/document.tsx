@@ -30,6 +30,10 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
     this.grids = new FunctionalArrayM(this.updateManager, []);
     this.drawingSurfaceInfos = new FunctionalArrayM(this.updateManager, []);
     this.addDrawingSurface();
+  }
+
+  protected initInner(): void {
+    super.initInner();
     this.grids.listenForUpdate(this, this.onGridsUpdated);
     this.drawingSurfaceInfos.listenForUpdate(this, this.onDrawingSurfaceInfosUpdated);
   }

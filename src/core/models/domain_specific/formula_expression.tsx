@@ -38,7 +38,10 @@ export class FormulaExpression<T extends Type = Type, P extends Type = Type> ext
     this.namespace = namespace;
     this.environment = environment;
     this.parent = parent;
+  }
 
+  protected initInner(): void {
+    super.initInner();
     if (this.parent) {
       this.parent.listenForUpdate(this, this.onParentUpdated);
     }
