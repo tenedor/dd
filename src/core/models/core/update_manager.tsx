@@ -44,10 +44,18 @@ export interface DependencyNode<D extends UpdateDescriptor = UpdateDescriptor> {
   readonly dependencyUpdateListeners: Map<DependencyNode<UpdateDescriptor>,
     DependencyUpdateListener<this, D>>;
 
+  // Once a node is initialized its state must be valid to read for its epoch
+  // and it must update its state and epoch along with its dependencies.
+  //
+  // A node's state should not be read until it has been initialized. Binding a
+  // listener to a node will initialize the node before continuing, but init can
+  // also be called directly. The parent that constructs a node is responsible
+  // for initializing it.
+  init: () => void;
+
   // LD is the listener's descriptor, if one exists - namely, if onUpdate
-  // returns a list of descriptors they must describe changes to the model given
-  // by `id`. This occurs if the listener's model updates because of this
-  // model's updates.
+  // returns a list of descriptors they must describe changes to the listener.
+  // This occurs if the listener updates because of this model's updates.
   listenForUpdate: <LD extends UpdateDescriptor>(
     id: DependencyNode<LD>,
     onUpdate: UpdateListener<this, D, LD>,

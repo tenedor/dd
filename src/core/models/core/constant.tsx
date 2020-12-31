@@ -21,6 +21,10 @@ export class Constant<D extends UpdateDescriptor = UpdateDescriptor> implements 
   public removeUpdateListener() { /* do nothing */ }
   public removeDependencyUpdateListener() { /* do nothing */ }
 
+  public init(): void {
+    // nothing to init
+  }
+
   public onDependencySetUpdated(): never {
     throw new Error("A constant cannot depend on anything.");
   }

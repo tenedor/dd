@@ -4,7 +4,7 @@ import {DependencyGraphPartitionIndex, DependencyNode, DependencySetUpdateDescri
         DependencySetUpdateListener, DependencyUpdateListener, UpdateDescriptor,
         UpdateListener, UpdateManager} from './update_manager';
 
-export class Mutable<D extends UpdateDescriptor = UpdateDescriptor> implements DependencyNode<D> {
+export abstract class Mutable<D extends UpdateDescriptor = UpdateDescriptor> implements DependencyNode<D> {
   public readonly id: string;
   public readonly dependencyGraphPartitionIndex: DependencyGraphPartitionIndex = DependencyGraphPartitionIndex.VALUE;
   public epoch: number;
@@ -16,6 +16,10 @@ export class Mutable<D extends UpdateDescriptor = UpdateDescriptor> implements D
   public dependencyUpdateListeners: Map<DependencyNode<UpdateDescriptor>,
     DependencyUpdateListener<this, D>> = new Map();
 
+  private isInitializing: boolean = false;
+  private initInnerCalled: boolean = false;
+  private isInitialized: boolean = false;
+
   // Child class properties are not initialized until after calling super() so
   // the model type must be overridden by passing it as a constructor parameter.
   // By contract Mutable must initialize the id.
@@ -25,33 +29,68 @@ export class Mutable<D extends UpdateDescriptor = UpdateDescriptor> implements D
     this.epoch = updateManager.epoch;
   }
 
+  // Once a node is initialized its state must be valid to read for its epoch
+  // and it must update its state and epoch along with its dependencies.
+  //
+  // A node's state should not be read until it has been initialized. Binding a
+  // listener to a node will initialize the node before continuing, but init can
+  // also be called directly. The parent that constructs a node is responsible
+  // for initializing it.
+  //
+  // Do not override init - override initInner.
+  public init(): void {
+    if (this.isInitialized) {
+      return;
+    }
+    assert(!this.isInitializing, "Model initialization loop detected.");
+
+    this.isInitializing = true;
+    this.isInitialized = false;
+
+    this.initInner();
+
+    this.isInitializing = false;
+    this.isInitialized = true;
+  }
+
+  // Override with model-specific initialization logic. Do not call directly in
+  // subclasses.
+  protected initInner(): void {
+    assert(this.isInitializing, "initInner was called outside of initialization.");
+    assert(!this.initInnerCalled, "initInner was called more than once.");
+    this.initInnerCalled = true;
+  }
+
   // LD is the listener's descriptor, if one exists - namely, if onUpdate
-  // returns a list of descriptors they must describe changes to the model given
-  // by `id`. This occurs if the listener's model updates because of this
-  // model's updates.
+  // returns a list of descriptors they must describe changes to the listener.
+  // This occurs if the listener updates because of this model's updates.
   public listenForUpdate<LD extends UpdateDescriptor>(
-    id: DependencyNode<LD>,
+    listener: DependencyNode<LD>,
     onUpdate: UpdateListener<this, D, LD>,
   ) {
+    this.init();
+
     // Require a static partial ordering of dependencies. A node cannot depend
     // on a node with a higher partition index.
-    assert(this.dependencyGraphPartitionIndex <= id.dependencyGraphPartitionIndex);
+    assert(this.dependencyGraphPartitionIndex <= listener.dependencyGraphPartitionIndex);
 
-    // listeners must be unique per id
-    this.updateListeners.set(id, onUpdate);
+    // each listener may only bind one callback
+    this.updateListeners.set(listener, onUpdate);
   }
 
   // This follows the same pattern as listenForUpdate.
   public listenForDependencyUpdate<LD extends UpdateDescriptor>(
-    id: DependencyNode<LD>,
+    listener: DependencyNode<LD>,
     onUpdate: DependencyUpdateListener<this, D>,
   ) {
+    this.init();
+
     // Require a static partial ordering of dependencies. A node cannot depend
     // on a node with a higher partition index.
-    assert(this.dependencyGraphPartitionIndex < id.dependencyGraphPartitionIndex);
+    assert(this.dependencyGraphPartitionIndex < listener.dependencyGraphPartitionIndex);
 
-    // listeners must be unique per id
-    this.dependencyUpdateListeners.set(id, onUpdate);
+    // each listener may only bind one callback
+    this.dependencyUpdateListeners.set(listener, onUpdate);
   }
 
   public removeUpdateListener = (id: DependencyNode<UpdateDescriptor>) => {
@@ -83,7 +122,7 @@ export class Mutable<D extends UpdateDescriptor = UpdateDescriptor> implements D
   }
 
   // This method must be called for any model update that occurs outside
-  // depenendency update resolution. This alerts the dependency graph of the
+  // dependency update resolution. This alerts the dependency graph of the
   // need for resolution.
   protected onSelfMutated = (descriptors: D[]) => {
     this.epoch = this.updateManager.nextEpoch();
