@@ -49,6 +49,10 @@ class LanguageEnvironmentRegistry implements Namespace, ReferenceResolver {
     this.iteratorType = iteratorType;
   }
 
+  public initGrids = () => {
+    Object.values(this.grids).forEach(g => g.init());
+  }
+
   public addBuiltInFormula = (formula: BuiltInFormula) => {
     this.builtInFormulasByGridId[formula.id] = formula;
   }

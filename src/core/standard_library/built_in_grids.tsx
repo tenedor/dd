@@ -13,7 +13,7 @@ import {Column, ColumnData} from '@models/domain_specific/column';
 import {Document} from '@models/domain_specific/document';
 import {Grid} from '@models/domain_specific/grid';
 import {GridColumn} from '@models/domain_specific/grid_column';
-import {Row} from '@models/domain_specific/row';
+import {ManualValues, Row} from '@models/domain_specific/row';
 import {RODictionary} from '@utils/types';
 import {COORDINATE_SYSTEM_CENTER_COLUMN_ID, COORDINATE_SYSTEM_GRID_NAME}
         from './geometry_utils';
@@ -123,10 +123,10 @@ function getGridByName(name: string, environment: FormulaEnvironment): Grid {
   return environment.getGlobalResolver().getGridById(id)!;
 }
 
-function setDefaultValues(grid: Grid, columns: MixedGridColumnData[]) {
-  const {cells} = grid.rows.get(0)!;
-  columns.filter(c => c.expressionString === undefined && c.defaultValue !== undefined)
-         .forEach(c => cells.get(getColumnId(c))!.setManualValue(c.defaultValue));
+function getDefaultValues(columns: MixedGridColumnData[]): ManualValues {
+  const defaultValueColumns = columns.filter(c => c.expressionString === undefined && c.defaultValue !== undefined);
+  const byId = _.mapKeys(defaultValueColumns, c => getColumnId(c));
+  return _.mapValues(byId, c => c.defaultValue!);
 }
 
 function addBuiltInGrid({
@@ -141,10 +141,10 @@ function addBuiltInGrid({
   disableCoordinateSystemColumn?: boolean,
 }) {
   const newColumns = gridColumnsData.filter((c): c is GridColumnData => !isChildData(c)).map(d => d.column);
+  const defaultValues = getDefaultValues(gridColumnsData);
   const grid = new Grid(updateManager, {name, environment,
-    parentGrid, newColumns, getPrimitiveDrawing, disableCoordinateSystemColumn});
+    parentGrid, newColumns, getPrimitiveDrawing, disableCoordinateSystemColumn, defaultValues});
   setColumnExpressions(grid, gridColumnsData, environment);
-  setDefaultValues(grid, gridColumnsData);
 }
 
 function getTypeForInstanceOf(

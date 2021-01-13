@@ -444,6 +444,7 @@ export const loadStandardLibrary = (updateManager: UpdateManager): MutableFormul
   const environment = new LanguageEnvironmentImpl();
   Object.values(getBuiltInFormulas()).map(environment.addBuiltInFormula);
   loadBuiltInGrids(updateManager, environment);
+  environment.initGrids();
   return environment;
 }
 

@@ -22,7 +22,7 @@ import {Column} from './column';
 import {DEFAULT_COLUMN_WIDTH, GridColumn, GridColumnUpdateDescriptor}
         from './grid_column';
 import {Constructor, ConstructorUpdateDescriptor, GridConstructor} from './procedure';
-import {Row, RowUpdateDescriptor} from './row';
+import {ManualValues, Row, RowUpdateDescriptor} from './row';
 
 export type GridColumns = FunctionalKeyedArray<GridColumn, GridColumnUpdateDescriptor, 'columnId'>;
 export type Rows = FunctionalArrayM<Row, RowUpdateDescriptor>;
@@ -33,12 +33,13 @@ export interface CellIndex {
 }
 
 export interface GridData {
-  environment: MutableFormulaEnvironment;
+  environment: MutableFormulaEnvironment,
   name: string,
   parentGrid?: Grid,
   newColumns?: Column[],
   getPrimitiveDrawing?: (cells: RODictionary<Value>) => Drawing,
-  disableCoordinateSystemColumn?: boolean;
+  disableCoordinateSystemColumn?: boolean,
+  defaultValues?: ManualValues,
 }
 
 export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {}
@@ -59,7 +60,8 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
 
   constructor(
     updateManager: UpdateManager,
-    {disableCoordinateSystemColumn, environment, getPrimitiveDrawing, name, newColumns, parentGrid}: GridData,
+    {defaultValues, disableCoordinateSystemColumn, environment, getPrimitiveDrawing,
+      name, newColumns, parentGrid}: GridData,
     modelType: ModelType = ModelType.GRID,
   ) {
     super(updateManager, modelType);
@@ -73,7 +75,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
       this.parent = parentGrid;
     }
     this.columns = new FunctionalKeyedArray(updateManager, this.constructInitialColumns(newColumns), 'columnId');
-    this.rows = new FunctionalArrayM(updateManager, [this.buildDefaultRow()]);
+    this.rows = new FunctionalArrayM(updateManager, [this.buildDefaultRow(defaultValues)]);
     this.gridConstructor = this.buildConstructor();
 
     environment.addGrid(this);
@@ -129,7 +131,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     return [coordinateSystemColumn];
   }
 
-  private buildDefaultRow = (): Row => {
+  private buildDefaultRow = (manualValues: ManualValues = {}): Row => {
     const {columns, environment, id, getPrimitiveDrawing, parent, updateManager} = this;
     return new Row(updateManager, {
       columns,
@@ -137,7 +139,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
       environment,
       getPrimitiveDrawing,
       gridId: id,
-      manualValues: {},
+      manualValues,
     });
   }
 

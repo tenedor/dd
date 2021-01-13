@@ -10,7 +10,7 @@ import {ListValue, RowValue, Value, ValueOrAST, ValueUtils} from '@language/valu
 import {Address, AddressUtils} from '@paths/address';
 import {COORDINATE_SYSTEM_CENTER_COLUMN_ID, COORDINATE_SYSTEM_COLUMN_ID,
         getCoordinateSystemFromValue} from '@standard_library/geometry_utils';
-import {Dictionary, ROArray, RODictionary} from '@utils/types';
+import {ROArray, RODictionary} from '@utils/types';
 import {keysDiff} from '@utils/utils';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
 import {DictionaryUpdateDescriptor as DictionaryUD, FunctionalDictionaryM}
@@ -21,14 +21,14 @@ import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {RowUpdateType} from '../core/update_types';
 import {Cell, CellUpdateDescriptor} from './cell';
 import {GridColumns} from './grid';
-import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
+import {GridColumnUpdateDescriptor} from './grid_column';
 
 export type CellRO = Readonly<Cell>;
 export type Cells = FunctionalDictionaryM<Cell, CellUpdateDescriptor>;
 
 type ValueWithRows = RowValue | ListValue;
 
-interface ManualValues {
+export interface ManualValues {
   [columnId: string]: ValueOrAST,
 }
 
@@ -72,67 +72,31 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
     this.environment = environment;
     this.defaultValues = defaultValues;
     this.getPrimitiveDrawingIfAny = getPrimitiveDrawing || (() => undefined);
-    this.cells = new FunctionalDictionaryM(updateManager, {});
-    this.constructCells(manualValues);
-    this.updateDrawing();
+    this.cells = this.constructCells(manualValues);
   }
 
   protected initInner(): void {
     super.initInner();
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
     this.cells.listenForUpdate(this, this.onCellsUpdated);
+    this.updateDrawing();
   }
 
-  private static getAllDependencies = (id: string, firstOrderDependencies: {[id: string]: string[]}): string[] => {
-    const fo = firstOrderDependencies[id];
-    const recursive = fo.map(d => Row.getAllDependencies(d, firstOrderDependencies));
-    const all = _.flatten(recursive).concat(fo);
-    return _.uniq(all);
-  }
-
-  private static getColumnDependenciesMap = (columns: GridColumns): Dictionary<string[]> => {
-    const firstOrderDependencies = _.mapValues(columns.d,
-      c => c.formulaExpression.dependencies
-        .map(d => d.id)
-        .filter(id => id in columns.d));
-    return _.mapValues(columns.d, (c, id) => Row.getAllDependencies(id, firstOrderDependencies));
-  }
-
-  private static getColumnsOrderedByDependency = (columns: GridColumns): GridColumn[] => {
-    // Must order cell construction by formula dependencies
-    const dependenciesMap = Row.getColumnDependenciesMap(columns);
-    const sortedColumns: GridColumn[] = [];
-    let remainingColumnIds = Object.keys(columns.d);
-    const hasOutstandingDependency = (id: string) => {
-      const deps = dependenciesMap[id];
-      return _.some(deps, depId => remainingColumnIds.includes(depId));
-    };
-    while (remainingColumnIds.length) {
-      const freeId = _.find(remainingColumnIds, id => !hasOutstandingDependency(id));
-      if (freeId === undefined) {
-        throw new Error("Dependency cycle encountered in row construction");
-      }
-      sortedColumns.push(columns.getByKey(freeId)!);
-      remainingColumnIds = _.without(remainingColumnIds, freeId);
-    }
-    return sortedColumns;
-  }
-
-  private constructCells = (manualValues: ManualValues) => {
-    const cellsToConstruct = Row.getColumnsOrderedByDependency(this.columns);
-    cellsToConstruct.forEach(column => {
-      const {defaultValues, getRowContext, gridId, updateManager} = this;
+  private constructCells = (manualValues: ManualValues): Cells => {
+    const {defaultValues, getRowContext, gridId, updateManager} = this;
+    const cellsDict = _.mapValues(this.columns.d, column => {
       const {columnId} = column;
       const manualValue = manualValues[columnId];
       const defaultValue = defaultValues ? defaultValues.cells.get(columnId) : undefined;
-      this.cells.set(columnId, new Cell(updateManager, {
+      return new Cell(updateManager, {
         column,
         defaultValue,
         getRowContext,
         gridId,
         manualValue,
-      }));
+      });
     });
+    return new FunctionalDictionaryM(updateManager, cellsDict);
   }
 
   private updateCellMembership(): RowUpdateDescriptor[] {
@@ -238,6 +202,7 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
   }
 
   public asValue = (): RowValue<I> => {
+    this.init();
     return ValueUtils.rowOf(this, this.gridId);
   }
 
