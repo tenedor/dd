@@ -7,7 +7,7 @@ import {Type, TypeEnvironment, TypeUtils} from '@language/types';
 import {Value} from '@language/values';
 import {ROArray} from '@utils/types';
 import {ModelType} from '../core/model';
-import {Mutable} from '../core/mutable';
+import {Mutable, MutableOptions} from '../core/mutable';
 import {DependencyGraphPartitionIndex, UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {FormulaExpressionUpdateType} from '../core/update_types';
 
@@ -31,9 +31,10 @@ export class FormulaExpression<T extends Type = Type, P extends Type = Type> ext
   constructor(
     updateManager: UpdateManager,
     {type, namespace, environment, parent}: FormulaExpressionData<T, P>,
+    opts: MutableOptions,
     modelType: ModelType = ModelType.FORMULA_EXPRESSION,
   ) {
-    super(updateManager, modelType);
+    super(updateManager, opts, modelType);
     this.type = type;
     this.namespace = namespace;
     this.environment = environment;

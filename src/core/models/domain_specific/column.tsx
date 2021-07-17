@@ -18,8 +18,13 @@ export class Column<T extends Type = Type> extends Mutable<ColumnUpdateDescripto
   private _name: string;
   private _type: T;
 
-  constructor(updateManager: UpdateManager, {name, type, id}: ColumnData<T>, modelType: ModelType = ModelType.COLUMN) {
-    super(updateManager, modelType, id);
+  constructor(
+    updateManager: UpdateManager,
+    {name, type, id}: ColumnData<T>,
+    {epoch}: {epoch?: number},
+    modelType: ModelType = ModelType.COLUMN,
+  ) {
+    super(updateManager, {id, epoch}, modelType);
     this._name = name;
     this._type = type;
   }

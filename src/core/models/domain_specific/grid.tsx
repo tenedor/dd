@@ -15,7 +15,7 @@ import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM}
         from '../collections/functional_array';
 import {FunctionalKeyedArray} from '../collections/functional_keyed_array';
 import {ModelType} from '../core/model';
-import {Mutable} from '../core/mutable';
+import {Mutable, MutableOptions} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {GridUpdateType} from '../core/update_types';
 import {Column} from './column';
@@ -62,9 +62,10 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     updateManager: UpdateManager,
     {defaultValues, disableCoordinateSystemColumn, environment, getPrimitiveDrawing,
       name, newColumns, parentGrid}: GridData,
+    opts: MutableOptions,
     modelType: ModelType = ModelType.GRID,
   ) {
-    super(updateManager, modelType);
+    super(updateManager, opts, modelType);
     this._name = name;
     this.environment = environment;
     this.disableCoordinateSystemColumn = !!disableCoordinateSystemColumn;
@@ -74,8 +75,8 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     if (parentGrid) {
       this.parent = parentGrid;
     }
-    this.columns = new FunctionalKeyedArray(updateManager, this.constructInitialColumns(newColumns), 'columnId');
-    this.rows = new FunctionalArrayM(updateManager, [this.buildDefaultRow(defaultValues)]);
+    this.columns = new FunctionalKeyedArray(updateManager, this.constructInitialColumns(newColumns), 'columnId', {});
+    this.rows = new FunctionalArrayM(updateManager, [this.buildDefaultRow(defaultValues)], {});
     this.gridConstructor = this.buildConstructor();
 
     environment.addGrid(this);
@@ -140,7 +141,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
       getPrimitiveDrawing,
       gridId: id,
       manualValues,
-    });
+    }, {});
   }
 
   private static buildValueNamespace = (
@@ -169,7 +170,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     const getName = () => this.name;
     return new GridConstructor(this.updateManager, {
       columns, defaultValues, environment, getPrimitiveDrawing, gridId, getName, namespace,
-    });
+    }, {});
   }
 
   public get name(): string {
@@ -231,7 +232,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   public addNewColumn = (type: Type) => {
     const {updateManager} = this;
     const name = this.getDefaultNameForColumnOfType(type);
-    const column = new Column(updateManager, {name, type});
+    const column = new Column(updateManager, {name, type}, {});
     const gridColumn = this.makeGridColumn(column);
     this.addColumns([gridColumn]);
   }
@@ -244,7 +245,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
       namespace,
       type: column.type,
       width: DEFAULT_COLUMN_WIDTH,
-    });
+    }, {});
   }
 
   private getDefaultNameForColumnOfType = (type: Type): string => {
@@ -273,7 +274,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
       getPrimitiveDrawing,
       gridId: id,
       manualValues: {},
-    });
+    }, {});
     this.addRows([row]);
   }
 

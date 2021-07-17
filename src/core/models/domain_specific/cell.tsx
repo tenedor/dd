@@ -18,7 +18,7 @@ import {COORDINATE_SYSTEM_COLUMN_ID} from '@standard_library/geometry_utils';
 import {RODictionary} from '@utils/types';
 import {assert, keysDiff} from '@utils/utils';
 import {ModelType} from '../core/model';
-import {Mutable} from '../core/mutable';
+import {Mutable, MutableOptions} from '../core/mutable';
 import {DependencyNode, DependencySetUpdateDescriptor, UpdateDescriptor, UpdateListener,
         UpdateManager} from '../core/update_manager';
 import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType}
@@ -60,9 +60,10 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   constructor(
     updateManager: UpdateManager,
     {column, defaultValue, getRowContext, gridId, manualValue}: CellData<T>,
+    opts: MutableOptions,
     modelType: ModelType = ModelType.CELL,
   ) {
-    super(updateManager, modelType);
+    super(updateManager, opts, modelType);
     this.column = column;
     this.defaultValue = defaultValue;
     this.getRowContext = getRowContext;

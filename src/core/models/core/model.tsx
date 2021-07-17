@@ -10,6 +10,6 @@ export enum ModelType {
   FORMULA_EXPRESSION = 'formula-expr',
   GRID = 'grid',
   GRID_COLUMN = 'gridcol',
-  MODEL = 'model',
+  MUTABLE = 'mutable',
   ROW = 'row',
 }

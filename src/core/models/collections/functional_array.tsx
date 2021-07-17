@@ -1,7 +1,7 @@
 import {JSPrimitive, ROArray} from '@utils/types';
 import {assert} from '@utils/utils';
 import {ModelType} from '../core/model';
-import {Mutable} from '../core/mutable';
+import {Mutable, MutableOptions} from '../core/mutable';
 import {UndefinedUpdateDescriptor, UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {ArrayUpdateType} from '../core/update_types';
 
@@ -16,8 +16,13 @@ abstract class BaseFunctionalArray<
     > extends Mutable<ArrayUpdateDescriptor<TD>> {
   protected array: T[];
 
-  constructor(updateManager: UpdateManager, array: ROArray<T> = [], modelType: ModelType = ModelType.ARRAY) {
-    super(updateManager, modelType);
+  constructor(
+    updateManager: UpdateManager,
+    array: ROArray<T> = [],
+    opts: MutableOptions,
+    modelType: ModelType = ModelType.ARRAY,
+  ) {
+    super(updateManager, opts, modelType);
     this.array = array.slice();
   }
 
@@ -112,8 +117,12 @@ export class FunctionalArrayM<
     T extends Mutable<TD>,
     TD extends UpdateDescriptor,
     > extends BaseFunctionalArray<T, TD> {
-  constructor(updateManager: UpdateManager, array: ROArray<T> = []) {
-    super(updateManager, array);
+  constructor(
+    updateManager: UpdateManager,
+    array: ROArray<T> = [],
+    opts: MutableOptions,
+  ) {
+    super(updateManager, array, opts);
   }
 
   protected initInner(): void {

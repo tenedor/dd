@@ -17,8 +17,10 @@ export class App extends Mutable {
   private appViewRef?: AppView;
 
   constructor(modelType: ModelType = ModelType.APP) {
-    super(new SimpleUpdateManager(), modelType);
-    this.document = new Document(this.updateManager);
+    // Unlike other models, App creates its own UpdateManager. There is one
+    // update manager per app and all other models receive this singleton.
+    super(new SimpleUpdateManager(), {}, modelType);
+    this.document = new Document(this.updateManager, {});
     this.consoleUI = new ConsoleUI(this.document, "dd");
     (window as any).dd = this.consoleUI;
 

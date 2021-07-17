@@ -4,6 +4,11 @@ import {DependencyGraphPartitionIndex, DependencyNode, DependencySetUpdateDescri
         DependencySetUpdateListener, DependencyUpdateListener, UpdateDescriptor,
         UpdateListener, UpdateManager} from './update_manager';
 
+export interface MutableOptions {
+  id?: string,
+  epoch?: number,
+}
+
 export abstract class Mutable<D extends UpdateDescriptor = UpdateDescriptor> implements DependencyNode<D> {
   public readonly id: string;
   public readonly dependencyGraphPartitionIndex: DependencyGraphPartitionIndex = DependencyGraphPartitionIndex.VALUE;
@@ -23,10 +28,14 @@ export abstract class Mutable<D extends UpdateDescriptor = UpdateDescriptor> imp
   // Child class properties are not initialized until after calling super() so
   // the model type must be overridden by passing it as a constructor parameter.
   // By contract Mutable must initialize the id.
-  constructor(updateManager: UpdateManager, modelType: ModelType = ModelType.MODEL, id?: string) {
-    this.id = id || generateSessionUID(modelType);
+  constructor(
+    updateManager: UpdateManager,
+    {id, epoch}: MutableOptions,
+    modelType: ModelType = ModelType.MUTABLE,
+  ) {
+    this.id = (id === undefined) ? generateSessionUID(modelType) : id;
     this.updateManager = updateManager;
-    this.epoch = updateManager.epoch;
+    this.epoch = (epoch === undefined) ? updateManager.epoch : epoch;
   }
 
   // Once a node is initialized its state must be valid to read for its epoch

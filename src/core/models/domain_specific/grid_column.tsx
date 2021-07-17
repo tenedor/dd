@@ -6,7 +6,7 @@ import {Namespace} from '@language/reference/namespace';
 import {ReferenceResolver} from '@language/reference/reference_resolver';
 import {Type} from '@language/types';
 import {ModelType} from '../core/model';
-import {Mutable} from '../core/mutable';
+import {Mutable, MutableOptions} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {ColumnUpdateType, FormulaExpressionUpdateType, GridColumnUpdateType} from '../core/update_types';
 import {Column, ColumnUpdateDescriptor} from './column';
@@ -41,9 +41,10 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
   constructor(
     updateManager: UpdateManager,
     {column, environment, namespace, parentGridColumn, type, width}: GridColumnData<T, C, P>,
+    opts: MutableOptions,
     modelType: ModelType = ModelType.GRID_COLUMN,
   ) {
-    super(updateManager, modelType);
+    super(updateManager, opts, modelType);
     this.column = column;
     this.parentGridColumn = parentGridColumn;
     this._type = type;
@@ -51,7 +52,7 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
     this._namespace = namespace;
     const parentExpression = parentGridColumn ? parentGridColumn.formulaExpression : undefined;
     this._formulaExpression = new FormulaExpression(updateManager,
-        {type, namespace, environment, parent: parentExpression});
+        {type, namespace, environment, parent: parentExpression}, {});
     this._width = width;
   }
 
@@ -76,7 +77,7 @@ export class GridColumn<T extends Type = Type, C extends Type = Type, P extends 
       parentGridColumn,
       type: type || (parentType as Type as T),
       width: width || parentWidth,
-    });
+    }, {});
   }
 
   public get columnId(): string {

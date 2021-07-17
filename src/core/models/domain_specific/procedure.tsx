@@ -11,7 +11,7 @@ import {ROArray, RODictionary} from '@utils/types';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
 import {Constant} from '../core/constant';
 import {ModelType} from '../core/model';
-import {Mutable} from '../core/mutable';
+import {Mutable, MutableOptions} from '../core/mutable';
 import {DependencyNode, SimpleUpdateManager, UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {ArrayUpdateType, ConstructorUpdateType, GridColumnUpdateType} from '../core/update_types';
 import {GridColumns} from './grid';
@@ -79,9 +79,10 @@ export class GridConstructor<I extends Identifier = Identifier>
   constructor(
     updateManager: UpdateManager,
     {columns, defaultValues, environment, getPrimitiveDrawing, gridId, getName, namespace}: ConstructorData<I>,
+    opts: MutableOptions,
     modelType: ModelType = ModelType.CONSTRUCTOR,
   ) {
-    super(updateManager, modelType);
+    super(updateManager, opts, modelType);
     this.columns = columns;
     this.defaultValues = defaultValues;
     this.environment = environment;
@@ -114,7 +115,7 @@ export class GridConstructor<I extends Identifier = Identifier>
       getPrimitiveDrawing,
       gridId,
       manualValues,
-    });
+    }, {});
     return row.asValue();
   }
 

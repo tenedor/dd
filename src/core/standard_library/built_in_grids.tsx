@@ -68,7 +68,7 @@ function generateColumns(
 ): {[name: string]: Column} {
   const columnsMap = {};
   columnsData.forEach(columnData => {
-    columnsMap[columnData.name] = new Column(updateManager, columnData);
+    columnsMap[columnData.name] = new Column(updateManager, columnData, {});
   });
   return columnsMap;
 }
@@ -89,7 +89,7 @@ function generateGridColumns(
       namespace,
       type,
       width: width || 100,
-    });
+    }, {});
   });
 }
 
@@ -142,8 +142,8 @@ function addBuiltInGrid({
 }) {
   const newColumns = gridColumnsData.filter((c): c is GridColumnData => !isChildData(c)).map(d => d.column);
   const defaultValues = getDefaultValues(gridColumnsData);
-  const grid = new Grid(updateManager, {name, environment,
-    parentGrid, newColumns, getPrimitiveDrawing, disableCoordinateSystemColumn, defaultValues});
+  const grid = new Grid(updateManager, {name, environment, parentGrid, newColumns,
+    getPrimitiveDrawing, disableCoordinateSystemColumn, defaultValues}, {});
   setColumnExpressions(grid, gridColumnsData, environment);
 }
 
@@ -196,7 +196,7 @@ function addRows(
     getPrimitiveDrawing,
     gridId,
     manualValues,
-  }));
+  }, {}));
   grid.addRows(laterRows);
 }
 

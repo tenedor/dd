@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 import {Dictionary, JSPrimitive, RODictionary} from '@utils/types';
 import {assert} from '@utils/utils';
 import {ModelType} from '../core/model';
-import {Mutable} from '../core/mutable';
+import {Mutable, MutableOptions} from '../core/mutable';
 import {UndefinedUpdateDescriptor, UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {DictionaryUpdateType} from '../core/update_types';
 
@@ -22,9 +22,10 @@ abstract class BaseFunctionalDictionary<
   constructor(
     updateManager: UpdateManager,
     dictionary: RODictionary<T> = {},
+    opts: MutableOptions,
     modelType: ModelType = ModelType.DICTIONARY,
   ) {
-    super(updateManager, modelType);
+    super(updateManager, opts, modelType);
     this.dictionary = Object.assign({}, dictionary);
   }
 
@@ -103,8 +104,12 @@ export class FunctionalDictionaryM<
     T extends Mutable<TD>,
     TD extends UpdateDescriptor,
     > extends BaseFunctionalDictionary<T, TD> {
-  constructor(updateManager: UpdateManager, dictionary: RODictionary<T> = {}) {
-    super(updateManager, dictionary);
+  constructor(
+    updateManager: UpdateManager,
+    dictionary: RODictionary<T> = {},
+    opts: MutableOptions,
+  ) {
+    super(updateManager, dictionary, opts);
   }
 
   protected initInner(): void {

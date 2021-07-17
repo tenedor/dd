@@ -30,7 +30,7 @@ export const getCoordinateSystemColumn = (
       id: COORDINATE_SYSTEM_COLUMN_ID,
       name: coordinateSystemColumnName,
       type: TypeUtils.RowOf(coordinateSystemGridId),
-    });
+    }, {});
   }
   return coordinateSystemColumn;
 }

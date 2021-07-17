@@ -12,8 +12,8 @@ export class Constant<D extends UpdateDescriptor = UpdateDescriptor> implements 
   public readonly updateListeners = new Map();
   public readonly dependencyUpdateListeners = new Map();
 
-  constructor(uid?: string, modelType: ModelType = ModelType.CONSTANT) {
-    this.id = uid === undefined ? generateSessionUID(modelType) : uid;
+  constructor(id?: string, modelType: ModelType = ModelType.CONSTANT) {
+    this.id = id === undefined ? generateSessionUID(modelType) : id;
   }
 
   public listenForUpdate() { /* do nothing */ }

@@ -16,7 +16,7 @@ import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array'
 import {DictionaryUpdateDescriptor as DictionaryUD, FunctionalDictionaryM}
         from '../collections/functional_dictionary';
 import {ModelType} from '../core/model';
-import {Mutable} from '../core/mutable';
+import {Mutable, MutableOptions} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {RowUpdateType} from '../core/update_types';
 import {Cell, CellUpdateDescriptor} from './cell';
@@ -63,10 +63,13 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
   public readonly cells: Cells;
   private drawing: DrawingGroup;
 
-  constructor(updateManager: UpdateManager, {
-    columns, defaultValues, environment, gridId, manualValues, getPrimitiveDrawing,
-  }: RowData<I>, modelType: ModelType = ModelType.ROW) {
-    super(updateManager, modelType);
+  constructor(
+    updateManager: UpdateManager,
+    {columns, defaultValues, environment, gridId, manualValues, getPrimitiveDrawing}: RowData<I>,
+    opts: MutableOptions,
+    modelType: ModelType = ModelType.ROW,
+  ) {
+    super(updateManager, opts, modelType);
     this.gridId = gridId;
     this.columns = columns;
     this.environment = environment;
@@ -94,9 +97,9 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
         getRowContext,
         gridId,
         manualValue,
-      });
+      }, {});
     });
-    return new FunctionalDictionaryM(updateManager, cellsDict);
+    return new FunctionalDictionaryM(updateManager, cellsDict, {});
   }
 
   private updateCellMembership(): RowUpdateDescriptor[] {
@@ -111,7 +114,7 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
         defaultValue,
         getRowContext,
         gridId,
-      }));
+      }, {}));
     });
     const updatedIds = addedIds.concat(removedIds);
     const descriptor = {type: RowUpdateType.CELLS_UPDATED, columnIds: updatedIds};

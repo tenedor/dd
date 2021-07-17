@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 
 import {Dictionary, ROArray, RODictionary} from '@utils/types';
 import {assert} from '@utils/utils';
-import {Mutable} from '../core/mutable';
+import {Mutable, MutableOptions} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {FunctionalArrayM} from './functional_array';
 
@@ -14,8 +14,13 @@ export class FunctionalKeyedArray<
   private dictionary: Dictionary<T>;
   private readonly key: K;
 
-  constructor(updateManager: UpdateManager, array: ROArray<T>, key: K) {
-    super(updateManager, array);
+  constructor(
+    updateManager: UpdateManager,
+    array: ROArray<T>,
+    key: K,
+    opts: MutableOptions,
+  ) {
+    super(updateManager, array, opts);
     this.key = key;
     this.dictionary = {};
     this.array.forEach(value => {

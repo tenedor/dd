@@ -1,6 +1,6 @@
 import {ROArray, RODictionary} from '@utils/types';
 import {assert} from '@utils/utils';
-import {Mutable} from '../core/mutable';
+import {Mutable, MutableOptions} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {FunctionalDictionaryM} from './functional_dictionary';
 
@@ -27,8 +27,13 @@ export class FunctionalKeyedDictionary<
 > extends FunctionalDictionaryM<T, TD> {
   private readonly key: K;
 
-  constructor(updateManager: UpdateManager, initialValues: InitialValues<T>, key: K) {
-    super(updateManager, getDictionaryFromInitialValues(initialValues, key));
+  constructor(
+    updateManager: UpdateManager,
+    initialValues: InitialValues<T>,
+    key: K,
+    opts: MutableOptions,
+  ) {
+    super(updateManager, getDictionaryFromInitialValues(initialValues, key), opts);
     this.key = key;
   }
 

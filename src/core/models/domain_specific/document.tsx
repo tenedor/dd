@@ -6,7 +6,7 @@ import {loadStandardLibrary} from '@standard_library/standard_library';
 import {ROArray} from '@utils/types';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from '../collections/functional_array';
 import {ModelType} from '../core/model';
-import {Mutable} from '../core/mutable';
+import {Mutable, MutableOptions} from '../core/mutable';
 import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
 import {ArrayUpdateType, DocumentUpdateType} from '../core/update_types';
 import {Grid, GridData, GridUpdateDescriptor} from './grid';
@@ -21,14 +21,16 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
   public readonly grids: Grids;
   public readonly drawingSurfaceInfos: DrawingSurfaceInfos;
 
-  constructor(updateManager: UpdateManager, modelType: ModelType = ModelType.DOCUMENT) {
-    // Unlike other models, Document creates its own UpdateManager. There is one
-    // update manager per document and all other models receive this singleton.
-    super(updateManager, modelType);
+  constructor(
+    updateManager: UpdateManager,
+    opts: MutableOptions,
+    modelType: ModelType = ModelType.DOCUMENT,
+  ) {
+    super(updateManager, opts, modelType);
 
     this.environment = loadStandardLibrary(updateManager);
-    this.grids = new FunctionalArrayM(this.updateManager, []);
-    this.drawingSurfaceInfos = new FunctionalArrayM(this.updateManager, []);
+    this.grids = new FunctionalArrayM(this.updateManager, [], {});
+    this.drawingSurfaceInfos = new FunctionalArrayM(this.updateManager, [], {});
     this.addDrawingSurface();
   }
 
@@ -43,7 +45,7 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
   }
 
   public addGridFromGridData = (gridData: GridData, index?: number): Grid => {
-    const grid = new Grid(this.updateManager, gridData);
+    const grid = new Grid(this.updateManager, gridData, {});
     index === undefined ? this.grids.push(grid) : this.grids.insert(grid, index);
     return grid;
   }
@@ -59,7 +61,7 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
   }
 
   public addDrawingSurface = () => {
-    this.drawingSurfaceInfos.push(new FunctionalArrayM(this.updateManager, []));
+    this.drawingSurfaceInfos.push(new FunctionalArrayM(this.updateManager, [], {}));
   }
 
   private getDefaultNameForGrid = (): string => {
