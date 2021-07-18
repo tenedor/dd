@@ -15,9 +15,10 @@ import {keysDiff} from '@utils/utils';
 import {ArrayUpdateDescriptor as ArrayUD} from '../collections/functional_array';
 import {DictionaryUpdateDescriptor as DictionaryUD, FunctionalDictionaryM}
         from '../collections/functional_dictionary';
+import {UpdateDescriptor} from '../core/dependency_node';
 import {ModelType} from '../core/model';
 import {Mutable, MutableOptions} from '../core/mutable';
-import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {UpdateManager} from '../core/update_manager';
 import {RowUpdateType} from '../core/update_types';
 import {Cell, CellUpdateDescriptor} from './cell';
 import {GridColumns} from './grid';

@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
 
+import {UpdateDescriptor} from '@core/models/core/dependency_node';
 import {FormulaEnvironment} from '@language/formula_environment';
 import {Type} from '@language/types';
 import {Value, ValueUtils} from '@language/values';
-import {UpdateDescriptor} from '@models/core/update_manager';
 import {AppUpdateType} from '@models/core/update_types';
 import {Document} from '@models/domain_specific/document';
 import {Signature} from '@models/domain_specific/procedure';

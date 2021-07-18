@@ -1,9 +1,10 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 
+import {UpdateDescriptor} from '@core/models/core/dependency_node';
 import {ModelType} from '@models/core/model';
 import {Mutable} from '@models/core/mutable';
-import {SimpleUpdateManager, UpdateDescriptor} from '@models/core/update_manager';
+import {SimpleUpdateManager} from '@models/core/update_manager';
 import {AppUpdateType} from '@models/core/update_types';
 import {Document, DocumentUpdateDescriptor} from '@models/domain_specific/document';
 import {AppView} from '@views/app_view';

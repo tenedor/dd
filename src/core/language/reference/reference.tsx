@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import {DependencyNode} from '@models/core/update_manager'; // Only a type dependency
+import {DependencyNode} from '@core/models/core/dependency_node'; // Only a type dependency
 import {Procedure} from '@models/domain_specific/procedure'; // Only a type dependency
 import {IdentifierPrefix} from '@utils/identifier_prefixes';
 import {Parser} from '../parser';

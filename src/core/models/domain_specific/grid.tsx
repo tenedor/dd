@@ -14,9 +14,10 @@ import {RODictionary} from '@utils/types';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM}
         from '../collections/functional_array';
 import {FunctionalKeyedArray} from '../collections/functional_keyed_array';
+import {UpdateDescriptor} from '../core/dependency_node';
 import {ModelType} from '../core/model';
 import {Mutable, MutableOptions} from '../core/mutable';
-import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {UpdateManager} from '../core/update_manager';
 import {GridUpdateType} from '../core/update_types';
 import {Column} from './column';
 import {DEFAULT_COLUMN_WIDTH, GridColumn, GridColumnUpdateDescriptor}

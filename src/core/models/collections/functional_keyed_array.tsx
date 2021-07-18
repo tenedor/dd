@@ -2,8 +2,9 @@ import * as _ from 'lodash';
 
 import {Dictionary, ROArray, RODictionary} from '@utils/types';
 import {assert} from '@utils/utils';
+import {UpdateDescriptor} from '../core/dependency_node';
 import {Mutable, MutableOptions} from '../core/mutable';
-import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {UpdateManager} from '../core/update_manager';
 import {FunctionalArrayM} from './functional_array';
 
 export class FunctionalKeyedArray<

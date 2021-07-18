@@ -1,7 +1,8 @@
 import {ROArray, RODictionary} from '@utils/types';
 import {assert} from '@utils/utils';
+import {UpdateDescriptor} from '../core/dependency_node';
 import {Mutable, MutableOptions} from '../core/mutable';
-import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {UpdateManager} from '../core/update_manager';
 import {FunctionalDictionaryM} from './functional_dictionary';
 
 type InitialValues<T> = ROArray<T> | RODictionary<T>;

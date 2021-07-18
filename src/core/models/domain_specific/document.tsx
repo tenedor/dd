@@ -5,9 +5,10 @@ import {addDemoGrids} from '@standard_library/built_in_grids';
 import {loadStandardLibrary} from '@standard_library/standard_library';
 import {ROArray} from '@utils/types';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from '../collections/functional_array';
+import {UpdateDescriptor} from '../core/dependency_node';
 import {ModelType} from '../core/model';
 import {Mutable, MutableOptions} from '../core/mutable';
-import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {UpdateManager} from '../core/update_manager';
 import {ArrayUpdateType, DocumentUpdateType} from '../core/update_types';
 import {Grid, GridData, GridUpdateDescriptor} from './grid';
 

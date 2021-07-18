@@ -6,9 +6,10 @@ import {ReferenceResolver} from '@language/reference/reference_resolver';
 import {Type, TypeEnvironment, TypeUtils} from '@language/types';
 import {Value} from '@language/values';
 import {ROArray} from '@utils/types';
+import {DependencyGraphPartitionIndex, UpdateDescriptor} from '../core/dependency_node';
 import {ModelType} from '../core/model';
 import {Mutable, MutableOptions} from '../core/mutable';
-import {DependencyGraphPartitionIndex, UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {UpdateManager} from '../core/update_manager';
 import {FormulaExpressionUpdateType} from '../core/update_types';
 
 interface FormulaExpressionData<T extends Type, P extends Type> {

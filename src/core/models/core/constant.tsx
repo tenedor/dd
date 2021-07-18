@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
 
 import {generateSessionUID} from '@utils/utils';
-import {ModelType} from './model';
 import {DependencyGraphPartitionIndex, DependencyNode, UpdateDescriptor}
-        from './update_manager';
+        from './dependency_node';
+import {ModelType} from './model';
 
 export class Constant<D extends UpdateDescriptor = UpdateDescriptor> implements DependencyNode<D> {
   public readonly id: string;

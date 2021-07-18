@@ -1,9 +1,10 @@
 import * as _ from 'lodash';
 
 import {Identifier, Type} from '@language/types';
+import {UpdateDescriptor} from '../core/dependency_node';
 import {ModelType} from '../core/model';
 import {Mutable} from '../core/mutable';
-import {UpdateDescriptor, UpdateManager} from '../core/update_manager';
+import {UpdateManager} from '../core/update_manager';
 import {ColumnUpdateType} from '../core/update_types';
 
 export interface ColumnData<T extends Type = Type> {

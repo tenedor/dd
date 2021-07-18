@@ -1,8 +1,9 @@
 import {assert, generateSessionUID} from '@utils/utils';
-import {ModelType} from './model';
 import {DependencyGraphPartitionIndex, DependencyNode, DependencySetUpdateDescriptor,
         DependencySetUpdateListener, DependencyUpdateListener, UpdateDescriptor,
-        UpdateListener, UpdateManager} from './update_manager';
+        UpdateListener} from './dependency_node';
+import {ModelType} from './model';
+import {UpdateManager} from './update_manager';
 
 // =============
 // Mutable Model

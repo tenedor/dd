@@ -17,10 +17,11 @@ import {Address} from '@paths/address';
 import {COORDINATE_SYSTEM_COLUMN_ID} from '@standard_library/geometry_utils';
 import {RODictionary} from '@utils/types';
 import {assert, keysDiff} from '@utils/utils';
+import {DependencyNode, DependencySetUpdateDescriptor, UpdateDescriptor, UpdateListener}
+        from '../core/dependency_node';
 import {ModelType} from '../core/model';
 import {Mutable, MutableOptions} from '../core/mutable';
-import {DependencyNode, DependencySetUpdateDescriptor, UpdateDescriptor, UpdateListener,
-        UpdateManager} from '../core/update_manager';
+import {UpdateManager} from '../core/update_manager';
 import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType}
         from '../core/update_types';
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
