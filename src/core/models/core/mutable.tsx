@@ -4,6 +4,73 @@ import {DependencyGraphPartitionIndex, DependencyNode, DependencySetUpdateDescri
         DependencySetUpdateListener, DependencyUpdateListener, UpdateDescriptor,
         UpdateListener, UpdateManager} from './update_manager';
 
+// =============
+// Mutable Model
+// =============
+//
+// Mutable is the base model for mutable dependency nodes. It implements the
+// core dependency-node-side logic for dependency management. It also supports
+// model hydration with a 2-Phase Construction design that separates dependency
+// node construction from dependency graph construction.
+//
+// ====================
+// 2-Phase Construction
+// ====================
+//
+// The dependency graph has a subgraph of dependency edges that are final at
+// construction. The construction order of dependency nodes is constrained by
+// the partial ordering defined by dependencies in this subgraph.
+//
+// Model Construction Phases:
+// 1. Register: Construct final information and register with lookup services as
+//    needed
+// 2. Initialize: Bind to dependencies and construct dynamic information
+//
+// Details:
+// a. Phase 1: constructor - called once:
+//   i. Responsibility
+//     i) Ensure children are constructed
+//     ii) Ensure all state except non-final derived state is stored
+//     iii) Ensure this model can be looked up if needed
+//   ii. Algorithm
+//     i) Construct unconstructed children
+//     ii) Store children and any non-derived initial state
+//     iii) Derive and store all final state, which necessarily cannot depend on
+//          non-final information
+//     iv) Register self with lookup service, if any
+// b. Phase 2: init - called at least once:
+//   i. Responsibility
+//     i) Ensure dependencies are initialized
+//     ii) Bind to dependencies
+//     iii) Derive and store non-final derived state
+//     iv) Defend against dependency cycles
+//   ii. Algorithm
+//     i) If already initialized, skip
+//     ii) If already initializing, error - cannot have cycles. Else, set
+//         is-initializing flag
+//     iii) Look up, initialize, and bind to all known dependencies
+//     iv) Derive and store all non-final derived state. If dynamic dependencies
+//         are encountered, initialize and bind them before deriving information
+//         from them
+//     v) Clear is-initializing flag and set is-initialized flag
+// c. bind:
+//   i. Responsibility:
+//     i) Register dependency listener
+//     ii) Defend against failure to initialize
+//   ii. Algorithm
+//     i) Error if not done initializing
+//     ii) Register dependency graph edge (dependent, dependency, and on-change
+//         handler) with update manager
+// d. Post-init changes to dependency set:
+//   i. Responsibility:
+//     i) Ensure dependencies are constructed and initialized
+//     ii) Ensure node is bound to dependencies (and not to non-dependencies)
+//     iii) [Do not defend against dependency cycles - work should scale with
+//          size of changes, not size of dependency graph]
+//   ii. Algorithm
+//     i) Construct, store, and initialize any new children
+//     ii) Add and remove dependency binds as appropriate
+
 export interface MutableOptions {
   id?: string,
   epoch?: number,
@@ -25,9 +92,11 @@ export abstract class Mutable<D extends UpdateDescriptor = UpdateDescriptor> imp
   private initInnerCalled: boolean = false;
   private isInitialized: boolean = false;
 
-  // Child class properties are not initialized until after calling super() so
-  // the model type must be overridden by passing it as a constructor parameter.
-  // By contract Mutable must initialize the id.
+  // Phase 1 - Register
+  //
+  // Store all final information and non-derived initial state.
+  //
+  // Child classes should override modelType.
   constructor(
     updateManager: UpdateManager,
     {id, epoch}: MutableOptions,
@@ -38,6 +107,10 @@ export abstract class Mutable<D extends UpdateDescriptor = UpdateDescriptor> imp
     this.epoch = (epoch === undefined) ? updateManager.epoch : epoch;
   }
 
+  // Phase 2 - Initialize
+  //
+  // Bind to dependencies and construct dynamic information.
+  //
   // Once a node is initialized its state must be valid to read for its epoch
   // and it must update its state and epoch along with its dependencies.
   //
