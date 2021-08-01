@@ -23,7 +23,7 @@ export interface SerializedColumn extends SerializedModel {
 
 export interface SerializedDocument extends SerializedModel {
   readonly grids: SerializedGrid[];
-  readonly drawingSurfaces: string[][]; // list of list of grid ids
+  readonly drawingSurfaces: Identifier[][]; // list of list of grid ids
 }
 
 export interface SerializedFormulaExpression extends SerializedModel {
@@ -39,7 +39,8 @@ export interface SerializedGridColumn extends SerializedModel {
 export interface SerializedGrid extends SerializedModel {
   readonly name: string;
   readonly parentId?: Identifier;
-  readonly columns: SerializedGridColumn[];
+  readonly columns: SerializedColumn[];
+  readonly gridColumns: SerializedGridColumn[];
   readonly rows: SerializedRow[];
 }
 
