@@ -21,10 +21,11 @@ import {Mutable, MutableOptions} from '../core/mutable';
 import {UpdateManager} from '../core/update_manager';
 import {RowUpdateType} from '../core/update_types';
 import {Cell, CellUpdateDescriptor} from './cell';
-import {constructCells} from './cell_utilities';
+import {constructCells, hydrateCells} from './cell_utilities';
 import {GridColumns} from './grid';
 import {GridColumnUpdateDescriptor} from './grid_column';
-import {RowContext, RowContextRegistry} from './row_context';
+import {RowContextRegistry} from './row_context';
+import {SerializedRow} from './serialization';
 
 export type CellRO = Readonly<Cell>;
 export type Cells = FunctionalDictionaryM<Cell, CellUpdateDescriptor>;
@@ -50,6 +51,13 @@ interface RowDataWithManualValues<I extends Identifier = Identifier> extends Row
 interface RowDataWithCells<I extends Identifier = Identifier> extends RowDataBase<I> {
   cells: Cells,
   rowContext: RowContextRegistry,
+}
+
+interface RowHydrationAuxiliaryData {
+  environment: FormulaEnvironment,
+  gridId: Identifier,
+  columns: GridColumns,
+  defaultValues?: Row,
 }
 
 interface CellsUpdateDescriptor extends UpdateDescriptor<RowUpdateType> {
@@ -108,6 +116,20 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
     this.updateDrawing();
   }
 
+  public serialize = (): SerializedRow => {
+    const {id, epoch} = this;
+    const cells = this.getOrderedCells().map(c => c.serialize());
+    return {id, epoch, cells};
+  }
+
+  public static hydrate = (serializedRow: SerializedRow, updateManager: UpdateManager,
+      {environment, gridId, columns, defaultValues}: RowHydrationAuxiliaryData): Row => {
+    const {id, epoch, cells: serializedCells} = serializedRow;
+    const rowContext = new RowContextRegistry();
+    const cells = hydrateCells(updateManager, {columns, gridId, defaultValues, serializedCells, rowContext});
+    return new Row(updateManager, {columns, gridId, cells, defaultValues, rowContext, environment}, {id, epoch});
+  }
+
   private updateCellMembership(): RowUpdateDescriptor[] {
     const {defaultValues, rowContext, gridId, updateManager} = this;
     const {addedIds, removedIds} = keysDiff(this.cells.d, this.columns.d);
@@ -125,6 +147,10 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
     const updatedIds = addedIds.concat(removedIds);
     const descriptor = {type: RowUpdateType.CELLS_UPDATED, columnIds: updatedIds};
     return [descriptor];
+  }
+
+  private getOrderedCells = (): Cell[]  => {
+    return this.columns.a.map(c => this.cells.get(c.columnId)!);
   }
 
   private updateDrawing = (): void => {

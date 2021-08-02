@@ -11,6 +11,7 @@ import {GridValue, Value} from '@language/values';
 import {Address, AddressUtils} from '@paths/address';
 import {getCoordinateSystemColumn} from '@standard_library/geometry_utils';
 import {RODictionary} from '@utils/types';
+import {assert} from '@utils/utils';
 import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM}
         from '../collections/functional_array';
 import {FunctionalKeyedArray} from '../collections/functional_keyed_array';
@@ -24,6 +25,7 @@ import {DEFAULT_COLUMN_WIDTH, GridColumn, GridColumnUpdateDescriptor}
         from './grid_column';
 import {Constructor, ConstructorUpdateDescriptor, GridConstructor} from './procedure';
 import {ManualValues, Row, RowUpdateDescriptor} from './row';
+import {SerializedGrid} from './serialization';
 
 export type GridColumns = FunctionalKeyedArray<GridColumn, GridColumnUpdateDescriptor, 'columnId'>;
 export type Rows = FunctionalArrayM<Row, RowUpdateDescriptor>;
@@ -41,6 +43,10 @@ export interface GridData {
   getPrimitiveDrawing?: (cells: RODictionary<Value>) => Drawing,
   disableCoordinateSystemColumn?: boolean,
   defaultValues?: ManualValues,
+}
+
+interface GridHydrationAuxiliaryData {
+  environment: MutableFormulaEnvironment,
 }
 
 export interface GridUpdateDescriptor extends UpdateDescriptor<GridUpdateType> {}
@@ -92,6 +98,37 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     this.columns.listenForUpdate(this, this.onColumnsUpdated);
     this.rows.listenForUpdate(this, this.onRowsUpdated);
     this.gridConstructor.listenForUpdate(this, this.onGridConstructorUpdated);
+  }
+
+  public serialize = (): SerializedGrid => {
+    const {id, epoch, name} = this;
+    const parentId = this.parent?.id;
+    const columns = this.columns.a
+      .filter(c => this.parent?.getColumnById(c.id) === undefined)
+      .map(c => c.serializeColumn());
+    const gridColumns = this.columns.a.map(c => c.serialize());
+    const rows = this.rows.a.map(r => r.serialize());
+    return {id, epoch, name, parentId, columns, gridColumns, rows};
+  }
+
+  public static hydrate = (serializedGrid: SerializedGrid, updateManager: UpdateManager,
+      {environment}: GridHydrationAuxiliaryData): Grid => {
+    const {id, epoch, name, parentId, columns, gridColumns, rows} = serializedGrid;
+    const parentGrid = parentId === undefined ? undefined : environment.getGlobalResolver().getGridById(parentId);
+    assert(parentId === undefined || parentGrid !== undefined,
+        "No parent grid found with id " + parentId + " for grid " + name);
+
+    const defaultValues = undefined; // default values are only for std::lib grids
+
+    const newColumns = columns.map(c => Column.hydrate(c, updateManager, {environment}));
+
+    // FIXME hydrate gridColumns from serialized data
+    const grid = new Grid(updateManager, {name, environment, parentGrid, newColumns, defaultValues}, {id, epoch});
+
+    const hydratedRows = rows.map(r => Row.hydrate(r, updateManager, {environment, gridId: id, columns: grid.columns, defaultValues}));
+    grid.addRows(hydratedRows);
+
+    return grid;
   }
 
   private get namespace(): Namespace {

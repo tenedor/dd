@@ -4,13 +4,16 @@ import {MutableFormulaEnvironment} from '@language/formula_environment';
 import {addDemoGrids} from '@standard_library/built_in_grids';
 import {loadStandardLibrary} from '@standard_library/standard_library';
 import {ROArray} from '@utils/types';
-import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM} from '../collections/functional_array';
+import {assertDefined} from '@utils/utils';
+import {ArrayUpdateDescriptor as ArrayUD, FunctionalArrayM}
+        from '../collections/functional_array';
 import {UpdateDescriptor} from '../core/dependency_node';
 import {ModelType} from '../core/model';
 import {Mutable, MutableOptions} from '../core/mutable';
 import {UpdateManager} from '../core/update_manager';
 import {ArrayUpdateType, DocumentUpdateType} from '../core/update_types';
 import {Grid, GridData, GridUpdateDescriptor} from './grid';
+import {SerializedDocument} from './serialization';
 
 export type Grids = FunctionalArrayM<Grid, GridUpdateDescriptor>;
 export type DrawingSurfaceInfos = FunctionalArrayM<FunctionalArrayM<Grid, GridUpdateDescriptor>, ArrayUD<GridUpdateDescriptor>>;
@@ -39,6 +42,31 @@ export class Document extends Mutable<DocumentUpdateDescriptor> {
     super.initInner();
     this.grids.listenForUpdate(this, this.onGridsUpdated);
     this.drawingSurfaceInfos.listenForUpdate(this, this.onDrawingSurfaceInfosUpdated);
+  }
+
+  public serialize = (): SerializedDocument => {
+    const {id, epoch} = this;
+    const grids = this.grids.a.map(g => g.serialize());
+    const drawingSurfaces = this.drawingSurfaceInfos.a.map(d => d.a.map(g => g.id));
+    return {id, epoch, grids, drawingSurfaces};
+  }
+
+  public static hydrate = (serializedDocument: SerializedDocument, updateManager: UpdateManager): Document => {
+    const {id, epoch, grids, drawingSurfaces} = serializedDocument;
+    const doc = new Document(updateManager, {id, epoch});
+    const {environment} = doc;
+    const hydratedGrids = grids.map(g => Grid.hydrate(g, updateManager, {environment}));
+    doc.grids.pushAll(hydratedGrids);
+    const resolver = environment.getGlobalResolver();
+    drawingSurfaces.forEach((gridIds, i) => {
+      if (i !== 0) {
+        doc.addDrawingSurface();
+      }
+      const gs = gridIds.map(gridId =>
+          assertDefined(resolver.getGridById(gridId), "Missing grid: " + gridId));
+      doc.addNewGridsToDrawings(gs);
+    });
+    return doc;
   }
 
   public addDemoGrids = () => {

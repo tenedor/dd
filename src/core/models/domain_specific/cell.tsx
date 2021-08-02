@@ -16,7 +16,7 @@ import {Value, ValueOrAST, ValueUtils} from '@language/values';
 import {Address} from '@paths/address';
 import {COORDINATE_SYSTEM_COLUMN_ID} from '@standard_library/geometry_utils';
 import {Dictionary, RODictionary} from '@utils/types';
-import {assert, keysDiff} from '@utils/utils';
+import {assert, ifDefined, keysDiff} from '@utils/utils';
 import {DependencyNode, DependencySetUpdateDescriptor, UpdateDescriptor, UpdateListener}
         from '../core/dependency_node';
 import {ModelType} from '../core/model';
@@ -28,6 +28,7 @@ import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_ex
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {Procedure} from './procedure';
 import {RowContext} from './row_context';
+import {SerializedCell} from './serialization';
 
 function isAST<T extends Type>(value: ValueOrAST<T> | undefined): value is ResolvedAST<T> {
   return value !== undefined && 'nodeType' in value;
@@ -43,6 +44,13 @@ interface CellData<T extends Type> {
   rowContext: RowContext,
   gridId: Identifier,
   manualValue?: ValueOrAST<T>, // a manualValue implies T extends SupportsLiteralsType
+}
+
+interface CellHydrationAuxiliaryData<T extends Type> {
+  column: GridColumn<T>,
+  defaultValue?: Cell<T>,
+  rowContext: RowContext,
+  gridId: Identifier,
 }
 
 export interface CellUpdateDescriptor extends UpdateDescriptor<CellUpdateType> {}
@@ -98,6 +106,20 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
     this.addManualValueListeners();
 
     this._value = this.computeValue();
+  }
+
+  public serialize = (): SerializedCell => {
+    const {id, epoch, column} = this;
+    const {columnId} = column;
+    const manualValue = ifDefined(this.manualValue, serializeValue);
+    return {id, epoch, columnId, manualValue};
+  }
+
+  public static hydrate = <T extends Type>(serializedCell: SerializedCell, updateManager: UpdateManager,
+      {column, defaultValue, rowContext, gridId}: CellHydrationAuxiliaryData<T>): Cell<T> => {
+    const {id, epoch, manualValue: serializedValue} = serializedCell;
+    const manualValue = ifDefined(serializedValue, hydrateValue);
+    return new Cell(updateManager, {column, defaultValue, rowContext, gridId, manualValue}, {id, epoch});
   }
 
   private hasPermanentListener = (node: DependencyNode): boolean => {

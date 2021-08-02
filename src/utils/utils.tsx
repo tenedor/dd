@@ -12,6 +12,13 @@ export function assert(e: any, message: string = "", ErrorClass: ErrorConstructo
   return true;
 }
 
+export function assertDefined<T>(t?: T, message: string = "Undefined value", ErrorClass: ErrorConstructor = Error): T {
+  if (t === undefined) {
+    throw new ErrorClass(message);
+  }
+  return t;
+}
+
 export function assertUnreachable(e: never, message?: string): never {
   throw new Error(message);
 }
@@ -49,6 +56,10 @@ export function keysDiff(
   const removedIds = _.difference(oldKeys, newKeys);
   const addedIds = _.difference(newKeys, oldKeys);
   return {removedIds, addedIds};
+}
+
+export function ifDefined<T, U>(obj: T | undefined, fn: (t: T) => U): U | undefined {
+  return obj === undefined ? undefined : fn(obj);
 }
 
 let nextSessionUID = 0;
