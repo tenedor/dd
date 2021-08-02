@@ -109,7 +109,7 @@ export class GridConstructor<I extends Identifier = Identifier>
     const {columns, defaultValues, environment, getPrimitiveDrawing, gridId} = this;
     const updateManager = new SimpleUpdateManager();
     const manualValues = _.extend({}, asmts.dict);
-    const row = new Row(updateManager, {
+    const row = Row.build(updateManager, {
       columns,
       defaultValues,
       environment,

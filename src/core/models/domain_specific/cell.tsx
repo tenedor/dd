@@ -15,7 +15,7 @@ import {Identifier, RowType, Type, TypeUtils} from '@language/types';
 import {Value, ValueOrAST, ValueUtils} from '@language/values';
 import {Address} from '@paths/address';
 import {COORDINATE_SYSTEM_COLUMN_ID} from '@standard_library/geometry_utils';
-import {RODictionary} from '@utils/types';
+import {Dictionary, RODictionary} from '@utils/types';
 import {assert, keysDiff} from '@utils/utils';
 import {DependencyNode, DependencySetUpdateDescriptor, UpdateDescriptor, UpdateListener}
         from '../core/dependency_node';
@@ -27,7 +27,7 @@ import {CellUpdateType, DependencySetUpdateType, FormulaExpressionUpdateType}
 import {FormulaExpression, FormulaExpressionUpdateDescriptor} from './formula_expression';
 import {GridColumn, GridColumnUpdateDescriptor} from './grid_column';
 import {Procedure} from './procedure';
-import {RowContext} from './row';
+import {RowContext} from './row_context';
 
 function isAST<T extends Type>(value: ValueOrAST<T> | undefined): value is ResolvedAST<T> {
   return value !== undefined && 'nodeType' in value;
@@ -40,7 +40,7 @@ function isCallAST<T extends Type>(value: ValueOrAST<T> | undefined): value is C
 interface CellData<T extends Type> {
   column: GridColumn<T>,
   defaultValue?: Cell<T>,
-  getRowContext: () => RowContext,
+  rowContext: RowContext,
   gridId: Identifier,
   manualValue?: ValueOrAST<T>, // a manualValue implies T extends SupportsLiteralsType
 }
@@ -50,7 +50,7 @@ export interface CellUpdateDescriptor extends UpdateDescriptor<CellUpdateType> {
 export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   private readonly column: GridColumn<T>;
   private readonly defaultValue?: Cell<T>;
-  private readonly getRowContext: () => RowContext;
+  private readonly rowContext: RowContext;
   private readonly gridId: Identifier;
   private formulaDependencies: RODictionary<DependencyNode>;
   private rowValueFormulaDependencies: RODictionary<ValueDependency>;
@@ -60,14 +60,14 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
 
   constructor(
     updateManager: UpdateManager,
-    {column, defaultValue, getRowContext, gridId, manualValue}: CellData<T>,
+    {column, defaultValue, rowContext, gridId, manualValue}: CellData<T>,
     opts: MutableOptions,
     modelType: ModelType = ModelType.CELL,
   ) {
     super(updateManager, opts, modelType);
     this.column = column;
     this.defaultValue = defaultValue;
-    this.getRowContext = getRowContext;
+    this.rowContext = rowContext;
     this.gridId = gridId;
     this.manualValue = manualValue;
   }
@@ -257,17 +257,21 @@ export class Cell<T extends Type = Type> extends Mutable<CellUpdateDescriptor> {
   }
 
   private resolveRowValueDependencies = (valueDependencyRefs: readonly ValueReference[]): RODictionary<ValueDependency> => {
-    const rowContext = this.getRowContext();
+    const {rowContext} = this;
 
     // for now all value dependencies should be row-value references, so error if any don't match
     const rowValueDependencyReferences = valueDependencyRefs;
+
+    const dependencies: Dictionary<ValueDependency> = {};
     for (const r of rowValueDependencyReferences) {
-      if (!(r.id in rowContext)) {
+      const cell = rowContext.getCell(r.id);
+      if (cell === undefined) {
         throw new ValueResolutionError(`Could not resolve value reference ${r.id} in row context.`);
       }
+      dependencies[r.id] = cell;
     }
 
-    return _.pick(rowContext, rowValueDependencyReferences.map(r => r.id));
+    return dependencies;
   }
 
   // FIXME

@@ -135,7 +135,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
 
   private buildDefaultRow = (manualValues: ManualValues = {}): Row => {
     const {columns, environment, id, getPrimitiveDrawing, parent, updateManager} = this;
-    return new Row(updateManager, {
+    return Row.build(updateManager, {
       columns,
       defaultValues: parent ? parent.defaultValues : undefined,
       environment,
@@ -268,7 +268,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
   public addNewRow = () => {
     const {columns, defaultValues, environment, getPrimitiveDrawing,
         id, updateManager} = this;
-    const row = new Row(updateManager, {
+    const row = Row.build(updateManager, {
       columns,
       defaultValues,
       environment,

@@ -21,8 +21,10 @@ import {Mutable, MutableOptions} from '../core/mutable';
 import {UpdateManager} from '../core/update_manager';
 import {RowUpdateType} from '../core/update_types';
 import {Cell, CellUpdateDescriptor} from './cell';
+import {constructCells} from './cell_utilities';
 import {GridColumns} from './grid';
 import {GridColumnUpdateDescriptor} from './grid_column';
+import {RowContext, RowContextRegistry} from './row_context';
 
 export type CellRO = Readonly<Cell>;
 export type Cells = FunctionalDictionaryM<Cell, CellUpdateDescriptor>;
@@ -33,16 +35,22 @@ export interface ManualValues {
   [columnId: string]: ValueOrAST,
 }
 
-interface RowData<I extends Identifier = Identifier> {
+interface RowDataBase<I extends Identifier = Identifier> {
   gridId: I,
   columns: GridColumns,
   environment: FormulaEnvironment,
-  manualValues: ManualValues,
   defaultValues?: Row,
   getPrimitiveDrawing?: (cells: RODictionary<Value>) => Drawing,
 }
 
-export type RowContext = RODictionary<Cell>;
+interface RowDataWithManualValues<I extends Identifier = Identifier> extends RowDataBase<I> {
+  manualValues: ManualValues,
+}
+
+interface RowDataWithCells<I extends Identifier = Identifier> extends RowDataBase<I> {
+  cells: Cells,
+  rowContext: RowContextRegistry,
+}
 
 interface CellsUpdateDescriptor extends UpdateDescriptor<RowUpdateType> {
   type: "CELLS_UPDATED",
@@ -58,6 +66,7 @@ export type RowUpdateDescriptor = CellsUpdateDescriptor | DrawingUpdateDescripto
 export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDescriptor> {
   private readonly gridId: I;
   private readonly columns: GridColumns;
+  private readonly rowContext: RowContextRegistry;
   private readonly environment: FormulaEnvironment;
   private readonly defaultValues?: Row;
   private readonly getPrimitiveDrawingIfAny: (cells: RODictionary<Value>) => Drawing | undefined;
@@ -66,17 +75,30 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
 
   constructor(
     updateManager: UpdateManager,
-    {columns, defaultValues, environment, gridId, manualValues, getPrimitiveDrawing}: RowData<I>,
+    {columns, gridId, cells, defaultValues, rowContext, environment, getPrimitiveDrawing}: RowDataWithCells<I>,
     opts: MutableOptions,
     modelType: ModelType = ModelType.ROW,
   ) {
     super(updateManager, opts, modelType);
     this.gridId = gridId;
     this.columns = columns;
+    this.cells = cells;
+    this.rowContext = rowContext;
     this.environment = environment;
     this.defaultValues = defaultValues;
     this.getPrimitiveDrawingIfAny = getPrimitiveDrawing || (() => undefined);
-    this.cells = this.constructCells(manualValues);
+
+    this.rowContext.setRowContext(this.cells);
+  }
+
+  public static build<I extends Identifier = Identifier>(
+    updateManager: UpdateManager,
+    {columns, defaultValues, environment, gridId, manualValues, getPrimitiveDrawing}: RowDataWithManualValues<I>,
+    opts: MutableOptions,
+  ): Row<I> {
+    const rowContext = new RowContextRegistry();
+    const cells = constructCells(updateManager, {columns, gridId, defaultValues, manualValues, rowContext});
+    return new Row(updateManager, {columns, gridId, cells, defaultValues, rowContext, environment, getPrimitiveDrawing}, opts);
   }
 
   protected initInner(): void {
@@ -86,25 +108,8 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
     this.updateDrawing();
   }
 
-  private constructCells = (manualValues: ManualValues): Cells => {
-    const {defaultValues, getRowContext, gridId, updateManager} = this;
-    const cellsDict = _.mapValues(this.columns.d, column => {
-      const {columnId} = column;
-      const manualValue = manualValues[columnId];
-      const defaultValue = defaultValues ? defaultValues.cells.get(columnId) : undefined;
-      return new Cell(updateManager, {
-        column,
-        defaultValue,
-        getRowContext,
-        gridId,
-        manualValue,
-      }, {});
-    });
-    return new FunctionalDictionaryM(updateManager, cellsDict, {});
-  }
-
   private updateCellMembership(): RowUpdateDescriptor[] {
-    const {defaultValues, getRowContext, gridId, updateManager} = this;
+    const {defaultValues, rowContext, gridId, updateManager} = this;
     const {addedIds, removedIds} = keysDiff(this.cells.d, this.columns.d);
     removedIds.forEach(id => this.cells.remove(id));
     addedIds.forEach(id => {
@@ -113,17 +118,13 @@ export class Row<I extends Identifier = Identifier> extends Mutable<RowUpdateDes
       this.cells.set(id, new Cell(updateManager, {
         column,
         defaultValue,
-        getRowContext,
+        rowContext,
         gridId,
       }, {}));
     });
     const updatedIds = addedIds.concat(removedIds);
     const descriptor = {type: RowUpdateType.CELLS_UPDATED, columnIds: updatedIds};
     return [descriptor];
-  }
-
-  private getRowContext = (): RowContext => {
-    return this.cells.d;
   }
 
   private updateDrawing = (): void => {

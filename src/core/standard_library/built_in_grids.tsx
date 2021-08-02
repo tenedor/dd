@@ -189,7 +189,7 @@ function addRows(
   }));
   setFirstRowValues(grid, rowsValues[0]);
   const laterRowsValues = rowsValues.slice(1);
-  const laterRows = laterRowsValues.map(manualValues => new Row(updateManager, {
+  const laterRows = laterRowsValues.map(manualValues => Row.build(updateManager, {
     columns,
     defaultValues,
     environment,
