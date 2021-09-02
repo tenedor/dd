@@ -201,12 +201,12 @@ function addRotationGrid(
 ) {
   const name = "Rotation";
   const columns = generateColumns(updateManager, [
-    {name: 'Rotation CW', type: TypeUtils.Number},
-    {name: 'Rotation CCW', type: TypeUtils.Number},
+    {name: 'Counterclockwise', type: TypeUtils.Number},
+    {name: 'Clockwise', type: TypeUtils.Number},
   ]);
   const gridColumnsData: GridColumnData[] = [
-    {column: columns['Rotation CW']},
-    {column: columns['Rotation CCW'], expressionString: "-'Rotation CW'"},
+    {column: columns.Counterclockwise},
+    {column: columns.Clockwise, expressionString: "-Counterclockwise"},
   ];
   const disableCoordinateSystemColumn = true;
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, disableCoordinateSystemColumn});
@@ -244,7 +244,7 @@ function addVectorGrid(
     {column: columns.X},
     {column: columns.Y},
     {column: columns._R, expressionString: "Sqrt(Value = X * X + Y * Y)"},
-    {column: columns._Theta, expressionString: "Direction('Rotation From Up' = Rotation('Rotation CW' = Atan2(X = Y, Y = X) / (2 * Pi())))"},
+    {column: columns._Theta, expressionString: "Direction('Rotation From Up' = Rotation(Counterclockwise = -Atan2(X = Y, Y = X) / (2 * Pi())))"},
   ];
   const disableCoordinateSystemColumn = true;
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, disableCoordinateSystemColumn});
@@ -284,7 +284,7 @@ function addRotAliasGrid(
   const parentColumns = getGridColumnsByName(parentGrid);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.Rot},
-    {parentGridColumn: parentColumns['Rotation CW'], expressionString: "Rot"},
+    {parentGridColumn: parentColumns.Counterclockwise, expressionString: "Rot"},
   ];
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
 }
@@ -306,7 +306,7 @@ function addCoAliasGrid(
     {column: columns.Y},
     {column: columns.Rot},
     {parentGridColumn: parentColumns.Center, expressionString: "Vector(X=X,Y=Y)"},
-    {parentGridColumn: parentColumns.Rotation, expressionString: "Rotation('Rotation CW'=Rot)"},
+    {parentGridColumn: parentColumns.Rotation, expressionString: "Rotation(Counterclockwise=Rot)"},
   ];
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
 }
@@ -325,8 +325,8 @@ function addPoVecAliasGrid(
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.R},
     {column: columns.Theta},
-    {parentGridColumn: parentColumns.X, expressionString: "R * Sin(Radians = Theta * 2 * Pi())"},
-    {parentGridColumn: parentColumns.Y, expressionString: "R * Cos(Radians = Theta * 2 * Pi())"},
+    {parentGridColumn: parentColumns.X, expressionString: "R * Cos(Radians = Theta * 2 * Pi())"},
+    {parentGridColumn: parentColumns.Y, expressionString: "R * Sin(Radians = Theta * 2 * Pi())"},
   ];
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
 }
@@ -345,8 +345,8 @@ function addPoCoAliasGrid(
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.R},
     {column: columns.Theta},
-    {parentGridColumn: parentColumns.X, expressionString: "R * Sin(Radians = Theta * 2 * Pi())"},
-    {parentGridColumn: parentColumns.Y, expressionString: "R * Cos(Radians = Theta * 2 * Pi())"},
+    {parentGridColumn: parentColumns.X, expressionString: "R * Cos(Radians = Theta * 2 * Pi())"},
+    {parentGridColumn: parentColumns.Y, expressionString: "R * Sin(Radians = Theta * 2 * Pi())"},
   ];
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
 }
