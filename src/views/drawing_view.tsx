@@ -48,9 +48,8 @@ export class DrawingView extends BaseComponent<Props, State> {
 
   public render = (): JSX.Element => {
     const {grids, size} = this.props;
-    const {drawing, affordances} = DrawingView.getDrawingAndAffordances(grids);
+    const drawing = DrawingView.getDrawings(grids);
     const renderedDrawing = DrawingView.renderDrawing(drawing, 'root');
-    const renderedAffordances = this.renderAffordances(affordances);
 
     return (
       <div className="drawing-view" style={{height: size, width: size}} tabIndex={0}
@@ -59,9 +58,6 @@ export class DrawingView extends BaseComponent<Props, State> {
             style={{backgroundColor: "#888888"}}>
           <g key="drawings" className="drawings">
             {renderedDrawing}
-          </g>
-          <g key="affordances" className="affordances">
-            {renderedAffordances}
           </g>
         </svg>
       </div>
@@ -94,6 +90,7 @@ export class DrawingView extends BaseComponent<Props, State> {
       }
   }
 
+  /*
   private renderAffordances = (affordances: ROArray<WrappedAffordance>): JSX.Element[] => {
     const {dragUpdate} = this.state;
     return affordances.map(wa => {
@@ -114,6 +111,7 @@ export class DrawingView extends BaseComponent<Props, State> {
     const affordances = AffordanceUtils.extractTransformedAffordances(drawing);
     return {drawing, affordances};
   }
+  */
 
   private static getDrawings = (grids: ROArray<Grid>): Drawing => {
     const drawings: Dictionary<Drawing> = {};
@@ -122,10 +120,12 @@ export class DrawingView extends BaseComponent<Props, State> {
     return DrawingUtils.groupOf({drawings, transform, affordances: []});
   }
 
+  /*
   private static getAffordance = (id: WrappedAffordanceId, grids: ROArray<Grid>): WrappedAffordance | undefined => {
     const {affordances} = DrawingView.getDrawingAndAffordances(grids);
     return affordances.find(a => WrappedAffordanceId.buildFromAffordance(a).equals(id));
   }
+  */
 
   private static getTransformForCoordinateSystem = ({center, scale, rotation}: CoordinateSystem): string => {
     const {x, y} = center;
@@ -155,6 +155,7 @@ export class DrawingView extends BaseComponent<Props, State> {
     }
   }
 
+  /*
   private onMouseDownTarget = (e: React.MouseEvent) => {
     const id = WrappedAffordanceId.parseFromString(e.currentTarget.getAttribute("data-id")!);
     const x = parseFloat(e.currentTarget.getAttribute("cx")!);
@@ -173,6 +174,7 @@ export class DrawingView extends BaseComponent<Props, State> {
     const idString = id.encodeAsString();
     this.setState({dragUpdate: {idString, position: initialPosition}});
   }
+  */
 
   private clearDragListener = () => {
     const {mouseMoveManager} = this.props.uiGlobals;
