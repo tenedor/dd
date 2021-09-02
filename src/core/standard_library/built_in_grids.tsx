@@ -463,6 +463,28 @@ function addPathShapeGrid(
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid, getPrimitiveDrawing});
 }
 
+function addTextShapeGrid(
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const name = "Text Shape";
+  const columns = generateColumns(updateManager, [
+    {name: 'Text', type: TypeUtils.String},
+  ]);
+  const parentGrid = environment.getGridByName("Shape");
+  const parentColumns = getGridColumnsByName(parentGrid);
+  const gridColumnsData: MixedGridColumnData[] = [
+    {column: columns.Text, defaultValue: ValueUtils.stringOf("Text")},
+  ];
+  const columnIdsByName = makeColumnIdsByName(columns, parentColumns);
+  const getPrimitiveDrawing = (cells: RODictionary<Value>) => {
+    const {fill} = getStandardShapePrimitiveValues(cells, columnIdsByName);
+    const text = (cells[columns.Text.id] as StringValue).value;
+    return DrawingUtils.textOf({fill, text});
+  }
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid, getPrimitiveDrawing});
+}
+
 function addRelativePolygonGrid(
   updateManager: UpdateManager,
   environment: FormulaEnvironment,
@@ -589,6 +611,7 @@ function addShapeGrids(
   addCircleGrid(updateManager, environment);
   addEllipseGrid(updateManager, environment);
   addPathShapeGrid(updateManager, environment);
+  addTextShapeGrid(updateManager, environment);
   addRelativePolygonGrid(updateManager, environment);
   addPolygonGrid(updateManager, environment);
   addRegularPolygonGrid(updateManager, environment);

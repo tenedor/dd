@@ -72,6 +72,8 @@ export class DrawingView extends BaseComponent<Props, State> {
           return <ellipse key={key} rx={drawing.radius1} ry={drawing.radius2} fill={drawing.fill} />;
         case DrawingType.PATH:
           return <path key={key} d={drawing.path} fill={drawing.fill} />;
+        case DrawingType.TEXT:
+          return <text key={key} fill={drawing.fill}>{drawing.text}</text>;
         case DrawingType.GROUP:
           const transform = DrawingView.getTransformForCoordinateSystem(drawing.transform);
           return (

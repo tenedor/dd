@@ -17,6 +17,7 @@ export enum DrawingType {
   // POLYGON = "POLYGON",
   // POLYLINE = "POLYLINE",
   // RECT = "RECT",
+  TEXT = "TEXT",
   GROUP = "GROUP",
   LIST = "LIST",
 }
@@ -25,7 +26,7 @@ interface BaseDrawing<T extends DrawingType> {
   readonly drawingType: T,
 }
 
-interface BasePrimitiveDrawing<T extends Exclude<DrawingType, DrawingType.GROUP>> extends BaseDrawing<T> {
+interface BasePrimitiveDrawing<T extends Exclude<DrawingType, DrawingType.GROUP | DrawingType.LIST>> extends BaseDrawing<T> {
   readonly fill: Color,
   // stroke: number,
   // stroke-color: Color,
@@ -44,6 +45,10 @@ interface Path extends BasePrimitiveDrawing<DrawingType.PATH> {
   readonly path: SVGPathString,
 }
 
+interface Text extends BasePrimitiveDrawing<DrawingType.TEXT> {
+  readonly text: string,
+}
+
 export interface DrawingGroup extends BaseDrawing<DrawingType.GROUP> {
   readonly drawings: RODictionary<Drawing>,
   readonly transform: CoordinateSystem,
@@ -54,7 +59,7 @@ interface DrawingList extends BaseDrawing<DrawingType.LIST> {
   readonly drawings: ROArray<Drawing>,
 }
 
-export type PrimitiveDrawing = Circle | Ellipse | Path;
+export type PrimitiveDrawing = Circle | Ellipse | Path | Text;
 export type Drawing = PrimitiveDrawing | DrawingGroup | DrawingList;
 
 export const DRAWING_PRIMITIVE_PATH_ID = "PRIMITIVE";
@@ -78,6 +83,10 @@ export class DrawingUtils {
 
   public static pathOf = ({path, fill}: {path: string} & BasePrimitiveParameters): Path => ({
     drawingType: DrawingType.PATH, path, fill,
+  })
+
+  public static textOf = ({text, fill}: {text: string} & BasePrimitiveParameters): Text => ({
+    drawingType: DrawingType.TEXT, text, fill,
   })
 
   public static groupOf = ({drawings, transform, affordances}: {
