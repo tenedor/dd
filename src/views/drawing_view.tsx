@@ -71,7 +71,9 @@ export class DrawingView extends BaseComponent<Props, State> {
         case DrawingType.ELLIPSE:
           return <ellipse key={key} rx={drawing.radius1} ry={drawing.radius2} fill={drawing.fill} />;
         case DrawingType.PATH:
-          return <path key={key} d={drawing.path} fill={drawing.fill} />;
+          // For now, correct the anti-cartesian y-axis with a transform. To render images on 
+          // path objects this will need to invert y-coordinates in the drawing path instead.
+          return <path key={key} d={drawing.path} transform="scale(1, -1)" fill={drawing.fill} />;
         case DrawingType.TEXT:
           return <text key={key} fill={drawing.fill}>{drawing.text}</text>;
         case DrawingType.GROUP:
@@ -132,7 +134,7 @@ export class DrawingView extends BaseComponent<Props, State> {
   private static getTransformForCoordinateSystem = ({center, scale, rotation}: CoordinateSystem): string => {
     const {x, y} = center;
     const {ccw} = rotation;
-    return `translate(${x} ${y}) rotate(${-ccw * 360}) scale(${scale})`;
+    return `translate(${x} ${-y}) rotate(${-ccw * 360}) scale(${scale})`;
   }
 
   private convertMouseVectorToDataVector = (mouseVector: Displacement): Displacement => {

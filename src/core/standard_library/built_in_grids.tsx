@@ -541,7 +541,7 @@ function addRegularPolygonGrid(
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.N, defaultValue: ValueUtils.numberOf(5)},
     {column: columns.Radius, defaultValue: ValueUtils.numberOf(20)},
-    {parentGridColumn: parentColumns.Points, expressionString: 'Map(Values=Range(N=N), Fn=i->PoVec(R=Radius, Theta=(i+0.5)/N))'},
+    {parentGridColumn: parentColumns.Points, expressionString: 'Map(Values=Range(N=N), Fn=i->PoVec(R=-Radius, Theta=(i+0.5)/N))'},
   ];
   addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
 }
@@ -560,7 +560,7 @@ function addTriangleGrid(
   ]);
   const parentGrid = environment.getGridByName("Polygon");
   const parentColumns = getGridColumnsByName(parentGrid);
-  const defaultPoints = [[-20, 0], [20, 0], [0, -34.6]].map(([x, y]) => makeLiteral(`Vector(X=${x}, Y=${y})`, vectorRowType, environment) as RowValue);
+  const defaultPoints = [[-20, 0], [20, 0], [0, 34.6]].map(([x, y]) => makeLiteral(`Vector(X=${x}, Y=${y})`, vectorRowType, environment) as RowValue);
   const gridColumnsData: MixedGridColumnData[] = [
     {column: columns.P1, defaultValue: defaultPoints[0]},
     {column: columns.P2, defaultValue: defaultPoints[1]},
@@ -677,8 +677,8 @@ function addDemoStarGrid(
     {column: columns['Initial Angle'], expressionString: "(3 / 2 * Pi()) + Angle / 2"},
     {column: columns['Line Angles'], expressionString: "Map(Values = Range(N = 'Num Points', Start = 0), Fn = i -> 'Initial Angle' + i * (Pi() + Angle))"},
     {column: columns.Lines, expressionString: "Map(Values = 'Line Angles', Fn = angle -> ['Side Length' * Cos(Radians = angle), 'Side Length' * Sin(Radians = angle)])"},
-    {column: columns['Path Offset'], expressionString: `"m" + String(Value = 'Top Point'[1]) + " " + String(Value = -'Top Point'[2])`},
-    {column: columns['Path Lines'], expressionString: `Join(Values = Map(Values = Lines, Fn = line -> "l" + String(Value = line[1]) + " " + String(Value = -line[2])), Separator = " ")`},
+    {column: columns['Path Offset'], expressionString: `"m" + String(Value = 'Top Point'[1]) + " " + String(Value = 'Top Point'[2])`},
+    {column: columns['Path Lines'], expressionString: `Join(Values = Map(Values = Lines, Fn = line -> "l" + String(Value = line[1]) + " " + String(Value = line[2])), Separator = " ")`},
   ];
   const childGridColumnsData: ChildGridColumnData[] = [
       {parentGridColumn: parentColumns.Path, expressionString: `'Path Offset' + " " + 'Path Lines' + " z"`},
@@ -721,7 +721,7 @@ function addDemoShapeGrids(
     {column: columns.Density},
     {column: columns['Side Length']},
     {column: columns.Fill},
-    {column: columns.Shape, width: 150, expressionString: "Star('Num Points' = 'Num Points', Density = Density, 'Side Length' = 'Side Length', Fill = Fill, Transform = 'Coordinate System'(Center = Vector(X = X - 100, Y = Y - 100)))"},
+    {column: columns.Shape, width: 150, expressionString: "Star('Num Points' = 'Num Points', Density = Density, 'Side Length' = 'Side Length', Fill = Fill, Transform = 'Coordinate System'(Center = Vector(X = X - 100, Y = 100 - Y)))"},
   ];
   const grid1 = document.addGridFromGridData({name: "Shapes", environment});
   const grid1Columns = generateGridColumns(updateManager, environment, grid1, grid1ColumnsData);
