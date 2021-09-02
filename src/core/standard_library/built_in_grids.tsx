@@ -286,7 +286,8 @@ function addRotAliasGrid(
     {column: columns.Rot},
     {parentGridColumn: parentColumns.Counterclockwise, expressionString: "Rot"},
   ];
-  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+  const disableCoordinateSystemColumn = true;
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid, disableCoordinateSystemColumn});
 }
 
 function addCoAliasGrid(
@@ -308,7 +309,8 @@ function addCoAliasGrid(
     {parentGridColumn: parentColumns.Center, expressionString: "Vector(X=X,Y=Y)"},
     {parentGridColumn: parentColumns.Rotation, expressionString: "Rotation(Counterclockwise=Rot)"},
   ];
-  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+  const disableCoordinateSystemColumn = true;
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid, disableCoordinateSystemColumn});
 }
 
 function addPoVecAliasGrid(
@@ -328,7 +330,8 @@ function addPoVecAliasGrid(
     {parentGridColumn: parentColumns.X, expressionString: "R * Cos(Radians = Theta * 2 * Pi())"},
     {parentGridColumn: parentColumns.Y, expressionString: "R * Sin(Radians = Theta * 2 * Pi())"},
   ];
-  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+  const disableCoordinateSystemColumn = true;
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid, disableCoordinateSystemColumn});
 }
 
 function addPoCoAliasGrid(
@@ -348,7 +351,8 @@ function addPoCoAliasGrid(
     {parentGridColumn: parentColumns.X, expressionString: "R * Cos(Radians = Theta * 2 * Pi())"},
     {parentGridColumn: parentColumns.Y, expressionString: "R * Sin(Radians = Theta * 2 * Pi())"},
   ];
-  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid});
+  const disableCoordinateSystemColumn = true;
+  addBuiltInGrid({name, updateManager, environment, gridColumnsData, parentGrid, disableCoordinateSystemColumn});
 }
 
 function addTrigonometryGrids(
