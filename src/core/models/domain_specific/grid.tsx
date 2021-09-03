@@ -95,7 +95,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
       [];
     const newColumns = newColumnData.map(this.makeGridColumn);
     const systemColumns = this.makeSystemColumns();
-    return Grid.defaultsById(parentColumns.concat(newColumns).concat(systemColumns), 'columnId');
+    return Grid.defaultsById(systemColumns.concat(parentColumns).concat(newColumns), 'columnId');
   }
 
   private static defaultsById = <T extends any> (list: T[], id: string): T[] => {
