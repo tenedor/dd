@@ -93,7 +93,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     const parentColumns = parent ?
       parent.columns.a.map(c => GridColumn.fromParent(c, {nameResolver, type: c.type})) :
       [];
-    const newColumns = newColumnData.map(this.makeGridColumn);
+    const newColumns = newColumnData.map(c => this.makeGridColumn(c));
     const systemColumns = this.makeSystemColumns();
     return Grid.defaultsById(systemColumns.concat(parentColumns).concat(newColumns), 'columnId');
   }
@@ -116,7 +116,7 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
       return [];
     }
     const getGridIdByName = (gridName: string) => this.environment.getGridByName(gridName).id;
-    const coordinateSystemColumn = this.makeGridColumn(getCoordinateSystemColumn(this.updateManager, getGridIdByName));
+    const coordinateSystemColumn = this.makeGridColumn(getCoordinateSystemColumn(this.updateManager, getGridIdByName), {width: 170});
     return [coordinateSystemColumn];
   }
 
@@ -225,14 +225,17 @@ export class Grid<I extends Identifier = Identifier> extends Mutable<GridUpdateD
     this.addColumns([gridColumn]);
   }
 
-  private makeGridColumn = (column: Column): GridColumn => {
+  private makeGridColumn = (
+    column: Column, opts: {width: number} = {width: DEFAULT_COLUMN_WIDTH},
+  ): GridColumn => {
     const {environment, nameResolver, updateManager} = this;
+    const {width} = opts;
     return new GridColumn(updateManager, {
       column,
       environment,
       nameResolver,
       type: column.type,
-      width: DEFAULT_COLUMN_WIDTH,
+      width,
     });
   }
 

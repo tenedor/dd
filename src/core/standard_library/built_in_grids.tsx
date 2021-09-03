@@ -53,6 +53,7 @@ interface GridColumnData<T extends Type = Type> {
 
 interface ChildGridColumnData<T extends Type = Type> {
   parentGridColumn: GridColumn<T>,
+  width?: number,
   expressionString?: string,
   defaultValue?: ValueOrAST<T>,
 };
@@ -98,9 +99,17 @@ function getGridColumnsByName(grid: Grid): {[name: string]: GridColumn} {
   return _.mapKeys(grid.columns.d, c => c.name);
 }
 
+function setChildGridColumnWidths(grid: Grid, gridColumnsData: ChildGridColumnData[]) {
+  gridColumnsData.forEach(data => {
+    if (data.width !== undefined) {
+      grid.columns.getByKey(data.parentGridColumn.columnId)!.setWidth(data.width);
+    }
+  });
+}
+
 function setColumnExpressions(grid: Grid, gridColumnsData: MixedGridColumnData[], resolver: NameResolver) {
   const columns = grid.columns;
-  gridColumnsData.map((data) => {
+  gridColumnsData.forEach((data) => {
     const {expressionString} = data;
     const columnId = getColumnId(data);
     if (expressionString) {
@@ -673,21 +682,22 @@ function addDemoStarGrid(
     {name: 'Path Lines', type: TypeUtils.String},
   ]);
   const gridColumnsData: GridColumnData[] = [
-    {column: columns['Num Points']},
-    {column: columns.Density},
-    {column: columns['Side Length']},
-    {column: columns.Angle, expressionString: "If(If = 'Num Points' == 0, Then = 0, Else = Pi() * ('Num Points' - 2 * Density) / Max(Values = ['Num Points', 1]))"},
-    {column: columns['Top Point'], expressionString: "[0, 'Side Length' * 0.5 / Cos(Radians = Angle / 2)]"},
-    {column: columns['Initial Angle'], expressionString: "(3 / 2 * Pi()) + Angle / 2"},
-    {column: columns['Line Angles'], expressionString: "Map(Values = Range(N = 'Num Points', Start = 0), Fn = i -> 'Initial Angle' + i * (Pi() + Angle))"},
-    {column: columns.Lines, expressionString: "Map(Values = 'Line Angles', Fn = angle -> ['Side Length' * Cos(Radians = angle), 'Side Length' * Sin(Radians = angle)])"},
-    {column: columns['Path Offset'], expressionString: `"m" + String(Value = 'Top Point'[1]) + " " + String(Value = 'Top Point'[2])`},
-    {column: columns['Path Lines'], expressionString: `Join(Values = Map(Values = Lines, Fn = line -> "l" + String(Value = line[1]) + " " + String(Value = line[2])), Separator = " ")`},
+    {column: columns['Num Points'], width: 65},
+    {column: columns.Density, width: 75},
+    {column: columns['Side Length'], width: 75},
+    {column: columns.Angle, width: 65, expressionString: "If(If = 'Num Points' == 0, Then = 0, Else = Pi() * ('Num Points' - 2 * Density) / Max(Values = ['Num Points', 1]))"},
+    {column: columns['Top Point'], width: 65, expressionString: "[0, 'Side Length' * 0.5 / Cos(Radians = Angle / 2)]"},
+    {column: columns['Initial Angle'], width: 65, expressionString: "(3 / 2 * Pi()) + Angle / 2"},
+    {column: columns['Line Angles'], width: 75, expressionString: "Map(Values = Range(N = 'Num Points', Start = 0), Fn = i -> 'Initial Angle' + i * (Pi() + Angle))"},
+    {column: columns.Lines, width: 350, expressionString: "Map(Values = 'Line Angles', Fn = angle -> ['Side Length' * Cos(Radians = angle), 'Side Length' * Sin(Radians = angle)])"},
+    {column: columns['Path Offset'], width: 65, expressionString: `"m" + String(Value = 'Top Point'[1]) + " " + String(Value = 'Top Point'[2])`},
+    {column: columns['Path Lines'], width: 335, expressionString: `Join(Values = Map(Values = Lines, Fn = line -> "l" + String(Value = line[1]) + " " + String(Value = line[2])), Separator = " ")`},
   ];
   const childGridColumnsData: ChildGridColumnData[] = [
-      {parentGridColumn: parentColumns.Path, expressionString: `'Path Offset' + " " + 'Path Lines' + " z"`},
+      {parentGridColumn: parentColumns.Path, width: 350, expressionString: `'Path Offset' + " " + 'Path Lines' + " z"`},
   ];
   const gridColumns = generateGridColumns(updateManager, environment, grid, gridColumnsData);
+  setChildGridColumnWidths(grid, childGridColumnsData);
   grid.addColumns(gridColumns);
   setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
   setColumnExpressions(grid, childGridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
@@ -725,7 +735,7 @@ function addDemoShapeGrids(
     {column: columns.Density},
     {column: columns['Side Length']},
     {column: columns.Fill},
-    {column: columns.Shape, width: 150, expressionString: "Star('Num Points' = 'Num Points', Density = Density, 'Side Length' = 'Side Length', Fill = Fill, Transform = 'Coordinate System'(Center = Vector(X = X - 100, Y = 100 - Y)))"},
+    {column: columns.Shape, expressionString: "Star('Num Points' = 'Num Points', Density = Density, 'Side Length' = 'Side Length', Fill = Fill, Transform = 'Coordinate System'(Center = Vector(X = X - 100, Y = 100 - Y)))"},
   ];
   const grid1 = document.addGridFromGridData({name: "Shapes", environment});
   const grid1Columns = generateGridColumns(updateManager, environment, grid1, grid1ColumnsData);
