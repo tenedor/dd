@@ -737,7 +737,7 @@ function addDemoShapeGrids(
     {column: columns.Fill},
     {column: columns.Shape, expressionString: "Star('Num Points' = 'Num Points', Density = Density, 'Side Length' = 'Side Length', Fill = Fill, Transform = 'Coordinate System'(Center = Vector(X = X - 100, Y = 100 - Y)))"},
   ];
-  const grid1 = document.addGridFromGridData({name: "Shapes", environment});
+  const grid1 = document.addGridFromGridData({name: "Demo Stars", environment});
   const grid1Columns = generateGridColumns(updateManager, environment, grid1, grid1ColumnsData);
   grid1.addColumns(grid1Columns);
   setColumnExpressions(grid1, grid1ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid1.id)));
@@ -749,7 +749,7 @@ function addDemoShapeGrids(
     }
     return {parentGridColumn};
   });
-  const grid2 = document.addGridFromGridData({name: "More Shapes", parentGrid: grid1, environment});
+  const grid2 = document.addGridFromGridData({name: "More Demo Stars", parentGrid: grid1, environment});
   setColumnExpressions(grid2, grid2ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid2.id)));
   addRows(updateManager, grid2, environment, true);
 }
