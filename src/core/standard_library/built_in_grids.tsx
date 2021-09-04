@@ -177,20 +177,9 @@ function addRows(
   updateManager: UpdateManager,
   grid: Grid,
   environment: FormulaEnvironment,
-  hasParent: boolean,
+  rowsValues: Array<{[columnId: string]: ValueOrAST}>,
 ) {
   const {columns, defaultValues, getPrimitiveDrawing, id: gridId} = grid;
-  const rowCount = hasParent ? 3 : 6;
-  const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
-  const sideLength = (i: number) => 15 * (0.5 + i / 2);
-  const rowsValues = _.range(rowCount).map(i => ({
-    [columns.get(1)!.columnId]: ValueUtils.numberOf(hasParent ? 200 - i * 40 : i * 20),
-    [columns.get(2)!.columnId]: ValueUtils.numberOf(i * i * 6),
-    [columns.get(3)!.columnId]: ValueUtils.numberOf(5 + 2 * i),
-    [columns.get(4)!.columnId]: ValueUtils.numberOf(2 + 2 * i),
-    [columns.get(5)!.columnId]: ValueUtils.numberOf(sideLength(i)),
-    [columns.get(6)!.columnId]: ValueUtils.stringOf(colors[i + (hasParent ? 2 : 0)]),
-  }));
   setFirstRowValues(grid, rowsValues[0]);
   const laterRowsValues = rowsValues.slice(1);
   const laterRows = laterRowsValues.map(manualValues => new Row(updateManager, {
@@ -710,7 +699,22 @@ function addDemoStarGrid(
   setFirstRowValues(grid, manualValues);
 }
 
-function addDemoShapeGrids(
+function getDemoStarsGridRowValues(grid: Grid, isExtension: boolean) {
+  const {columns} = grid;
+  const rowCount = isExtension ? 3 : 6;
+  const colors = ["black", "blue", "cyan", "white", "yellow", "orange"];
+  const sideLength = (i: number) => 15 * (0.5 + i / 2);
+  return _.range(rowCount).map(i => ({
+    [columns.get(1)!.columnId]: ValueUtils.numberOf(isExtension ? 200 - i * 40 : i * 20),
+    [columns.get(2)!.columnId]: ValueUtils.numberOf(i * i * 6),
+    [columns.get(3)!.columnId]: ValueUtils.numberOf(5 + 2 * i),
+    [columns.get(4)!.columnId]: ValueUtils.numberOf(2 + 2 * i),
+    [columns.get(5)!.columnId]: ValueUtils.numberOf(sideLength(i)),
+    [columns.get(6)!.columnId]: ValueUtils.stringOf(colors[i + (isExtension ? 2 : 0)]),
+  }));
+}
+
+function addDemoStarsGrids(
   document: Document,
   updateManager: UpdateManager,
   environment: FormulaEnvironment,
@@ -741,7 +745,8 @@ function addDemoShapeGrids(
   const grid1Columns = generateGridColumns(updateManager, environment, grid1, grid1ColumnsData);
   grid1.addColumns(grid1Columns);
   setColumnExpressions(grid1, grid1ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid1.id)));
-  addRows(updateManager, grid1, environment, false);
+  const grid1RowValues = getDemoStarsGridRowValues(grid1, false);
+  addRows(updateManager, grid1, environment, grid1RowValues);
 
   const grid2ColumnsData: ChildGridColumnData[] = grid1Columns.map(parentGridColumn => {
     if (parentGridColumn.columnId === columns.Density.id) {
@@ -751,7 +756,112 @@ function addDemoShapeGrids(
   });
   const grid2 = document.addGridFromGridData({name: "More Demo Stars", parentGrid: grid1, environment});
   setColumnExpressions(grid2, grid2ColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid2.id)));
-  addRows(updateManager, grid2, environment, true);
+  const grid2RowValues = getDemoStarsGridRowValues(grid2, true);
+  addRows(updateManager, grid2, environment, grid2RowValues);
+}
+
+function addDemoShapeGrids(
+  document: Document,
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  addDemoStarGrid(document, updateManager, environment);
+  addDemoStarsGrids(document, updateManager, environment);
+}
+
+function addDemoSeatingChartGrid(
+  document: Document,
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const {nameResolver} = environment;
+
+  const grid = document.addGridFromGridData({name: "Seating Chart", environment});
+
+  const columns = generateColumns(updateManager, [
+    {name: 'Table Number', type: TypeUtils.Number},
+    {name: 'Guests By Table', type: TypeUtils.ListOf(TypeUtils.String)},
+  ]);
+  const gridColumnsData: GridColumnData[] = [
+    {column: columns['Table Number']},
+    {column: columns['Guests By Table'], width: 275},
+  ];
+  const gridColumns = generateGridColumns(updateManager, environment, grid, gridColumnsData);
+  grid.addColumns(gridColumns);
+  setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
+
+  const guestsByTable = [
+    ["Aza", "Anne", "Ada", "Ang", "Arne", "Alex"],
+    ["Bob", "Bill", "Barr", "Bon", "Bia", "Barb"],
+    ["Cary", "Cat", "Cho", "Cin", "Cam", "Cate"],
+    ["Deb", "Dze", "Doug", "Dan", "Dayo", "Dez"],
+    ["Eoin", "Edde", "Eva", "Ed", "Enna", "Ewin"],
+    ["Fola", "Fred", "Fran", "Fata"],
+    ["Gil", "Gini", "Gary", "Gabi"],
+    ["Hugh", "Hoan", "Hil", "Hana"],
+    ["Ian", "Ina", "Iggy", "Inez"],
+  ];
+  const rowValues = guestsByTable.map((t, i) => ({
+    [gridColumns[0].columnId]: ValueUtils.numberOf(i + 1),
+    [gridColumns[1].columnId]: ValueUtils.listOf(t.map(ValueUtils.stringOf), TypeUtils.String),
+  }));
+  addRows(updateManager, grid, environment, rowValues);
+}
+
+function addDemoRSVPsGrid(
+  document: Document,
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  const {nameResolver} = environment;
+
+  const grid = document.addGridFromGridData({name: "RSVPs", environment});
+
+  const columns = generateColumns(updateManager, [
+    {name: 'Guest', type: TypeUtils.String},
+    {name: 'RSVP', type: TypeUtils.String},
+    {name: 'Table Assignment', type: TypeUtils.String},
+  ]);
+  const gridColumnsData: GridColumnData[] = [
+    {column: columns.Guest},
+    {column: columns.RSVP, expressionString: 'If(If=Guest<"J",Then="yes",Else="no")'},
+    {column: columns['Table Assignment'], width: 110, expressionString:
+      'If(If=Guest<"B", Then="1", Else=' +
+      'If(If=Guest<"C", Then="2", Else=' +
+      'If(If=Guest<"D", Then="3", Else=' +
+      'If(If=Guest<"E", Then="4", Else=' +
+      'If(If=Guest<"F", Then="5", Else=' +
+      'If(If=Guest<"G", Then="6", Else=' +
+      'If(If=Guest<"H", Then="7", Else=' +
+      'If(If=Guest<"I", Then="8", Else=' +
+      'If(If=Guest<"J", Then="9", Else="")))))))))'
+    },
+  ];
+  const gridColumns = generateGridColumns(updateManager, environment, grid, gridColumnsData);
+  grid.addColumns(gridColumns);
+  setColumnExpressions(grid, gridColumnsData, nameResolver.resolverFor(TypeUtils.GridOf(grid.id)));
+
+  const people = [
+    "Jon", "Aza", "Anne", "Bob", "Fola", "Deb", "Kim", "Jim", "Dze", "Ian", "Ina",
+    "Ada", "Eoin", "Kara", "Lane", "Doug", "Dan", "Liz", "Fred", "Fran", "Gil", "Gini",
+    "Dayo", "Dez", "Cary", "Ang", "Hugh", "Cat", "Joe", "Cho", "Cin", "Iggy", "Gary",
+    "Jane", "Arne", "Kirk", "Bill", "Barr", "Alex", "Cam", "Edde", "Gabi", "Cate", "Kip",
+    "Bon", "Bia", "Eva", "Liam", "Barb", "Ed", "Fata", "Hoan", "Hil", "Inez", "Lynn",
+    "Enna", "Ewin", "Hana",
+  ];
+  const rowValues = people.map(p => ({
+    [gridColumns[0].columnId]: ValueUtils.stringOf(p),
+  }));
+  addRows(updateManager, grid, environment, rowValues);
+}
+
+function addDemoWeddingPlannerData(
+  document: Document,
+  updateManager: UpdateManager,
+  environment: FormulaEnvironment,
+) {
+  addDemoSeatingChartGrid(document, updateManager, environment);
+  addDemoRSVPsGrid(document, updateManager, environment);
 }
 
 export function loadBuiltInGrids(
@@ -768,6 +878,6 @@ export function addDemoGrids(
   environment: FormulaEnvironment,
 ) {
   // addDemoArithmeticGrid(document, updateManager, environment);
-  addDemoStarGrid(document, updateManager, environment);
-  addDemoShapeGrids(document, updateManager, environment);
+  // addDemoShapeGrids(document, updateManager, environment);
+  addDemoWeddingPlannerData(document, updateManager, environment);
 }
