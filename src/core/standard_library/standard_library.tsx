@@ -348,6 +348,39 @@ const getFormulaDefs = (): {[name: string]: FormulaGenerator} => ({
     },
   },
 
+  Round: {
+    returnType: TypeUtils.Number,
+    parameters: {
+      Value: ParameterUtils.number(1),
+      Precision: ParameterUtils.number(1),
+    },
+    eval: ({Value: value, Precision: precision}: {Value: number, Precision: number}): number => {
+      return Math.round(value / precision) * precision;
+    },
+  },
+
+  Floor: {
+    returnType: TypeUtils.Number,
+    parameters: {
+      Value: ParameterUtils.number(1),
+      Precision: ParameterUtils.number(1),
+    },
+    eval: ({Value: value, Precision: precision}: {Value: number, Precision: number}): number => {
+      return Math.floor(value / precision) * precision;
+    },
+  },
+
+  Ceiling: {
+    returnType: TypeUtils.Number,
+    parameters: {
+      Value: ParameterUtils.number(1),
+      Precision: ParameterUtils.number(1),
+    },
+    eval: ({Value: value, Precision: precision}: {Value: number, Precision: number}): number => {
+      return Math.ceil(value / precision) * precision;
+    },
+  },
+
   Sq: {
     returnType: TypeUtils.Number,
     parameters: {
